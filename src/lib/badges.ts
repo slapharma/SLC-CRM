@@ -15,21 +15,20 @@ export type BadgeTone =
 
 export type BadgeSpec = { tone: BadgeTone; label: string };
 
-export function listingStatusBadge(status: string): BadgeSpec {
-  switch (status) {
-    case "available":
-      return { tone: "emerald", label: "Available" };
-    case "under_offer":
-      return { tone: "amber", label: "Under Offer" };
-    case "let":
-      return { tone: "sky", label: "Let" };
-    case "sold":
-      return { tone: "violet", label: "Sold" };
-    case "withdrawn":
-      return { tone: "slate", label: "Withdrawn" };
-    default:
-      return { tone: "slate", label: status };
-  }
+// disposals.status is free text (CDG values like "Available", "Under Offer", or a
+// seed/manual value), so normalise rather than switch on a fixed enum.
+export function listingStatusBadge(status: string | null | undefined): BadgeSpec {
+  const s = (status ?? "").trim();
+  const k = s.toLowerCase();
+  if (!k) return { tone: "slate", label: "—" };
+  if (/avail/.test(k)) return { tone: "emerald", label: s };
+  if (/under\s*offer|u\.?o\.?\b|sale\s*agreed|let\s*agreed/.test(k))
+    return { tone: "amber", label: s };
+  if (/\blet\b/.test(k)) return { tone: "sky", label: s };
+  if (/sold|completed/.test(k)) return { tone: "violet", label: s };
+  if (/withdrawn|unavailable|under\s*review/.test(k))
+    return { tone: "slate", label: s };
+  return { tone: "slate", label: s };
 }
 
 export function dealStageBadge(stage: string): BadgeSpec {

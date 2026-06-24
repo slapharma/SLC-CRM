@@ -47,11 +47,12 @@ Core entities (supply ↔ demand spine):
 **Gate:** provision Supabase (new cloud project vs. existing) → set `NEXT_PUBLIC_SUPABASE_*` in Vercel → auth goes live. Then Phase 1 schema.
 
 ## Phase 1 — Data layer (Supabase) ✅ applied to project `akxortffkrknoxysgeei`
-- [x] Schema migration: agencies + members, companies, contacts, listings, requirements, deals, activities, matches (`supabase/migrations/0001_init.sql`)
+- [x] Schema migration: agencies + members, companies, contacts, **disposals** (the supply/Listings table), requirements, deals, activities, matches
 - [x] Enums for UK use classes, licence, tenure, deal/requirement/match stages, roles, activity & entity types
-- [x] Row-Level Security (per-agency isolation via `auth_agency_ids()`) + admin/agent roles; verified: user A sees 3/6 companies (own agency only). Functions hardened (`0003`) per security advisor
+- [x] Row-Level Security (per-agency isolation via `auth_agency_ids()`) + admin/agent roles. Functions hardened (`0003`) per security advisor
 - [x] Generated TypeScript types → `src/lib/database.types.ts`; Supabase clients typed `<Database>`
-- [x] Seed data: on signup, `handle_new_user` auto-creates the user's agency + admin membership + sample operators/listings/requirements (`seed_agency`)
+- [x] Seed data: on signup, `handle_new_user` auto-creates the user's agency + admin membership + sample companies/disposals/requirements (`seed_agency`)
+- [x] **Reconciled `disposals` = Listings** (merge of the parallel CDG-import workstream): one tenant-scoped `disposals` table (rich CDG schema + `agency_id`/RLS + Storage), dropped the thin `listings`, repointed deals/matches, CDG importer made agency-aware (`0004`/`0005`). Verified: A sees 2/4 disposals (own agency only)
 
 ## Phase 2 — CRM core
 - [ ] Companies + Contacts: list, detail, create/edit, search/filter
