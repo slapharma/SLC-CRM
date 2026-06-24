@@ -46,12 +46,12 @@ Core entities (supply ↔ demand spine):
 
 **Gate:** provision Supabase (new cloud project vs. existing) → set `NEXT_PUBLIC_SUPABASE_*` in Vercel → auth goes live. Then Phase 1 schema.
 
-## Phase 1 — Data layer (Supabase)
-- [ ] Schema migration: companies, contacts, listings, requirements, deals, activities, matches
-- [ ] Enums/lookup tables for UK use classes, licence types, tenure, deal stages (data-driven)
-- [ ] Row-Level Security (per-agency tenant isolation) + roles (admin/agent)
-- [ ] Generated TypeScript types from schema
-- [ ] Seed data: sample operators, units, requirements
+## Phase 1 — Data layer (Supabase) ✅ applied to project `akxortffkrknoxysgeei`
+- [x] Schema migration: agencies + members, companies, contacts, listings, requirements, deals, activities, matches (`supabase/migrations/0001_init.sql`)
+- [x] Enums for UK use classes, licence, tenure, deal/requirement/match stages, roles, activity & entity types
+- [x] Row-Level Security (per-agency isolation via `auth_agency_ids()`) + admin/agent roles; verified: user A sees 3/6 companies (own agency only). Functions hardened (`0003`) per security advisor
+- [x] Generated TypeScript types → `src/lib/database.types.ts`; Supabase clients typed `<Database>`
+- [x] Seed data: on signup, `handle_new_user` auto-creates the user's agency + admin membership + sample operators/listings/requirements (`seed_agency`)
 
 ## Phase 2 — CRM core
 - [ ] Companies + Contacts: list, detail, create/edit, search/filter
@@ -80,6 +80,67 @@ Core entities (supply ↔ demand spine):
 - [ ] Typecheck + lint clean
 
 ---
+
+## Active task — CDG Leisure → `disposals` extractor (feeds Phase 3 Listings)
+
+Turn a CDG Leisure property URL into a structured, insert-ready `disposals` row.
+
+**Key finding:** CDG runs on the **Agents' Society** platform. Every field is embedded
+in the page HTML as one JSON object passed to `AI.mapBox.init('<token>', [ {…} ], 'map')`.
+We parse that object directly — no fragile DOM/table scraping — and it exposes fields
+not shown in the UI (`rateable_value`, `business_rates`, `service_charge`,
+`estate_charge`, `parking_charge`, `lat`/`lng`, full agent record, per-floor unit
+table, all marketing sections). This maps 1:1 onto the Listing (Unit) model above.
+
+- [x] `src/lib/disposals/cdg.ts` — self-contained (types + parser + mapper); no Next /
+      Supabase imports so it runs and tests anywhere.
+  - [x] `extractCdgProperty(html)` — string-aware scan to carve the JSON array out of
+        `AI.mapBox.init(...)`, `JSON.parse`, return first record.
+  - [x] `mapCdgToDisposal(raw, sourceUrl)` — map + derive: money (amount + period +
+        qualifier), lease (term/expiry/review/1954-Act), covers (internal/external),
+        use class, EPC, agent, images, brochure, key features, lossless `sections[]`.
+  - [x] `fetchAndExtractCdg(url)` — fetch + extract + map.
+- [x] Verify against live 311 West End Lane (ref 378436): rent 50000, premium 95000,
+      650 sqft / 60.39 sqm, 24+16 covers, lease→Jun 2041, Class E, agent David Kornbluth.
+
+**Result:** `scripts/verify-cdg.ts` — 34/34 checks pass against both the saved fixture
+and the live URL. `npx tsc --noEmit` and `eslint` clean. `scripts/` excluded from
+`tsconfig` so the harness's `.ts`-extension import can't break `next build`.
+
+### Persistence + image re-hosting (in progress)
+Constraints: **no service-role key** (only anon + URL) → server-side writes run as the
+authenticated user, so the table and Storage bucket both need `authenticated` RLS
+policies. Next 16 confirmed: `params` is a Promise; `cookies()`/`headers()` async;
+route handlers/`fetch` uncached by default; server functions must self-verify auth.
+
+Build (verified locally — no live cloud writes):
+- [x] `src/lib/disposals/image.ts` — `cleanImageUrl()` (drop imgix `mark*` watermark
+      params), `filenameFromUrl()`, `contentTypeFromName()`. Pure + unit-checked (5/5).
+- [x] `src/lib/disposals/storage.ts` — `rehostMedia(row, supabase)`: download clean
+      image → upload to `disposals` bucket → rewrite `images[].url` to the public URL,
+      keep `source_url` for provenance. Media failures non-fatal.
+- [x] `src/lib/disposals/import.ts` — `importDisposalFromUrl(url, supabase, {rehost})`:
+      fetch+extract+map → optional re-host → upsert on `(source, source_ref)`.
+- [x] `src/lib/disposals/actions.ts` — `"use server"` `importDisposal(prev, formData)`
+      (matches auth.ts: config guard → auth guard → import → revalidate `/listings`).
+- [x] `src/app/api/disposals/import/route.ts` — `POST {url}`, auth-guarded, `Response.json`.
+- [x] `supabase/migrations/20260624094649_disposals.sql` — table (cols = `DisposalInsert`,
+      jsonb for sections/images/floors, `unique(source, source_ref)`), `updated_at`
+      trigger, RLS (authenticated-all for now; tenant-scope is Phase 1), public
+      `disposals` Storage bucket + authenticated write policy.
+- [x] Verify: image helpers 5/5, extractor 34/34, `tsc` clean, `eslint` clean,
+      `next build` OK — `/api/disposals/import` registers as a dynamic route (ƒ).
+
+**Not yet applied to the live project (needs sign-off):** running the migration (creates
+table + bucket + RLS), and a real end-to-end import insert. SQL not yet executed against
+a DB. Import UI on the Listings page also still to do.
+
+Note: re-hosting strips CDG's watermark from their marketing photos — fine if CDG is
+your own brand; a content-ownership question if it's a third party. Flagged, your call.
+
+**Out of scope until confirmed:** creating the `disposals` table in Supabase (no DB
+writes without sign-off); server action / API route to persist (will read
+`node_modules/next/dist/docs/` first per AGENTS.md); bulk crawling of CDG (ToS — your call).
 
 ## Review
 _(to be filled in as phases complete)_
