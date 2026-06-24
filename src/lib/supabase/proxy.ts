@@ -1,0 +1,44 @@
+import { createServerClient } from "@supabase/ssr";
+import { NextResponse, type NextRequest } from "next/server";
+
+import { SUPABASE_ANON_KEY, SUPABASE_URL, isSupabaseConfigured } from "./config";
+
+/**
+ * Refreshes the Supabase auth session on every request and propagates the
+ * updated cookies onto the response. Called from src/proxy.ts (Next 16 renamed
+ * Middleware -> Proxy). Uses the sync request/response cookie APIs available in
+ * a proxy, NOT the async cookies() store.
+ *
+ * NOTE: per the Next.js docs, a proxy must not be the authorization boundary —
+ * it only does the optimistic session refresh. Real auth checks live in the
+ * (app) server layout.
+ */
+export async function updateSession(request: NextRequest) {
+  let response = NextResponse.next({ request });
+
+  // No Supabase configured yet -> pass through so the site keeps working.
+  if (!isSupabaseConfigured) return response;
+
+  const supabase = createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll();
+      },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value }) =>
+          request.cookies.set(name, value),
+        );
+        response = NextResponse.next({ request });
+        cookiesToSet.forEach(({ name, value, options }) =>
+          response.cookies.set(name, value, options),
+        );
+      },
+    },
+  });
+
+  // IMPORTANT: do not run code between createServerClient and getUser().
+  // getUser() revalidates the token with Supabase Auth on every request.
+  await supabase.auth.getUser();
+
+  return response;
+}

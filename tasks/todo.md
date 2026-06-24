@@ -35,11 +35,16 @@ Core entities (supply ↔ demand spine):
 ---
 
 ## Phase 0 — Project scaffolding
-- [ ] `create-next-app` (TypeScript, App Router, Tailwind, ESLint)
-- [ ] Add Supabase client (`@supabase/ssr`), env wiring, auth helpers
-- [ ] Run **ui-ux-pro-max** skill to generate the design system BEFORE any UI code
-- [ ] Base layout, auth (login/signup), protected routes, org/tenant scoping
-- [ ] CI: typecheck + lint
+- [x] `create-next-app` (TypeScript, App Router, Tailwind v4, ESLint) — Next.js 16.2.9, React 19
+- [x] Wire GitHub (`slapharma/SLC-CRM`) + Vercel (`slc-crm`) — auto-deploy on push to `main` (live at slc-crm.vercel.app)
+- [x] Run **ui-ux-pro-max** skill → design system at `design-system/slc-crm/MASTER.md`
+- [x] Research Next 16 / Tailwind v4 / shadcn / `@supabase/ssr` conventions → build playbook (workflow)
+- [x] Add Supabase client (`@supabase/ssr`) — client/server/proxy, env-guarded, `.env.example` (go-live needs a provisioned project)
+- [x] App shell: root layout, sidebar nav, top bar, Tailwind v4 theme tokens, light/dark mode
+- [x] Auth (login/signup/logout) + protected `(app)` route group — code complete; org/tenant scoping lands with Phase 1 RLS
+- [x] CI: typecheck + lint + build (GitHub Actions)
+
+**Gate:** provision Supabase (new cloud project vs. existing) → set `NEXT_PUBLIC_SUPABASE_*` in Vercel → auth goes live. Then Phase 1 schema.
 
 ## Phase 1 — Data layer (Supabase)
 - [ ] Schema migration: companies, contacts, listings, requirements, deals, activities, matches

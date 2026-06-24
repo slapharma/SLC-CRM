@@ -1,65 +1,123 @@
-import Image from "next/image";
+import Link from "next/link";
+import {
+  Building2,
+  Handshake,
+  Sparkles,
+  Store,
+  Target,
+  Users,
+} from "lucide-react";
 
-export default function Home() {
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+const FEATURES = [
+  {
+    icon: Building2,
+    title: "Companies & Contacts",
+    body: "Operators, landlords, agents and vendors — with the people and roles behind every deal.",
+  },
+  {
+    icon: Store,
+    title: "Leisure listings",
+    body: "Premises with the attributes that matter: use class, premises licence, covers, extraction, tenure.",
+  },
+  {
+    icon: Target,
+    title: "Acquisition requirements",
+    body: "Capture exactly what each operator wants — towns, size, covers, budget and tenure.",
+  },
+  {
+    icon: Sparkles,
+    title: "Supply ↔ demand matching",
+    body: "Score listings against requirements on location, size, use class and budget — with reasons.",
+  },
+];
+
+export default function LandingPage() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <div className="flex min-h-screen flex-col">
+      <header className="border-b">
+        <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-6">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
+              <Building2 className="h-5 w-5" />
+            </div>
+            <span className="text-lg font-semibold tracking-tight">SLC CRM</span>
+          </div>
+          <nav className="flex items-center gap-2">
+            <Link
+              href="/login"
+              className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+              Sign in
+            </Link>
+            <Link href="/dashboard" className={cn(buttonVariants({ size: "sm" }))}>
+              Open app
+            </Link>
+          </nav>
+        </div>
+      </header>
+
+      <main className="flex-1">
+        <section className="mx-auto w-full max-w-6xl px-6 py-20 sm:py-28">
+          <p className="mb-3 inline-flex items-center gap-2 rounded-full border bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
+            <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+            UK leisure &amp; licensed property
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+          <h1 className="max-w-3xl text-balance text-4xl font-semibold leading-tight tracking-tight sm:text-5xl">
+            The CRM for restaurant, bar &amp; licensed-premises agency.
+          </h1>
+          <p className="mt-5 max-w-2xl text-lg leading-relaxed text-muted-foreground">
+            Track operators and landlords, market leisure units with the licensing
+            and covers detail buyers actually ask for, and match supply to demand
+            in one place.
+          </p>
+          <div className="mt-8 flex flex-wrap items-center gap-3">
+            <Link href="/dashboard" className={cn(buttonVariants({ size: "lg" }))}>
+              Open the app
+            </Link>
+            <Link
+              href="/sign-up"
+              className={cn(buttonVariants({ variant: "secondary", size: "lg" }))}
+            >
+              Create an account
+            </Link>
+          </div>
+        </section>
+
+        <section className="border-t bg-muted/30">
+          <div className="mx-auto grid w-full max-w-6xl gap-4 px-6 py-16 sm:grid-cols-2 lg:grid-cols-4">
+            {FEATURES.map((f) => {
+              const Icon = f.icon;
+              return (
+                <div key={f.title} className="rounded-lg border bg-card p-5">
+                  <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <h2 className="text-sm font-semibold">{f.title}</h2>
+                  <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+                    {f.body}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </section>
       </main>
+
+      <footer className="border-t">
+        <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-2 px-6 py-6 text-sm text-muted-foreground sm:flex-row">
+          <span className="flex items-center gap-2">
+            <Handshake className="h-4 w-4" />
+            SLC CRM
+          </span>
+          <span className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            Built for leisure &amp; licensed-sector agents
+          </span>
+        </div>
+      </footer>
     </div>
   );
 }
