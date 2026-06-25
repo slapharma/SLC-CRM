@@ -1,0 +1,97 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+
+import { currentAgencyId } from "@/lib/supabase/agency";
+import { createClient } from "@/lib/supabase/server";
+import type { Database } from "@/lib/database.types";
+import type { FormState } from "@/lib/actions/types";
+
+type CompanyType = Database["public"]["Enums"]["company_type"];
+const TYPES: CompanyType[] = ["operator", "landlord", "agent", "vendor", "other"];
+
+const str = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim();
+const nullable = (fd: FormData, k: string) => str(fd, k) || null;
+const tags = (fd: FormData, k: string) =>
+  str(fd, k)
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+const asType = (v: string): CompanyType =>
+  (TYPES as string[]).includes(v) ? (v as CompanyType) : "operator";
+
+export async function createCompany(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "You must be signed in." };
+
+  const agencyId = await currentAgencyId(supabase);
+  if (!agencyId) return { error: "No agency is linked to your account." };
+
+  const name = str(formData, "name");
+  if (!name) return { error: "Company name is required." };
+
+  const { data, error } = await supabase
+    .from("companies")
+    .insert({
+      agency_id: agencyId,
+      created_by: user.id,
+      name,
+      type: asType(str(formData, "type")),
+      sector_tags: tags(formData, "sector_tags"),
+      website: nullable(formData, "website"),
+      phone: nullable(formData, "phone"),
+      notes: nullable(formData, "notes"),
+    })
+    .select("id")
+    .single();
+  if (error) return { error: error.message };
+
+  revalidatePath("/companies");
+  redirect(`/companies/${data.id}`);
+}
+
+export async function updateCompany(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const supabase = await createClient();
+  const id = str(formData, "id");
+  if (!id) return { error: "Missing company id." };
+
+  const name = str(formData, "name");
+  if (!name) return { error: "Company name is required." };
+
+  const { error } = await supabase
+    .from("companies")
+    .update({
+      name,
+      type: asType(str(formData, "type")),
+      sector_tags: tags(formData, "sector_tags"),
+      website: nullable(formData, "website"),
+      phone: nullable(formData, "phone"),
+      notes: nullable(formData, "notes"),
+    })
+    .eq("id", id);
+  if (error) return { error: error.message };
+
+  revalidatePath("/companies");
+  revalidatePath(`/companies/${id}`);
+  redirect(`/companies/${id}`);
+}
+
+export async function deleteCompany(formData: FormData): Promise<void> {
+  const supabase = await createClient();
+  const id = String(formData.get("id") ?? "");
+  if (id) {
+    await supabase.from("companies").delete().eq("id", id);
+    revalidatePath("/companies");
+  }
+  redirect("/companies");
+}

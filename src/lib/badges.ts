@@ -17,6 +17,38 @@ export type BadgeSpec = { tone: BadgeTone; label: string };
 
 // disposals.status is free text (CDG values like "Available", "Under Offer", or a
 // seed/manual value), so normalise rather than switch on a fixed enum.
+export function companyTypeBadge(type: string): BadgeSpec {
+  switch (type) {
+    case "operator":
+      return { tone: "teal", label: "Operator" };
+    case "landlord":
+      return { tone: "sky", label: "Landlord" };
+    case "agent":
+      return { tone: "violet", label: "Agent" };
+    case "vendor":
+      return { tone: "amber", label: "Vendor" };
+    default:
+      return { tone: "slate", label: type };
+  }
+}
+
+export function contactRoleBadge(role: string): BadgeSpec {
+  switch (role) {
+    case "acquisitions":
+      return { tone: "teal", label: "Acquisitions" };
+    case "landlord":
+      return { tone: "sky", label: "Landlord" };
+    case "solicitor":
+      return { tone: "violet", label: "Solicitor" };
+    case "agent":
+      return { tone: "indigo", label: "Agent" };
+    case "finance":
+      return { tone: "amber", label: "Finance" };
+    default:
+      return { tone: "slate", label: "Other" };
+  }
+}
+
 export function listingStatusBadge(status: string | null | undefined): BadgeSpec {
   const s = (status ?? "").trim();
   const k = s.toLowerCase();

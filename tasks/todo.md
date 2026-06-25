@@ -55,7 +55,8 @@ Core entities (supply ↔ demand spine):
 - [x] **Reconciled `disposals` = Listings** (merge of the parallel CDG-import workstream): one tenant-scoped `disposals` table (rich CDG schema + `agency_id`/RLS + Storage), dropped the thin `listings`, repointed deals/matches, CDG importer made agency-aware (`0004`/`0005`). Verified: A sees 2/4 disposals (own agency only)
 
 ## Phase 2 — CRM core
-- [ ] Companies + Contacts: list, detail, create/edit, search/filter
+- [x] Companies: list (search/filter), detail, create/edit/delete — server actions + RLS-scoped queries; verified live (list/search/insert pass RLS)
+- [ ] Contacts: list, detail, create/edit, search/filter
 - [ ] Activity timeline (logged on every entity)
 - [ ] Global search
 

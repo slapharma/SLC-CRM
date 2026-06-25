@@ -2,3 +2,6 @@
 // export async functions, so action state types must live in a neutral file).
 
 export type AuthState = { error?: string; message?: string };
+
+/** Generic server-action result for forms (create/edit). */
+export type FormState = { error?: string; message?: string };
