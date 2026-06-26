@@ -1,7 +1,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Pencil } from "lucide-react";
+import { Pencil, Plus } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -11,7 +11,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { companyTypeBadge, contactRoleBadge } from "@/lib/badges";
+import {
+  companyTypeBadge,
+  contactRoleBadge,
+  requirementStatusBadge,
+} from "@/lib/badges";
 import { deleteCompany } from "@/lib/actions/companies";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
@@ -36,6 +40,12 @@ export default async function CompanyDetailPage({
     .select("id, first_name, last_name, role, email")
     .eq("company_id", id)
     .order("first_name");
+
+  const { data: requirements } = await supabase
+    .from("requirements")
+    .select("id, title, status")
+    .eq("company_id", id)
+    .order("title");
 
   const t = companyTypeBadge(company.type);
 
@@ -135,6 +145,46 @@ export default async function CompanyDetailPage({
           </CardContent>
         </Card>
       </div>
+
+      <Card className="mt-4">
+        <CardHeader className="flex-row items-center justify-between space-y-0">
+          <CardTitle>Requirements</CardTitle>
+          <Link
+            href={`/requirements/new?company=${company.id}`}
+            className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}
+          >
+            <Plus />
+            Add requirement
+          </Link>
+        </CardHeader>
+        <CardContent>
+          {(requirements ?? []).length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No acquisition requirements yet.
+            </p>
+          ) : (
+            <ul className="divide-y">
+              {requirements!.map((rq) => {
+                const rs = requirementStatusBadge(rq.status);
+                return (
+                  <li
+                    key={rq.id}
+                    className="flex items-center justify-between gap-2 py-2 text-sm"
+                  >
+                    <Link
+                      href={`/requirements/${rq.id}`}
+                      className="font-medium text-foreground hover:text-info hover:underline"
+                    >
+                      {rq.title}
+                    </Link>
+                    <Badge tone={rs.tone}>{rs.label}</Badge>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

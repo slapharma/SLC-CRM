@@ -49,6 +49,21 @@ export function contactRoleBadge(role: string): BadgeSpec {
   }
 }
 
+export function requirementStatusBadge(status: string): BadgeSpec {
+  switch (status) {
+    case "active":
+      return { tone: "emerald", label: "Active" };
+    case "on_hold":
+      return { tone: "amber", label: "On hold" };
+    case "satisfied":
+      return { tone: "sky", label: "Satisfied" };
+    case "withdrawn":
+      return { tone: "slate", label: "Withdrawn" };
+    default:
+      return { tone: "slate", label: status };
+  }
+}
+
 export function listingStatusBadge(status: string | null | undefined): BadgeSpec {
   const s = (status ?? "").trim();
   const k = s.toLowerCase();
@@ -84,7 +99,7 @@ export function dealStageBadge(stage: string): BadgeSpec {
   }
 }
 
-export function useClassBadge(useClass: string): BadgeSpec {
+export function propertyUseBadge(useClass: string): BadgeSpec {
   switch (useClass) {
     case "E":
       return { tone: "sky", label: "Class E" };

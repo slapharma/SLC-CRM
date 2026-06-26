@@ -66,9 +66,12 @@ Core entities (supply ↔ demand spine):
 - [ ] Create/edit form with UK use-class + licence + covers fields
 - [ ] Map view (lat/lng)
 
-## Phase 4 — Requirements (demand)
-- [ ] Requirement list + detail + create/edit (acquisition criteria)
-- [ ] Link requirement to operator Company/Contact
+## Phase 4 — Requirements (demand) ✅ (brought forward — drives matching)
+- [x] Requirement list (search) + detail + create/edit/delete
+- [x] Linked to operator Company; surfaced on the company record ("Add requirement")
+- [x] **All matchable options vs disposals** (migration `0006`): target towns/regions, property_types,
+      use_classes, size & covers bands, tenure, max rent/premium/guide-price, fit-out — every field
+      maps to a disposal column for the Phase 5 matching engine
 
 ## Phase 5 — Matching engine (differentiator)
 - [ ] Scoring function: location radius, sq ft/covers fit, use class, budget, tenure

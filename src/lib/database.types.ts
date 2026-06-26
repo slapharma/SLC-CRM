@@ -560,14 +560,17 @@ export type Database = {
           contact_id: string | null
           created_at: string
           created_by: string | null
+          fit_out_prefs: string[]
           id: string
           max_covers: number | null
+          max_guide_price: number | null
           max_premium: number | null
           max_rent: number | null
           max_sqft: number | null
           min_covers: number | null
           min_sqft: number | null
           notes: string | null
+          property_types: string[]
           status: Database["public"]["Enums"]["requirement_status"]
           target_regions: string[]
           target_towns: string[]
@@ -582,14 +585,17 @@ export type Database = {
           contact_id?: string | null
           created_at?: string
           created_by?: string | null
+          fit_out_prefs?: string[]
           id?: string
           max_covers?: number | null
+          max_guide_price?: number | null
           max_premium?: number | null
           max_rent?: number | null
           max_sqft?: number | null
           min_covers?: number | null
           min_sqft?: number | null
           notes?: string | null
+          property_types?: string[]
           status?: Database["public"]["Enums"]["requirement_status"]
           target_regions?: string[]
           target_towns?: string[]
@@ -604,14 +610,17 @@ export type Database = {
           contact_id?: string | null
           created_at?: string
           created_by?: string | null
+          fit_out_prefs?: string[]
           id?: string
           max_covers?: number | null
+          max_guide_price?: number | null
           max_premium?: number | null
           max_rent?: number | null
           max_sqft?: number | null
           min_covers?: number | null
           min_sqft?: number | null
           notes?: string | null
+          property_types?: string[]
           status?: Database["public"]["Enums"]["requirement_status"]
           target_regions?: string[]
           target_towns?: string[]
