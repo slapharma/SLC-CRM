@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import { Activity, Building2, Handshake, Store, Target } from "lucide-react";
+import { Building2, Handshake, Store, Target } from "lucide-react";
 
-import { EmptyState } from "@/components/empty-state";
+import { ActivityTimeline } from "@/components/activity-timeline";
 import { PageHeader } from "@/components/page-header";
 import {
   Card,
@@ -10,33 +10,47 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
-const KPIS = [
-  { label: "Companies", value: "—", icon: Building2 },
-  { label: "Active listings", value: "—", icon: Store },
-  { label: "Live requirements", value: "—", icon: Target },
-  { label: "Open deals", value: "—", icon: Handshake },
-];
-
 const GETTING_STARTED = [
-  "Provision Supabase and run the Phase 1 schema migration",
-  "Add your first operator companies and contacts",
-  "List available leisure premises",
-  "Capture acquisition requirements and generate matches",
+  "Add operator companies and their contacts",
+  "Capture acquisition requirements (the matching brief)",
+  "Import or add leisure listings (disposals)",
+  "Review matches and progress deals",
 ];
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const supabase = await createClient();
+  const [companies, listings, requirements, deals, activities] = await Promise.all([
+    supabase.from("companies").select("*", { count: "exact", head: true }),
+    supabase.from("disposals").select("*", { count: "exact", head: true }),
+    supabase
+      .from("requirements")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "active"),
+    supabase.from("deals").select("*", { count: "exact", head: true }),
+    supabase
+      .from("activities")
+      .select("id, type, subject, body, occurred_at")
+      .order("occurred_at", { ascending: false })
+      .limit(8),
+  ]);
+
+  const kpis = [
+    { label: "Companies", value: companies.count ?? 0, icon: Building2 },
+    { label: "Active listings", value: listings.count ?? 0, icon: Store },
+    { label: "Live requirements", value: requirements.count ?? 0, icon: Target },
+    { label: "Open deals", value: deals.count ?? 0, icon: Handshake },
+  ];
+
   return (
     <div className="mx-auto max-w-6xl">
-      <PageHeader
-        title="Dashboard"
-        description="Your agency at a glance. Metrics populate once records exist."
-      />
+      <PageHeader title="Dashboard" description="Your agency at a glance." />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {KPIS.map((kpi) => {
+        {kpis.map((kpi) => {
           const Icon = kpi.icon;
           return (
             <Card key={kpi.label}>
@@ -46,7 +60,7 @@ export default function DashboardPage() {
                     {kpi.label}
                   </p>
                   <p className="mt-1 font-mono text-2xl font-semibold tabular-nums">
-                    {kpi.value}
+                    {kpi.value.toLocaleString("en-GB")}
                   </p>
                 </div>
                 <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary">
@@ -62,7 +76,7 @@ export default function DashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle>Getting started</CardTitle>
-            <CardDescription>Phase 0 is live — here&apos;s what comes next.</CardDescription>
+            <CardDescription>The workflow, end to end.</CardDescription>
           </CardHeader>
           <CardContent>
             <ol className="space-y-2.5">
@@ -81,14 +95,10 @@ export default function DashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle>Recent activity</CardTitle>
-            <CardDescription>Calls, viewings and notes will appear here.</CardDescription>
+            <CardDescription>Latest calls, viewings and notes.</CardDescription>
           </CardHeader>
           <CardContent>
-            <EmptyState
-              icon={Activity}
-              title="No activity yet"
-              description="Activity is logged automatically as you work records across the CRM."
-            />
+            <ActivityTimeline activities={activities.data ?? []} />
           </CardContent>
         </Card>
       </div>

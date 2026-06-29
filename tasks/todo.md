@@ -57,8 +57,8 @@ Core entities (supply ↔ demand spine):
 ## Phase 2 — CRM core
 - [x] Companies: list (search/filter), detail, create/edit/delete — server actions + RLS-scoped queries; verified live (list/search/insert pass RLS)
 - [x] Contacts: list (search), detail, create/edit/delete — linked to companies (clickable + "Add contact"); verified live (insert passes RLS)
-- [ ] Activity timeline (logged on every entity)
-- [ ] Global search
+- [x] Activity timeline — log + view per record (reusable component, on companies) + recent activity feed + live KPI counts on the dashboard
+- [x] Global search — top bar → `/search` across companies / contacts / listings / requirements
 
 ## Phase 3 — Listings / disposals (supply)
 - [x] Listing list (search by title/town) with status/use-class/size/rent columns

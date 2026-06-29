@@ -17,6 +17,8 @@ import {
   requirementStatusBadge,
 } from "@/lib/badges";
 import { deleteCompany } from "@/lib/actions/companies";
+import { ActivityTimeline } from "@/components/activity-timeline";
+import { LogActivityForm } from "@/components/log-activity-form";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
@@ -46,6 +48,14 @@ export default async function CompanyDetailPage({
     .select("id, title, status")
     .eq("company_id", id)
     .order("title");
+
+  const { data: activities } = await supabase
+    .from("activities")
+    .select("id, type, subject, body, occurred_at")
+    .eq("entity_type", "company")
+    .eq("entity_id", id)
+    .order("occurred_at", { ascending: false })
+    .limit(20);
 
   const t = companyTypeBadge(company.type);
 
@@ -193,6 +203,16 @@ export default async function CompanyDetailPage({
               })}
             </ul>
           )}
+        </CardContent>
+      </Card>
+
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle>Activity</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <LogActivityForm entityType="company" entityId={company.id} />
+          <ActivityTimeline activities={activities ?? []} />
         </CardContent>
       </Card>
     </div>
