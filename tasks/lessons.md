@@ -22,3 +22,11 @@ Patterns captured to avoid repeating mistakes. Review at session start.
 ## Workflow scripts
 - Workflow scripts are plain JS: do **not** put literal backticks inside backtick-delimited
   template-literal prompts (closes the string early). Use single quotes for inline code.
+
+## Git in a shared working tree (multiple sessions, same repo)
+- **Never `git add -A` here.** Parallel sessions (e.g. the disposals / agent-assignments
+  workstreams) drop untracked files into this same working tree; `git add -A` sweeps their
+  WIP into your commit. Stage explicit paths for the files you actually changed.
+- The global `gh` active account flips between `slapharma` and `dominicmerlow` (other
+  sessions switch it). Before any push run `gh auth switch --user slapharma` — only that
+  account can push to slapharma/SLC-CRM.
