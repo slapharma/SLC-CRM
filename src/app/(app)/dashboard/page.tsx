@@ -1,8 +1,17 @@
 import type { Metadata } from "next";
-import { Building2, Handshake, Store, Target } from "lucide-react";
+import Link from "next/link";
+import {
+  Building2,
+  Handshake,
+  Sparkles,
+  Store,
+  Target,
+  UserPlus,
+} from "lucide-react";
 
 import { ActivityTimeline } from "@/components/activity-timeline";
 import { PageHeader } from "@/components/page-header";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -11,14 +20,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
+import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
-const GETTING_STARTED = [
-  "Add operator companies and their contacts",
-  "Capture acquisition requirements (the matching brief)",
-  "Import or add leisure listings (disposals)",
-  "Review matches and progress deals",
+const QUICK_ADD = [
+  { href: "/companies/new", label: "Add company", icon: Building2 },
+  { href: "/contacts/new", label: "Add contact", icon: UserPlus },
+  { href: "/listings", label: "Add listing", icon: Store },
 ];
 
 export default async function DashboardPage() {
@@ -75,20 +84,35 @@ export default async function DashboardPage() {
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Getting started</CardTitle>
-            <CardDescription>The workflow, end to end.</CardDescription>
+            <CardTitle>Quick actions</CardTitle>
+            <CardDescription>Add records, then find matches.</CardDescription>
           </CardHeader>
-          <CardContent>
-            <ol className="space-y-2.5">
-              {GETTING_STARTED.map((step, i) => (
-                <li key={step} className="flex items-start gap-3 text-sm">
-                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted font-mono text-xs text-muted-foreground">
-                    {i + 1}
-                  </span>
-                  <span className="text-foreground">{step}</span>
-                </li>
-              ))}
-            </ol>
+          <CardContent className="space-y-3">
+            <div className="grid gap-2 sm:grid-cols-3">
+              {QUICK_ADD.map((action) => {
+                const Icon = action.icon;
+                return (
+                  <Link
+                    key={action.href}
+                    href={action.href}
+                    className={cn(buttonVariants({ variant: "secondary" }))}
+                  >
+                    <Icon />
+                    {action.label}
+                  </Link>
+                );
+              })}
+            </div>
+            <Link
+              href="/matches"
+              className={cn(
+                buttonVariants({ variant: "default" }),
+                "h-14 w-full text-base font-semibold uppercase tracking-wide",
+              )}
+            >
+              <Sparkles className="!size-5" />
+              Matchmake now
+            </Link>
           </CardContent>
         </Card>
 
