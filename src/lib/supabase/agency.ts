@@ -17,3 +17,35 @@ export async function currentAgencyId(
     .maybeSingle();
   return data?.agency_id ?? null;
 }
+
+export type AgentOption = { id: string; name: string; email: string | null };
+
+/**
+ * The agency roster as pickable agents (id + display name), sorted by name.
+ * Resolves member user ids through `profiles` (the client cannot read
+ * auth.users). Returns [] if the agency has no members or profiles.
+ */
+export async function getAgencyMembers(
+  supabase: SupabaseClient<Database>,
+  agencyId: string,
+): Promise<AgentOption[]> {
+  const { data: members } = await supabase
+    .from("agency_members")
+    .select("user_id")
+    .eq("agency_id", agencyId);
+  const ids = (members ?? []).map((m) => m.user_id);
+  if (ids.length === 0) return [];
+
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id, full_name, email")
+    .in("id", ids);
+
+  return (profiles ?? [])
+    .map((p) => ({
+      id: p.id,
+      name: p.full_name ?? p.email ?? "Unknown agent",
+      email: p.email,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}

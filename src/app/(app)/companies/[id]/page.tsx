@@ -19,6 +19,7 @@ import {
 import { deleteCompany } from "@/lib/actions/companies";
 import { ActivityTimeline } from "@/components/activity-timeline";
 import { LogActivityForm } from "@/components/log-activity-form";
+import { getAgencyMembers } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
@@ -56,6 +57,20 @@ export default async function CompanyDetailPage({
     .eq("entity_id", id)
     .order("occurred_at", { ascending: false })
     .limit(20);
+
+  const { data: agentRows } = await supabase
+    .from("company_agents")
+    .select("user_id")
+    .eq("company_id", id);
+  const members = await getAgencyMembers(supabase, company.agency_id);
+  const nameOf = new Map(members.map((m) => [m.id, m.name]));
+  const leadAgentName = company.lead_agent_id
+    ? (nameOf.get(company.lead_agent_id) ?? "Unknown agent")
+    : null;
+  const additionalAgents = (agentRows ?? []).map((r) => ({
+    id: r.user_id,
+    name: nameOf.get(r.user_id) ?? "Unknown agent",
+  }));
 
   const t = companyTypeBadge(company.type);
 
@@ -116,6 +131,20 @@ export default async function CompanyDetailPage({
               )}
             </Detail>
             <Detail label="Phone">{company.phone ?? "—"}</Detail>
+            <Detail label="Lead agent">{leadAgentName ?? "—"}</Detail>
+            <Detail label="Agents">
+              {additionalAgents.length > 0 ? (
+                <span className="flex flex-wrap gap-1.5">
+                  {additionalAgents.map((a) => (
+                    <Badge key={a.id} tone="slate">
+                      {a.name}
+                    </Badge>
+                  ))}
+                </span>
+              ) : (
+                "—"
+              )}
+            </Detail>
             <Detail label="Notes">
               <span className="whitespace-pre-wrap">{company.notes ?? "—"}</span>
             </Detail>
@@ -227,7 +256,7 @@ function Detail({
   children: React.ReactNode;
 }) {
   return (
-    <div className="grid grid-cols-[6rem_1fr] gap-3">
+    <div className="grid grid-cols-[7rem_1fr] gap-3">
       <span className="text-muted-foreground">{label}</span>
       <span className="text-foreground">{children}</span>
     </div>

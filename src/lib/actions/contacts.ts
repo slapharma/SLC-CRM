@@ -17,6 +17,15 @@ const asRole = (v: string): ContactRole =>
     ? (v as ContactRole)
     : "other";
 
+/** Lead agent + additional agents (de-duped, lead excluded from extras). */
+const agents = (fd: FormData) => {
+  const lead = nullable(fd, "lead_agent_id");
+  const extra = Array.from(
+    new Set(fd.getAll("additional_agents").map((v) => String(v)).filter(Boolean)),
+  ).filter((id) => id !== lead);
+  return { lead, extra };
+};
+
 function payload(fd: FormData) {
   return {
     first_name: str(fd, "first_name"),
@@ -26,7 +35,29 @@ function payload(fd: FormData) {
     role: asRole(str(fd, "role")),
     company_id: nullable(fd, "company_id"),
     notes: nullable(fd, "notes"),
+    lead_agent_id: nullable(fd, "lead_agent_id"),
   };
+}
+
+type Supabase = Awaited<ReturnType<typeof createClient>>;
+
+/** Replace a contact's additional-agent rows. */
+async function syncContactAgents(
+  supabase: Supabase,
+  contactId: string,
+  agencyId: string,
+  extra: string[],
+) {
+  await supabase.from("contact_agents").delete().eq("contact_id", contactId);
+  if (extra.length > 0) {
+    await supabase.from("contact_agents").insert(
+      extra.map((user_id) => ({
+        agency_id: agencyId,
+        contact_id: contactId,
+        user_id,
+      })),
+    );
+  }
 }
 
 export async function createContact(
@@ -52,6 +83,8 @@ export async function createContact(
     .single();
   if (error) return { error: error.message };
 
+  await syncContactAgents(supabase, row.id, agencyId, agents(formData).extra);
+
   revalidatePath("/contacts");
   redirect(`/contacts/${row.id}`);
 }
@@ -67,8 +100,13 @@ export async function updateContact(
   const data = payload(formData);
   if (!data.first_name) return { error: "A first name is required." };
 
+  const agencyId = await currentAgencyId(supabase);
+  if (!agencyId) return { error: "No agency is linked to your account." };
+
   const { error } = await supabase.from("contacts").update(data).eq("id", id);
   if (error) return { error: error.message };
+
+  await syncContactAgents(supabase, id, agencyId, agents(formData).extra);
 
   revalidatePath("/contacts");
   revalidatePath(`/contacts/${id}`);

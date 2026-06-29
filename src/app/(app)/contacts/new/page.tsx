@@ -4,6 +4,7 @@ import { ContactForm } from "@/components/contact-form";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { createContact } from "@/lib/actions/contacts";
+import { currentAgencyId, getAgencyMembers } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "New contact" };
@@ -15,10 +16,11 @@ export default async function NewContactPage({
 }) {
   const { company } = await searchParams;
   const supabase = await createClient();
-  const { data: companies } = await supabase
-    .from("companies")
-    .select("id, name")
-    .order("name");
+  const agencyId = await currentAgencyId(supabase);
+  const [{ data: companies }, agents] = await Promise.all([
+    supabase.from("companies").select("id, name").order("name"),
+    agencyId ? getAgencyMembers(supabase, agencyId) : Promise.resolve([]),
+  ]);
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -29,6 +31,7 @@ export default async function NewContactPage({
             action={createContact}
             companies={companies ?? []}
             defaultCompanyId={company}
+            agents={agents}
           />
         </CardContent>
       </Card>

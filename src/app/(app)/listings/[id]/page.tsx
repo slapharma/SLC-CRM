@@ -10,6 +10,8 @@ import { listingStatusBadge, matchScoreBadge } from "@/lib/badges";
 import { deleteDisposal } from "@/lib/actions/disposals";
 import { scoreMatch } from "@/lib/matching/score";
 import { MatchReasons } from "@/components/match-reasons";
+import { DisposalAssignmentForm } from "@/components/disposal-assignment-form";
+import { getAgencyMembers } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
@@ -57,6 +59,13 @@ export default async function ListingDetailPage({
     .filter((m) => m.score > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, 10);
+
+  const { data: agentRows } = await supabase
+    .from("disposal_agents")
+    .select("user_id")
+    .eq("disposal_id", id);
+  const agents = await getAgencyMembers(supabase, d.agency_id);
+  const additionalAgentIds = (agentRows ?? []).map((r) => r.user_id);
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -207,10 +216,24 @@ export default async function ListingDetailPage({
         </CardContent>
       </Card>
 
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle>Assignment</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <DisposalAssignmentForm
+            disposalId={d.id}
+            agents={agents}
+            leadAgentId={d.lead_agent_id}
+            additionalAgentIds={additionalAgentIds}
+          />
+        </CardContent>
+      </Card>
+
       {d.agent_name || d.agent_email || d.agent_phone ? (
         <Card className="mt-4">
           <CardHeader>
-            <CardTitle>Agent</CardTitle>
+            <CardTitle>Agent (from source)</CardTitle>
           </CardHeader>
           <CardContent className="space-y-1 text-sm">
             {d.agent_name ? <p className="font-medium">{d.agent_name}</p> : null}

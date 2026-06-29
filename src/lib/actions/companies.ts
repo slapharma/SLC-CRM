@@ -21,6 +21,36 @@ const tags = (fd: FormData, k: string) =>
 const asType = (v: string): CompanyType =>
   (TYPES as string[]).includes(v) ? (v as CompanyType) : "operator";
 
+/** Lead agent + additional agents (de-duped, lead excluded from extras). */
+const agents = (fd: FormData) => {
+  const lead = nullable(fd, "lead_agent_id");
+  const extra = Array.from(
+    new Set(fd.getAll("additional_agents").map((v) => String(v)).filter(Boolean)),
+  ).filter((id) => id !== lead);
+  return { lead, extra };
+};
+
+type Supabase = Awaited<ReturnType<typeof createClient>>;
+
+/** Replace a company's additional-agent rows. */
+async function syncCompanyAgents(
+  supabase: Supabase,
+  companyId: string,
+  agencyId: string,
+  extra: string[],
+) {
+  await supabase.from("company_agents").delete().eq("company_id", companyId);
+  if (extra.length > 0) {
+    await supabase.from("company_agents").insert(
+      extra.map((user_id) => ({
+        agency_id: agencyId,
+        company_id: companyId,
+        user_id,
+      })),
+    );
+  }
+}
+
 export async function createCompany(
   _prev: FormState,
   formData: FormData,
@@ -37,6 +67,7 @@ export async function createCompany(
   const name = str(formData, "name");
   if (!name) return { error: "Company name is required." };
 
+  const { lead, extra } = agents(formData);
   const { data, error } = await supabase
     .from("companies")
     .insert({
@@ -48,10 +79,13 @@ export async function createCompany(
       website: nullable(formData, "website"),
       phone: nullable(formData, "phone"),
       notes: nullable(formData, "notes"),
+      lead_agent_id: lead,
     })
     .select("id")
     .single();
   if (error) return { error: error.message };
+
+  await syncCompanyAgents(supabase, data.id, agencyId, extra);
 
   revalidatePath("/companies");
   redirect(`/companies/${data.id}`);
@@ -68,6 +102,10 @@ export async function updateCompany(
   const name = str(formData, "name");
   if (!name) return { error: "Company name is required." };
 
+  const agencyId = await currentAgencyId(supabase);
+  if (!agencyId) return { error: "No agency is linked to your account." };
+
+  const { lead, extra } = agents(formData);
   const { error } = await supabase
     .from("companies")
     .update({
@@ -77,9 +115,12 @@ export async function updateCompany(
       website: nullable(formData, "website"),
       phone: nullable(formData, "phone"),
       notes: nullable(formData, "notes"),
+      lead_agent_id: lead,
     })
     .eq("id", id);
   if (error) return { error: error.message };
+
+  await syncCompanyAgents(supabase, id, agencyId, extra);
 
   revalidatePath("/companies");
   revalidatePath(`/companies/${id}`);

@@ -8,6 +8,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { contactRoleBadge } from "@/lib/badges";
 import { deleteContact } from "@/lib/actions/contacts";
+import { getAgencyMembers } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
@@ -35,6 +36,20 @@ export default async function ContactDetailPage({
       .maybeSingle();
     companyName = c?.name ?? null;
   }
+
+  const { data: agentRows } = await supabase
+    .from("contact_agents")
+    .select("user_id")
+    .eq("contact_id", id);
+  const members = await getAgencyMembers(supabase, contact.agency_id);
+  const nameOf = new Map(members.map((m) => [m.id, m.name]));
+  const leadAgentName = contact.lead_agent_id
+    ? (nameOf.get(contact.lead_agent_id) ?? "Unknown agent")
+    : null;
+  const additionalAgents = (agentRows ?? []).map((row) => ({
+    id: row.user_id,
+    name: nameOf.get(row.user_id) ?? "Unknown agent",
+  }));
 
   const r = contactRoleBadge(contact.role);
   const name = [contact.first_name, contact.last_name].filter(Boolean).join(" ");
@@ -95,6 +110,20 @@ export default async function ContactDetailPage({
             )}
           </Row>
           <Row label="Phone">{contact.phone ?? "—"}</Row>
+          <Row label="Lead agent">{leadAgentName ?? "—"}</Row>
+          <Row label="Agents">
+            {additionalAgents.length > 0 ? (
+              <span className="flex flex-wrap gap-1.5">
+                {additionalAgents.map((a) => (
+                  <Badge key={a.id} tone="slate">
+                    {a.name}
+                  </Badge>
+                ))}
+              </span>
+            ) : (
+              "—"
+            )}
+          </Row>
           <Row label="Notes">
             <span className="whitespace-pre-wrap">{contact.notes ?? "—"}</span>
           </Row>
@@ -112,7 +141,7 @@ function Row({
   children: React.ReactNode;
 }) {
   return (
-    <div className="grid grid-cols-[6rem_1fr] gap-3">
+    <div className="grid grid-cols-[7rem_1fr] gap-3">
       <span className="text-muted-foreground">{label}</span>
       <span className="text-foreground">{children}</span>
     </div>

@@ -117,6 +117,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           id: string
+          lead_agent_id: string | null
           name: string
           notes: string | null
           phone: string | null
@@ -130,6 +131,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          lead_agent_id?: string | null
           name: string
           notes?: string | null
           phone?: string | null
@@ -143,6 +145,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          lead_agent_id?: string | null
           name?: string
           notes?: string | null
           phone?: string | null
@@ -161,6 +164,78 @@ export type Database = {
           },
         ]
       }
+      company_agents: {
+        Row: {
+          agency_id: string
+          company_id: string
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          agency_id: string
+          company_id: string
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          agency_id?: string
+          company_id?: string
+          created_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_agents_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_agents_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contact_agents: {
+        Row: {
+          agency_id: string
+          contact_id: string
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          agency_id: string
+          contact_id: string
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          agency_id?: string
+          contact_id?: string
+          created_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_agents_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_agents_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contacts: {
         Row: {
           agency_id: string
@@ -171,6 +246,7 @@ export type Database = {
           first_name: string
           id: string
           last_name: string | null
+          lead_agent_id: string | null
           notes: string | null
           phone: string | null
           role: Database["public"]["Enums"]["contact_role"]
@@ -185,6 +261,7 @@ export type Database = {
           first_name: string
           id?: string
           last_name?: string | null
+          lead_agent_id?: string | null
           notes?: string | null
           phone?: string | null
           role?: Database["public"]["Enums"]["contact_role"]
@@ -199,6 +276,7 @@ export type Database = {
           first_name?: string
           id?: string
           last_name?: string | null
+          lead_agent_id?: string | null
           notes?: string | null
           phone?: string | null
           role?: Database["public"]["Enums"]["contact_role"]
@@ -298,6 +376,42 @@ export type Database = {
           },
         ]
       }
+      disposal_agents: {
+        Row: {
+          agency_id: string
+          created_at: string
+          disposal_id: string
+          user_id: string
+        }
+        Insert: {
+          agency_id: string
+          created_at?: string
+          disposal_id: string
+          user_id: string
+        }
+        Update: {
+          agency_id?: string
+          created_at?: string
+          disposal_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "disposal_agents_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disposal_agents_disposal_id_fkey"
+            columns: ["disposal_id"]
+            isOneToOne: false
+            referencedRelation: "disposals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       disposals: {
         Row: {
           address_line: string | null
@@ -327,6 +441,7 @@ export type Database = {
           inside_1954_act: boolean | null
           key_features: string[]
           lat: number | null
+          lead_agent_id: string | null
           lease_expiry: string | null
           lease_term_years: number | null
           licensing_notes: string | null
@@ -389,6 +504,7 @@ export type Database = {
           inside_1954_act?: boolean | null
           key_features?: string[]
           lat?: number | null
+          lead_agent_id?: string | null
           lease_expiry?: string | null
           lease_term_years?: number | null
           licensing_notes?: string | null
@@ -451,6 +567,7 @@ export type Database = {
           inside_1954_act?: boolean | null
           key_features?: string[]
           lat?: number | null
+          lead_agent_id?: string | null
           lease_expiry?: string | null
           lease_term_years?: number | null
           licensing_notes?: string | null
@@ -552,6 +669,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       requirements: {
         Row: {

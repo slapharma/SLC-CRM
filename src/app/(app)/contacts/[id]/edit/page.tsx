@@ -4,6 +4,7 @@ import { ContactForm } from "@/components/contact-form";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { updateContact } from "@/lib/actions/contacts";
+import { getAgencyMembers } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function EditContactPage({
@@ -19,6 +20,12 @@ export default async function EditContactPage({
   ]);
   if (!contact) notFound();
 
+  const [agents, { data: agentRows }] = await Promise.all([
+    getAgencyMembers(supabase, contact.agency_id),
+    supabase.from("contact_agents").select("user_id").eq("contact_id", id),
+  ]);
+  const additionalAgentIds = (agentRows ?? []).map((r) => r.user_id);
+
   const name = [contact.first_name, contact.last_name].filter(Boolean).join(" ");
 
   return (
@@ -30,6 +37,8 @@ export default async function EditContactPage({
             action={updateContact}
             contact={contact}
             companies={companies ?? []}
+            agents={agents}
+            additionalAgentIds={additionalAgentIds}
           />
         </CardContent>
       </Card>
