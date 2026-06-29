@@ -55,10 +55,10 @@ export default async function DashboardPage() {
     (membership?.agencies as { name: string } | null)?.name ?? "Your agency";
 
   const kpis = [
-    { label: "Companies", value: companies.count ?? 0, icon: Building2 },
-    { label: "Active listings", value: listings.count ?? 0, icon: Store },
-    { label: "Live requirements", value: requirements.count ?? 0, icon: Target },
-    { label: "Open deals", value: deals.count ?? 0, icon: Handshake },
+    { label: "Companies", value: companies.count ?? 0, icon: Building2, href: "/companies" },
+    { label: "Active listings", value: listings.count ?? 0, icon: Store, href: "/listings" },
+    { label: "Live requirements", value: requirements.count ?? 0, icon: Target, href: "/requirements" },
+    { label: "Open deals", value: deals.count ?? 0, icon: Handshake, href: "/deals" },
   ];
 
   return (
@@ -83,21 +83,27 @@ export default async function DashboardPage() {
         {kpis.map((kpi) => {
           const Icon = kpi.icon;
           return (
-            <Card key={kpi.label}>
-              <CardContent className="flex items-center justify-between p-4">
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    {kpi.label}
-                  </p>
-                  <p className="mt-1 font-mono text-2xl font-semibold tabular-nums">
-                    {kpi.value.toLocaleString("en-GB")}
-                  </p>
-                </div>
-                <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary">
-                  <Icon className="h-5 w-5" />
-                </div>
-              </CardContent>
-            </Card>
+            <Link
+              key={kpi.label}
+              href={kpi.href}
+              className="block rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              <Card className="h-full transition-all hover:border-primary/40 hover:shadow-md">
+                <CardContent className="flex items-center justify-between p-5 sm:p-5">
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      {kpi.label}
+                    </p>
+                    <p className="mt-1 font-mono text-2xl font-semibold tabular-nums">
+                      {kpi.value.toLocaleString("en-GB")}
+                    </p>
+                  </div>
+                  <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
           );
         })}
       </div>
