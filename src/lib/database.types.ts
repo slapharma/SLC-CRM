@@ -799,6 +799,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_create_agent: {
+        Args: {
+          p_agency_id: string
+          p_email: string
+          p_full_name: string
+          p_password: string
+          p_role?: Database["public"]["Enums"]["member_role"]
+        }
+        Returns: string
+      }
+      admin_set_agent_password: {
+        Args: { p_agency_id: string; p_password: string; p_user_id: string }
+        Returns: undefined
+      }
       auth_agency_ids: { Args: never; Returns: string[] }
       is_agency_admin: { Args: { p_agency_id: string }; Returns: boolean }
       seed_agency: {

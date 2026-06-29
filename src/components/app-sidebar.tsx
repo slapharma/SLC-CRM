@@ -6,6 +6,7 @@ import {
   Building2,
   Handshake,
   LayoutDashboard,
+  ShieldCheck,
   Sparkles,
   Store,
   Target,
@@ -39,8 +40,17 @@ const NAV: NavGroup[] = [
   },
 ];
 
-export function AppSidebar() {
+export function AppSidebar({ isAdmin = false }: { isAdmin?: boolean }) {
   const pathname = usePathname();
+  const groups: NavGroup[] = isAdmin
+    ? [
+        ...NAV,
+        {
+          label: "Settings",
+          items: [{ href: "/admin", label: "Admin", icon: ShieldCheck }],
+        },
+      ]
+    : NAV;
 
   return (
     <aside className="hidden w-60 shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground md:flex">
@@ -52,7 +62,7 @@ export function AppSidebar() {
       </div>
 
       <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-4">
-        {NAV.map((group) => (
+        {groups.map((group) => (
           <div key={group.label}>
             <p className="px-2 pb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
               {group.label}
