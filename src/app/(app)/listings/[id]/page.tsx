@@ -290,19 +290,6 @@ export default async function ListingDetailPage({
           ))}
         </div>
       ) : null}
-
-      {d.brochure_url ? (
-        <p className="mt-4 text-sm">
-          <a
-            href={d.brochure_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-info hover:underline"
-          >
-            Download brochure →
-          </a>
-        </p>
-      ) : null}
     </div>
   );
 }
