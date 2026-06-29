@@ -9,6 +9,7 @@ import { Constants, type Database } from "@/lib/database.types";
 import type { FormState } from "@/lib/actions/types";
 
 type DealStage = Database["public"]["Enums"]["deal_stage"];
+type ReqStatus = Database["public"]["Enums"]["requirement_status"];
 
 const str = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim();
 const nullableStr = (fd: FormData, k: string) => str(fd, k) || null;
@@ -22,6 +23,22 @@ const asStage = (v: string): DealStage =>
   (Constants.public.Enums.deal_stage as readonly string[]).includes(v)
     ? (v as DealStage)
     : "lead";
+
+/**
+ * Close the loop: when a deal reaches `completed`, mark its linked requirement
+ * `satisfied` so it stops generating matches and leaves the active brief list.
+ */
+async function satisfyRequirementOnClose(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  requirementId: string | null,
+  stage: DealStage,
+) {
+  if (stage !== "completed" || !requirementId) return;
+  await supabase
+    .from("requirements")
+    .update({ status: "satisfied" as ReqStatus })
+    .eq("id", requirementId);
+}
 
 /**
  * Create a deal from a requirement ↔ listing match. Derives the title, links
@@ -96,10 +113,17 @@ export async function updateDealStage(formData: FormData): Promise<void> {
   if (!id) return;
 
   const supabase = await createClient();
-  const { error } = await supabase.from("deals").update({ stage }).eq("id", id);
+  const { data: row, error } = await supabase
+    .from("deals")
+    .update({ stage })
+    .eq("id", id)
+    .select("requirement_id")
+    .maybeSingle();
   if (!error) {
+    await satisfyRequirementOnClose(supabase, row?.requirement_id ?? null, stage);
     revalidatePath("/deals");
     revalidatePath(`/deals/${id}`);
+    if (stage === "completed") revalidatePath("/requirements");
   }
 }
 
@@ -113,22 +137,27 @@ export async function updateDeal(
 
   const title = str(formData, "title");
   if (!title) return { error: "A deal title is required." };
+  const stage = asStage(str(formData, "stage"));
 
   const supabase = await createClient();
-  const { error } = await supabase
+  const { data: row, error } = await supabase
     .from("deals")
     .update({
       title,
-      stage: asStage(str(formData, "stage")),
+      stage,
       value: num(formData, "value"),
       hot_terms: nullableStr(formData, "hot_terms"),
       notes: nullableStr(formData, "notes"),
     })
-    .eq("id", id);
+    .eq("id", id)
+    .select("requirement_id")
+    .maybeSingle();
   if (error) return { error: error.message };
 
+  await satisfyRequirementOnClose(supabase, row?.requirement_id ?? null, stage);
   revalidatePath("/deals");
   revalidatePath(`/deals/${id}`);
+  if (stage === "completed") revalidatePath("/requirements");
   return { message: "Saved." };
 }
 

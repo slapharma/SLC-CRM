@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
+  isListingMatchable,
   matchScoreBadge,
   requirementStatusBadge,
   tenureBadge,
@@ -62,6 +63,7 @@ export default async function RequirementDetailPage({
 
   const { data: disposals } = await supabase.from("disposals").select("*");
   const matches = (disposals ?? [])
+    .filter((d) => isListingMatchable(d.status))
     .map((d) => ({ d, ...scoreMatch(r, d) }))
     .filter((m) => m.score > 0)
     .sort((a, b) => b.score - a.score)

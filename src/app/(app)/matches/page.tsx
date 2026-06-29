@@ -8,7 +8,7 @@ import { MatchReasons } from "@/components/match-reasons";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { matchScoreBadge } from "@/lib/badges";
+import { isListingMatchable, matchScoreBadge } from "@/lib/badges";
 import { scoreMatch } from "@/lib/matching/score";
 import { createClient } from "@/lib/supabase/server";
 
@@ -23,7 +23,8 @@ export default async function MatchesPage() {
     supabase.from("disposals").select("*"),
   ]);
   const requirements = reqs ?? [];
-  const supply = disposals ?? [];
+  // Only pitch live stock — never surface let/sold/withdrawn listings as matches.
+  const supply = (disposals ?? []).filter((d) => isListingMatchable(d.status));
 
   const pairs = requirements
     .flatMap((rq) => supply.map((d) => ({ rq, d, ...scoreMatch(rq, d) })))

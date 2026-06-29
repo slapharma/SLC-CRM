@@ -23,9 +23,13 @@ export default async function AppLayout({
     if (!authedUser) redirect("/login");
     user = { email: authedUser.email };
 
+    // Scope to the caller's OWN membership — agency_members RLS can surface
+    // co-members, so an unscoped role=admin check would leak the Admin nav to
+    // any non-admin whose agency has an admin.
     const { data: adminRow } = await supabase
       .from("agency_members")
       .select("agency_id")
+      .eq("user_id", authedUser.id)
       .eq("role", "admin")
       .limit(1)
       .maybeSingle();

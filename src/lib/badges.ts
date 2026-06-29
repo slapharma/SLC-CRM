@@ -85,6 +85,16 @@ export function listingStatusBadge(status: string | null | undefined): BadgeSpec
   return { tone: "slate", label: s };
 }
 
+// Whether a disposal is still live, pitchable supply for matching. Mirrors the
+// free-text states classified by listingStatusBadge: exclude terminally-gone
+// stock (let / sold / completed / withdrawn / unavailable); keep available,
+// under-offer/sale-agreed (still in play as backups), and unknown/null.
+export function isListingMatchable(status: string | null | undefined): boolean {
+  const k = (status ?? "").trim().toLowerCase();
+  if (!k) return true; // unknown — keep, don't hide supply on missing data
+  return !/\blet\b|sold|completed|withdrawn|unavailable/.test(k);
+}
+
 export function dealStageBadge(stage: string): BadgeSpec {
   switch (stage) {
     case "lead":
