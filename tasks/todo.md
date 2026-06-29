@@ -60,11 +60,11 @@ Core entities (supply ↔ demand spine):
 - [ ] Activity timeline (logged on every entity)
 - [ ] Global search
 
-## Phase 3 — Listings (supply)
-- [ ] Listing list view (filters: town, use class, sq ft, tenure, status, rent/premium)
-- [ ] Listing detail with leisure attribute set + photos/docs (Supabase Storage)
-- [ ] Create/edit form with UK use-class + licence + covers fields
-- [ ] Map view (lat/lng)
+## Phase 3 — Listings / disposals (supply)
+- [x] Listing list (search by title/town) with status/use-class/size/rent columns
+- [x] Listing detail: full leisure attribute set, commercials, agent, images, lossless marketing sections, brochure + source link
+- [x] CDG import box on the listings page (agency-scoped) via the import action/route
+- [ ] Manual create/edit form (import is the primary path — deferred) + map view (lat/lng)
 
 ## Phase 4 — Requirements (demand) ✅ (brought forward — drives matching)
 - [x] Requirement list (search) + detail + create/edit/delete
