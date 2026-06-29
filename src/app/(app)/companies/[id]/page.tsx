@@ -113,8 +113,15 @@ export default async function CompanyDetailPage({
         </Card>
 
         <Card>
-          <CardHeader>
+          <CardHeader className="flex-row items-center justify-between space-y-0">
             <CardTitle>Contacts</CardTitle>
+            <Link
+              href={`/contacts/new?company=${company.id}`}
+              className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}
+            >
+              <Plus />
+              Add contact
+            </Link>
           </CardHeader>
           <CardContent>
             {(contacts ?? []).length === 0 ? (
@@ -128,9 +135,12 @@ export default async function CompanyDetailPage({
                       key={ct.id}
                       className="flex items-center justify-between gap-2 text-sm"
                     >
-                      <span className="font-medium">
+                      <Link
+                        href={`/contacts/${ct.id}`}
+                        className="font-medium text-foreground hover:text-info hover:underline"
+                      >
                         {[ct.first_name, ct.last_name].filter(Boolean).join(" ")}
-                      </span>
+                      </Link>
                       <span className="flex items-center gap-2">
                         <Badge tone={r.tone}>{r.label}</Badge>
                         {ct.email ? (
