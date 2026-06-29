@@ -2,10 +2,12 @@
 -- Dummy data for manual/QA testing.   NOT a migration — run on demand:
 --   Supabase MCP execute_sql, or psql -f supabase/seeds/dummy_data.sql
 --
--- Creates ONE shared demo agency ("CDG demo") with 3 login-capable agents —
--- the real CDG Leisure team (Morris Greenberg, Salvatore Di Natale, David
--- Kornbluth) — plus 50 companies and 75 contacts. Every record gets a random lead
--- agent; a random subset of the other agents are attached as additional agents.
+-- Creates ONE shared demo agency ("CDG demo") with 6 login-capable agents —
+-- the real CDG Leisure team (Morris Greenberg, Sammy Weinbaum, Salvatore Di
+-- Natale, David Kornbluth, Natasha Grech, Sophia Valenzuela), with real
+-- cdgleisure.com emails / phone / LinkedIn — plus 50 companies and 75 contacts.
+-- Every record gets a random lead agent; a random subset of the other agents
+-- are attached as additional agents.
 --
 -- Disposals (the real CDG property book) are loaded separately by cdg_listings.sql,
 -- which owns the demo agency's supply. Run that AFTER this file.
@@ -15,8 +17,8 @@
 -- time, and safe alongside other sessions — it never modifies real/other-agency
 -- rows, and it leaves the CDG disposals seeded by cdg_listings.sql untouched).
 --
--- The 3 agents log in with:  agent1@slc.test … agent3@slc.test  /  Demo!2026
--- (agent1=Morris Greenberg/admin, agent2=Salvatore Di Natale, agent3=David Kornbluth)
+-- The 6 agents log in with their real cdgleisure.com email / Demo!2026
+-- (Morris Greenberg = admin; the rest are agents).
 -- ─────────────────────────────────────────────────────────────────────────────
 do $$
 declare
@@ -27,10 +29,17 @@ declare
   cid uuid;
   i   int;
 
-  -- The real CDG Leisure team, scraped from the source listings (agent1 = admin).
-  emails  text[] := array['agent1@slc.test','agent2@slc.test','agent3@slc.test'];
-  fulln   text[] := array['Morris Greenberg','Salvatore Di Natale','David Kornbluth'];
-  pw      text := 'Demo!2026';
+  -- The real CDG Leisure team (agent1 = Morris = admin), real cdgleisure.com logins.
+  emails    text[] := array['morris@cdgleisure.com','sammy@cdgleisure.com','salvatore@cdgleisure.com',
+                            'davidk@cdgleisure.com','natasha@cdgleisure.com','sophia@scrollersocial.com'];
+  fulln     text[] := array['Morris Greenberg','Sammy Weinbaum','Salvatore Di Natale',
+                            'David Kornbluth','Natasha Grech','Sophia Valenzuela'];
+  phones    text[] := array['0207 100 5520','0207 100 5520','0207 100 5520',
+                            '0207 100 5520','0207 100 5520','0207 100 5520'];
+  linkedins text[] := array[null,'https://www.linkedin.com/in/sammy-weinbaum-84298a26/',null,
+                            null,'https://www.linkedin.com/in/natasha-grech-114851a2/',
+                            'https://www.linkedin.com/in/sophiavalenzuela/']::text[];
+  pw        text := 'Demo!2026';
 
   ctypes  public.company_type[] := array['operator','landlord','agent','vendor','other']::public.company_type[];
   croles  public.contact_role[] := array['acquisitions','landlord','solicitor','agent','finance','other']::public.contact_role[];
@@ -54,10 +63,10 @@ begin
     insert into public.agencies (name) values ('CDG demo') returning id into demo_agency;
   end if;
 
-  -- 2. Three login-capable agents (the real CDG team) ─────────────────────────
+  -- 2. Six login-capable agents (the real CDG team) ───────────────────────────
   -- (The signup trigger fires on insert and spins up a personal agency per user;
   --  we delete those in step 3 so each agent belongs only to the demo agency.)
-  for i in 1..3 loop
+  for i in 1..6 loop
     select id into uid from auth.users where email = emails[i];
     if uid is null then
       uid := gen_random_uuid();
@@ -84,6 +93,13 @@ begin
     insert into public.agency_members (agency_id, user_id, role)
       values (demo_agency, uid, (case when i = 1 then 'admin' else 'agent' end)::public.member_role)
       on conflict (agency_id, user_id) do nothing;
+
+    -- Real contact details (phone + LinkedIn) so a reseed reproduces live state.
+    insert into public.profiles (id, email, full_name, phone, linkedin_url)
+      values (uid, emails[i], fulln[i], phones[i], linkedins[i])
+      on conflict (id) do update set
+        email = excluded.email, full_name = excluded.full_name,
+        phone = excluded.phone, linkedin_url = excluded.linkedin_url, updated_at = now();
   end loop;
 
   -- 3. Drop any non-demo (trigger-seeded personal) agencies for these agents ──
@@ -107,8 +123,8 @@ begin
       array[tags[1+floor(random()*9)::int], tags[1+floor(random()*9)::int]],
       'https://example-' || i || '.co.uk',
       '+44 20 7' || lpad((floor(random()*900000)+100000)::int::text, 6, '0'),
-      agent_ids[1+floor(random()*3)::int],
-      agent_ids[1+floor(random()*3)::int]
+      agent_ids[1+floor(random()*6)::int],
+      agent_ids[1+floor(random()*6)::int]
     ) returning id into cid;
     company_ids := array_append(company_ids, cid);
   end loop;
@@ -124,8 +140,8 @@ begin
       'contact' || i || '@slc.test',
       '+44 7' || lpad((floor(random()*900000000)+100000000)::bigint::text, 9, '0'),
       croles[1+floor(random()*6)::int],
-      agent_ids[1+floor(random()*3)::int],
-      agent_ids[1+floor(random()*3)::int]
+      agent_ids[1+floor(random()*6)::int],
+      agent_ids[1+floor(random()*6)::int]
     );
   end loop;
 
