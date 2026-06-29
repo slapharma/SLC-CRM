@@ -1,12 +1,15 @@
 import * as React from "react";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ExternalLink } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { listingStatusBadge } from "@/lib/badges";
+import { listingStatusBadge, matchScoreBadge } from "@/lib/badges";
 import { deleteDisposal } from "@/lib/actions/disposals";
+import { scoreMatch } from "@/lib/matching/score";
+import { MatchReasons } from "@/components/match-reasons";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
@@ -47,6 +50,13 @@ export default async function ListingDetailPage({
   const images = (Array.isArray(d.images) ? d.images : []) as ImageItem[];
   const sections = (Array.isArray(d.sections) ? d.sections : []) as SectionItem[];
   const location = [d.address_line, d.city, d.postcode].filter(Boolean).join(", ");
+
+  const { data: reqs } = await supabase.from("requirements").select("*");
+  const matches = (reqs ?? [])
+    .map((rq) => ({ rq, ...scoreMatch(rq, d) }))
+    .filter((m) => m.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 10);
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -161,6 +171,41 @@ export default async function ListingDetailPage({
           </CardContent>
         </Card>
       </div>
+
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle>Matching requirements</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {matches.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No operator requirements match this listing yet.
+            </p>
+          ) : (
+            <ul className="space-y-3">
+              {matches.map(({ rq, score, reasons }) => {
+                const ms = matchScoreBadge(score);
+                return (
+                  <li key={rq.id} className="rounded-md border p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <Link
+                        href={`/requirements/${rq.id}`}
+                        className="font-medium text-foreground hover:text-info hover:underline"
+                      >
+                        {rq.title}
+                      </Link>
+                      <Badge tone={ms.tone}>{ms.label}</Badge>
+                    </div>
+                    <div className="mt-2">
+                      <MatchReasons reasons={reasons} />
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
 
       {d.agent_name || d.agent_email || d.agent_phone ? (
         <Card className="mt-4">

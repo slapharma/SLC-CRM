@@ -7,11 +7,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
+  matchScoreBadge,
   requirementStatusBadge,
   tenureBadge,
   propertyUseBadge,
 } from "@/lib/badges";
 import { deleteRequirement } from "@/lib/actions/requirements";
+import { scoreMatch } from "@/lib/matching/score";
+import { MatchReasons } from "@/components/match-reasons";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
@@ -55,6 +58,13 @@ export default async function RequirementDetailPage({
   }
 
   const s = requirementStatusBadge(r.status);
+
+  const { data: disposals } = await supabase.from("disposals").select("*");
+  const matches = (disposals ?? [])
+    .map((d) => ({ d, ...scoreMatch(r, d) }))
+    .filter((m) => m.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 10);
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -162,6 +172,42 @@ export default async function RequirementDetailPage({
           </CardContent>
         </Card>
       </div>
+
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle>Matching listings</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {matches.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No matching listings yet — import disposals to generate matches.
+            </p>
+          ) : (
+            <ul className="space-y-3">
+              {matches.map(({ d, score, reasons }) => {
+                const ms = matchScoreBadge(score);
+                return (
+                  <li key={d.id} className="rounded-md border p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <Link
+                        href={`/listings/${d.id}`}
+                        className="font-medium text-foreground hover:text-info hover:underline"
+                      >
+                        {d.title ?? "Untitled listing"}
+                        {d.city ? ` · ${d.city}` : ""}
+                      </Link>
+                      <Badge tone={ms.tone}>{ms.label}</Badge>
+                    </div>
+                    <div className="mt-2">
+                      <MatchReasons reasons={reasons} />
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -49,6 +49,13 @@ export function contactRoleBadge(role: string): BadgeSpec {
   }
 }
 
+export function matchScoreBadge(score: number): BadgeSpec {
+  if (score >= 75) return { tone: "emerald", label: `${score}% match` };
+  if (score >= 50) return { tone: "teal", label: `${score}% match` };
+  if (score >= 25) return { tone: "amber", label: `${score}% match` };
+  return { tone: "slate", label: `${score}% match` };
+}
+
 export function requirementStatusBadge(status: string): BadgeSpec {
   switch (status) {
     case "active":

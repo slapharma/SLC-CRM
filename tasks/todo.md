@@ -74,10 +74,10 @@ Core entities (supply ↔ demand spine):
       maps to a disposal column for the Phase 5 matching engine
 
 ## Phase 5 — Matching engine (differentiator)
-- [ ] Scoring function: location radius, sq ft/covers fit, use class, budget, tenure
-- [ ] "Matches for this requirement" and "Requirements matching this unit" views
-- [ ] Match reasons surfaced; one-click create Deal from a match
-- [ ] (Stretch) LLM-assisted match explanations using Claude
+- [x] Scoring function `scoreMatch` (location, size/covers bands, use class, property type, tenure, rent/premium/guide, fit-out — weighted 0–100 with per-dimension reasons)
+- [x] "Matching listings" on a requirement + "Matching requirements" on a listing + agency-wide `/matches` (50%+ pairs)
+- [x] Match reasons surfaced (✓/✗ chips per dimension)
+- [ ] One-click create Deal from a match (deferred); (stretch) LLM-assisted explanations
 
 ## Verification (each phase)
 - [ ] Manual run-through against seed data
