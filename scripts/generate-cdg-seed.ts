@@ -33,7 +33,7 @@ const sql = `-- ─────────────────────�
 --   data island (src/lib/disposals/cdg.ts). Image URLs are watermark-stripped;
 --   the original imgix URL is preserved per image as \`source_url\`.
 --
--- Idempotent + tenant-isolated: only ever touches the "SLC CDG Demo" agency. Run on
+-- Idempotent + tenant-isolated: only ever touches the "CDG demo" agency. Run on
 -- demand (Supabase MCP execute_sql, or psql -f). Run AFTER dummy_data.sql so the
 -- agency + its 6 agents exist; this file owns disposals (dummy_data no longer does).
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -46,9 +46,9 @@ declare
   i           int := 0;
   payload     jsonb := $cdg$${payload}$cdg$::jsonb;
 begin
-  select id into demo_agency from public.agencies where name = 'SLC CDG Demo' limit 1;
+  select id into demo_agency from public.agencies where name = 'CDG demo' limit 1;
   if demo_agency is null then
-    raise exception 'Demo agency "SLC CDG Demo" not found — run dummy_data.sql first.';
+    raise exception 'Demo agency "CDG demo" not found — run dummy_data.sql first.';
   end if;
 
   select array_agg(user_id order by user_id) into member_ids

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Sparkles } from "lucide-react";
 
+import { CreateDealButton } from "@/components/create-deal-button";
 import { EmptyState } from "@/components/empty-state";
 import { MatchReasons } from "@/components/match-reasons";
 import { PageHeader } from "@/components/page-header";
@@ -67,7 +68,10 @@ export default async function MatchesPage() {
                         {d.city ? ` · ${d.city}` : ""}
                       </Link>
                     </div>
-                    <Badge tone={ms.tone}>{ms.label}</Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge tone={ms.tone}>{ms.label}</Badge>
+                      <CreateDealButton requirementId={rq.id} listingId={d.id} />
+                    </div>
                   </div>
                   <div className="mt-2">
                     <MatchReasons reasons={reasons} />

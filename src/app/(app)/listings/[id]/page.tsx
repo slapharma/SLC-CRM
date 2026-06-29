@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { listingStatusBadge, matchScoreBadge } from "@/lib/badges";
 import { deleteDisposal } from "@/lib/actions/disposals";
 import { scoreMatch } from "@/lib/matching/score";
+import { CreateDealButton } from "@/components/create-deal-button";
 import { MatchReasons } from "@/components/match-reasons";
 import { DisposalAssignmentForm } from "@/components/disposal-assignment-form";
 import { getAgencyMembers } from "@/lib/supabase/agency";
@@ -210,7 +211,10 @@ export default async function ListingDetailPage({
                       >
                         {rq.title}
                       </Link>
-                      <Badge tone={ms.tone}>{ms.label}</Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge tone={ms.tone}>{ms.label}</Badge>
+                        <CreateDealButton requirementId={rq.id} listingId={d.id} />
+                      </div>
                     </div>
                     <div className="mt-2">
                       <MatchReasons reasons={reasons} />

@@ -2,7 +2,7 @@
 -- Dummy data for manual/QA testing.   NOT a migration — run on demand:
 --   Supabase MCP execute_sql, or psql -f supabase/seeds/dummy_data.sql
 --
--- Creates ONE shared demo agency ("SLC CDG Demo") with 3 login-capable agents —
+-- Creates ONE shared demo agency ("CDG demo") with 3 login-capable agents —
 -- the real CDG Leisure team (Morris Greenberg, Salvatore Di Natale, David
 -- Kornbluth) — plus 50 companies and 75 contacts. Every record gets a random lead
 -- agent; a random subset of the other agents are attached as additional agents.
@@ -49,9 +49,9 @@ declare
                           'Ashby','Quinn','Renshaw','Maddox'];
 begin
   -- 1. Shared demo agency (find-or-create) ───────────────────────────────────
-  select id into demo_agency from public.agencies where name = 'SLC CDG Demo' limit 1;
+  select id into demo_agency from public.agencies where name = 'CDG demo' limit 1;
   if demo_agency is null then
-    insert into public.agencies (name) values ('SLC CDG Demo') returning id into demo_agency;
+    insert into public.agencies (name) values ('CDG demo') returning id into demo_agency;
   end if;
 
   -- 2. Three login-capable agents (the real CDG team) ─────────────────────────

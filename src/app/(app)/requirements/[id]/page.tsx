@@ -14,6 +14,7 @@ import {
 } from "@/lib/badges";
 import { deleteRequirement } from "@/lib/actions/requirements";
 import { scoreMatch } from "@/lib/matching/score";
+import { CreateDealButton } from "@/components/create-deal-button";
 import { MatchReasons } from "@/components/match-reasons";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
@@ -196,7 +197,10 @@ export default async function RequirementDetailPage({
                         {d.title ?? "Untitled listing"}
                         {d.city ? ` · ${d.city}` : ""}
                       </Link>
-                      <Badge tone={ms.tone}>{ms.label}</Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge tone={ms.tone}>{ms.label}</Badge>
+                        <CreateDealButton requirementId={r.id} listingId={d.id} />
+                      </div>
                     </div>
                     <div className="mt-2">
                       <MatchReasons reasons={reasons} />

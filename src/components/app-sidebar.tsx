@@ -30,13 +30,15 @@ const NAV: NavGroup[] = [
       { href: "/companies", label: "Companies", icon: Building2 },
       { href: "/contacts", label: "Contacts", icon: Users },
       { href: "/listings", label: "Listings", icon: Store },
-      { href: "/requirements", label: "Requirements", icon: Target },
-      { href: "/deals", label: "Deals", icon: Handshake },
+      { href: "/requirements", label: "Enquiries", icon: Target },
     ],
   },
   {
-    label: "Insights",
-    items: [{ href: "/matches", label: "Matches", icon: Sparkles }],
+    label: "Dealflow",
+    items: [
+      { href: "/matches", label: "MatchMaker", icon: Sparkles },
+      { href: "/deals", label: "PipeLine", icon: Handshake },
+    ],
   },
 ];
 

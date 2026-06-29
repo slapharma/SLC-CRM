@@ -63,7 +63,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-6xl">
-      <div className="mb-6 flex items-center gap-4">
+      <div className="mb-12 flex items-center gap-4">
         {/* CDG Leisure brand mark — identifies the agency account. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img

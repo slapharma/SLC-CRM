@@ -7,7 +7,17 @@ domain layer.
 - **Market / regulatory model:** UK (Use Classes E / Sui Generis, Licensing Act 2003)
 - **Stack:** Next.js (App Router, TypeScript) + Supabase (Postgres, Auth, Storage, RLS)
 - **MVP scope:** CRM + Listings + Requirements + Matching engine
-- **Later phases:** Marketing engine, Deal pipeline / Heads of Terms, Client portals, Insights
+- **Later phases:** Marketing engine, ~~Deal pipeline / Heads of Terms~~ (✅ Phase 6), Client portals, Insights
+
+## Phase 6 — Deal pipeline ✅ (schema already existed; built UI + actions)
+- [x] Kanban board at `/deals` — one column per `deal_stage` (lead → viewing → offer →
+      heads_of_terms → legal → completed → fell_through), per-card stage mover (native
+      `<select>` → `updateDealStage`, no DnD dependency), count + indicative value per card
+- [x] Deal detail `/deals/[id]` — linked listing / requirement / operator cards + editable
+      form (title, stage, value, Heads of Terms, notes) via `updateDeal`; delete
+- [x] `src/lib/actions/deals.ts` — `createDealFromMatch`, `updateDealStage`, `updateDeal`, `deleteDeal`
+- [x] Verified: `tsc` clean · `eslint` clean · `next build` OK (`/deals`, `/deals/[id]` = ƒ)
+- [ ] Live run-through against seed data (needs Supabase auth + a created deal) — pending
 
 ---
 
@@ -77,7 +87,11 @@ Core entities (supply ↔ demand spine):
 - [x] Scoring function `scoreMatch` (location, size/covers bands, use class, property type, tenure, rent/premium/guide, fit-out — weighted 0–100 with per-dimension reasons)
 - [x] "Matching listings" on a requirement + "Matching requirements" on a listing + agency-wide `/matches` (50%+ pairs)
 - [x] Match reasons surfaced (✓/✗ chips per dimension)
-- [ ] One-click create Deal from a match (deferred); (stretch) LLM-assisted explanations
+- [x] **One-click create Deal from a match** — `CreateDealButton` on the Matches page,
+      requirement detail (matching listings) and listing detail (matching requirements).
+      `createDealFromMatch` de-dupes on the (requirement, listing) pair, derives title +
+      indicative value (guide → premium → rent), links the operator company, seeds stage `lead`.
+- [ ] (stretch) LLM-assisted match explanations
 
 ## Verification (each phase)
 - [ ] Manual run-through against seed data

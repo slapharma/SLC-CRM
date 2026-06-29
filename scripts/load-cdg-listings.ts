@@ -19,7 +19,7 @@ import { createClient } from "@supabase/supabase-js";
 
 import type { DisposalInsert } from "../src/lib/disposals/cdg.ts";
 
-const AGENCY_NAME = "SLC CDG Demo";
+const AGENCY_NAME = "CDG demo";
 const LOGIN = { email: "agent1@slc.test", password: "Demo!2026" };
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
