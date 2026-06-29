@@ -60,6 +60,8 @@ export async function updateAgent(
     p_full_name: str(formData, "full_name"),
     p_phone: str(formData, "phone"),
     p_avatar_url: str(formData, "avatar_url"),
+    p_linkedin_url: str(formData, "linkedin_url"),
+    p_x_url: str(formData, "x_url"),
   });
   if (error) return { error: error.message };
 

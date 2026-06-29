@@ -247,6 +247,7 @@ export type Database = {
           id: string
           last_name: string | null
           lead_agent_id: string | null
+          marketing_opt_in: boolean
           notes: string | null
           phone: string | null
           role: Database["public"]["Enums"]["contact_role"]
@@ -262,6 +263,7 @@ export type Database = {
           id?: string
           last_name?: string | null
           lead_agent_id?: string | null
+          marketing_opt_in?: boolean
           notes?: string | null
           phone?: string | null
           role?: Database["public"]["Enums"]["contact_role"]
@@ -277,6 +279,7 @@ export type Database = {
           id?: string
           last_name?: string | null
           lead_agent_id?: string | null
+          marketing_opt_in?: boolean
           notes?: string | null
           phone?: string | null
           role?: Database["public"]["Enums"]["contact_role"]
@@ -295,6 +298,54 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deal_reminders: {
+        Row: {
+          agency_id: string
+          created_at: string
+          created_by: string | null
+          deal_id: string
+          done: boolean
+          due_at: string
+          id: string
+          title: string
+        }
+        Insert: {
+          agency_id: string
+          created_at?: string
+          created_by?: string | null
+          deal_id: string
+          done?: boolean
+          due_at: string
+          id?: string
+          title: string
+        }
+        Update: {
+          agency_id?: string
+          created_at?: string
+          created_by?: string | null
+          deal_id?: string
+          done?: boolean
+          due_at?: string
+          id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_reminders_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_reminders_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
             referencedColumns: ["id"]
           },
         ]
@@ -405,6 +456,111 @@ export type Database = {
           },
           {
             foreignKeyName: "disposal_agents_disposal_id_fkey"
+            columns: ["disposal_id"]
+            isOneToOne: false
+            referencedRelation: "disposals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      disposal_areas: {
+        Row: {
+          agency_id: string
+          availability: string | null
+          created_at: string
+          disposal_id: string
+          id: string
+          name: string
+          rent_pa: number | null
+          size_sqft: number | null
+          size_sqm: number | null
+          sort_order: number
+        }
+        Insert: {
+          agency_id: string
+          availability?: string | null
+          created_at?: string
+          disposal_id: string
+          id?: string
+          name: string
+          rent_pa?: number | null
+          size_sqft?: number | null
+          size_sqm?: number | null
+          sort_order?: number
+        }
+        Update: {
+          agency_id?: string
+          availability?: string | null
+          created_at?: string
+          disposal_id?: string
+          id?: string
+          name?: string
+          rent_pa?: number | null
+          size_sqft?: number | null
+          size_sqm?: number | null
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "disposal_areas_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disposal_areas_disposal_id_fkey"
+            columns: ["disposal_id"]
+            isOneToOne: false
+            referencedRelation: "disposals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      disposal_documents: {
+        Row: {
+          agency_id: string
+          created_at: string
+          disposal_id: string
+          doc_type: string
+          file_path: string
+          id: string
+          name: string
+          size_bytes: number | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          agency_id: string
+          created_at?: string
+          disposal_id: string
+          doc_type?: string
+          file_path: string
+          id?: string
+          name: string
+          size_bytes?: number | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          agency_id?: string
+          created_at?: string
+          disposal_id?: string
+          doc_type?: string
+          file_path?: string
+          id?: string
+          name?: string
+          size_bytes?: number | null
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "disposal_documents_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disposal_documents_disposal_id_fkey"
             columns: ["disposal_id"]
             isOneToOne: false
             referencedRelation: "disposals"
@@ -670,6 +826,47 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          agency_id: string
+          body: string | null
+          created_at: string
+          id: string
+          link: string | null
+          read_at: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          agency_id: string
+          body?: string | null
+          created_at?: string
+          id?: string
+          link?: string | null
+          read_at?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          agency_id?: string
+          body?: string | null
+          created_at?: string
+          id?: string
+          link?: string | null
+          read_at?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -677,8 +874,10 @@ export type Database = {
           email: string | null
           full_name: string | null
           id: string
+          linkedin_url: string | null
           phone: string | null
           updated_at: string
+          x_url: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -686,8 +885,10 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id: string
+          linkedin_url?: string | null
           phone?: string | null
           updated_at?: string
+          x_url?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -695,8 +896,10 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          linkedin_url?: string | null
           phone?: string | null
           updated_at?: string
+          x_url?: string | null
         }
         Relationships: []
       }
@@ -805,17 +1008,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      admin_update_agent: {
-        Args: {
-          p_agency_id: string
-          p_avatar_url: string
-          p_email: string
-          p_full_name: string
-          p_phone: string
-          p_user_id: string
-        }
-        Returns: undefined
-      }
       admin_create_agent: {
         Args: {
           p_agency_id: string
@@ -828,6 +1020,19 @@ export type Database = {
       }
       admin_set_agent_password: {
         Args: { p_agency_id: string; p_password: string; p_user_id: string }
+        Returns: undefined
+      }
+      admin_update_agent: {
+        Args: {
+          p_agency_id: string
+          p_avatar_url: string
+          p_email: string
+          p_full_name: string
+          p_linkedin_url?: string
+          p_phone: string
+          p_user_id: string
+          p_x_url?: string
+        }
         Returns: undefined
       }
       auth_agency_ids: { Args: never; Returns: string[] }
@@ -858,7 +1063,7 @@ export type Database = {
       entity_type: "company" | "contact" | "listing" | "requirement" | "deal"
       licence_status: "held" | "late" | "none"
       match_status: "suggested" | "shortlisted" | "rejected" | "converted"
-      member_role: "admin" | "agent"
+      member_role: "admin" | "agent" | "manager"
       requirement_status: "active" | "on_hold" | "satisfied" | "withdrawn"
       tenure_type: "freehold" | "leasehold" | "assignment" | "new_letting"
       use_class:
@@ -1019,7 +1224,7 @@ export const Constants = {
       entity_type: ["company", "contact", "listing", "requirement", "deal"],
       licence_status: ["held", "late", "none"],
       match_status: ["suggested", "shortlisted", "rejected", "converted"],
-      member_role: ["admin", "agent"],
+      member_role: ["admin", "agent", "manager"],
       requirement_status: ["active", "on_hold", "satisfied", "withdrawn"],
       tenure_type: ["freehold", "leasehold", "assignment", "new_letting"],
       use_class: [

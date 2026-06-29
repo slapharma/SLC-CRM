@@ -31,7 +31,9 @@ export type Member = {
   email: string | null;
   phone: string | null;
   avatarUrl: string | null;
-  role: "admin" | "agent";
+  linkedinUrl: string | null;
+  xUrl: string | null;
+  role: "admin" | "agent" | "manager";
 };
 
 const displayName = (m: Member) => m.fullName ?? m.email ?? "Unknown agent";
@@ -288,6 +290,32 @@ function MemberRow({ member, isSelf }: { member: Member; isSelf: boolean }) {
               name="phone"
               type="tel"
               defaultValue={member.phone ?? ""}
+              className="h-8"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor={`linkedin-${member.id}`} className="text-xs text-muted-foreground">
+              LinkedIn URL
+            </Label>
+            <Input
+              id={`linkedin-${member.id}`}
+              name="linkedin_url"
+              type="url"
+              placeholder="https://linkedin.com/in/…"
+              defaultValue={member.linkedinUrl ?? ""}
+              className="h-8"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor={`x-${member.id}`} className="text-xs text-muted-foreground">
+              X / Twitter URL
+            </Label>
+            <Input
+              id={`x-${member.id}`}
+              name="x_url"
+              type="url"
+              placeholder="https://x.com/…"
+              defaultValue={member.xUrl ?? ""}
               className="h-8"
             />
           </div>

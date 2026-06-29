@@ -68,6 +68,25 @@ export default async function ListingDetailPage({
   const agents = await getAgencyMembers(supabase, d.agency_id);
   const additionalAgentIds = (agentRows ?? []).map((r) => r.user_id);
 
+  let leadAgent:
+    | {
+        full_name: string | null;
+        email: string | null;
+        phone: string | null;
+        avatar_url: string | null;
+        linkedin_url: string | null;
+        x_url: string | null;
+      }
+    | null = null;
+  if (d.lead_agent_id) {
+    const { data } = await supabase
+      .from("profiles")
+      .select("full_name, email, phone, avatar_url, linkedin_url, x_url")
+      .eq("id", d.lead_agent_id)
+      .maybeSingle();
+    leadAgent = data;
+  }
+
   return (
     <div className="mx-auto max-w-4xl">
       <div className="mb-6 flex items-start justify-between gap-4">
@@ -226,6 +245,68 @@ export default async function ListingDetailPage({
           )}
         </CardContent>
       </Card>
+
+      {leadAgent ? (
+        <Card className="mt-4">
+          <CardHeader>
+            <CardTitle>Lead agent</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-start gap-4">
+              {leadAgent.avatar_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={leadAgent.avatar_url}
+                  alt={leadAgent.full_name ?? "Agent"}
+                  className="h-14 w-14 shrink-0 rounded-full object-cover"
+                />
+              ) : null}
+              <div className="space-y-1 text-sm">
+                <p className="font-medium text-foreground">
+                  {leadAgent.full_name ?? "—"}
+                </p>
+                {leadAgent.email ? (
+                  <p>
+                    <a
+                      href={`mailto:${leadAgent.email}`}
+                      className="text-info hover:underline"
+                    >
+                      {leadAgent.email}
+                    </a>
+                  </p>
+                ) : null}
+                {leadAgent.phone ? (
+                  <p className="text-muted-foreground">{leadAgent.phone}</p>
+                ) : null}
+                {leadAgent.linkedin_url || leadAgent.x_url ? (
+                  <p className="flex gap-3 pt-1">
+                    {leadAgent.linkedin_url ? (
+                      <a
+                        href={leadAgent.linkedin_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-info hover:underline"
+                      >
+                        LinkedIn
+                      </a>
+                    ) : null}
+                    {leadAgent.x_url ? (
+                      <a
+                        href={leadAgent.x_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-info hover:underline"
+                      >
+                        X
+                      </a>
+                    ) : null}
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card className="mt-4">
         <CardHeader>
