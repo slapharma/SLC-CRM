@@ -2,15 +2,21 @@
 -- Dummy data for manual/QA testing.   NOT a migration — run on demand:
 --   Supabase MCP execute_sql, or psql -f supabase/seeds/dummy_data.sql
 --
--- Creates ONE shared demo agency ("SLC CDG Demo") with 6 login-capable agents,
--- 50 companies, 75 contacts and 40 disposals. Every record gets a random lead
+-- Creates ONE shared demo agency ("SLC CDG Demo") with 3 login-capable agents —
+-- the real CDG Leisure team (Morris Greenberg, Salvatore Di Natale, David
+-- Kornbluth) — plus 50 companies and 75 contacts. Every record gets a random lead
 -- agent; a random subset of the other agents are attached as additional agents.
 --
--- Idempotent + tenant-isolated: it only ever touches the demo agency and its 6
--- agents, and fully resets that data on each run (safe to re-run any time, and
--- safe alongside other sessions — it never modifies real/other-agency rows).
+-- Disposals (the real CDG property book) are loaded separately by cdg_listings.sql,
+-- which owns the demo agency's supply. Run that AFTER this file.
 --
--- The 6 agents log in with:  agent1@slc.test … agent6@slc.test  /  Demo!2026
+-- Idempotent + tenant-isolated: it only ever touches the demo agency and its 6
+-- agents, and fully resets its companies/contacts on each run (safe to re-run any
+-- time, and safe alongside other sessions — it never modifies real/other-agency
+-- rows, and it leaves the CDG disposals seeded by cdg_listings.sql untouched).
+--
+-- The 3 agents log in with:  agent1@slc.test … agent3@slc.test  /  Demo!2026
+-- (agent1=Morris Greenberg/admin, agent2=Salvatore Di Natale, agent3=David Kornbluth)
 -- ─────────────────────────────────────────────────────────────────────────────
 do $$
 declare
@@ -21,10 +27,9 @@ declare
   cid uuid;
   i   int;
 
-  emails  text[] := array['agent1@slc.test','agent2@slc.test','agent3@slc.test',
-                          'agent4@slc.test','agent5@slc.test','agent6@slc.test'];
-  fulln   text[] := array['Olivia Bennett','Marcus Reid','Priya Shah',
-                          'Tom Wallace','Sofia Greco','Daniel Okafor'];
+  -- The real CDG Leisure team, scraped from the source listings (agent1 = admin).
+  emails  text[] := array['agent1@slc.test','agent2@slc.test','agent3@slc.test'];
+  fulln   text[] := array['Morris Greenberg','Salvatore Di Natale','David Kornbluth'];
   pw      text := 'Demo!2026';
 
   ctypes  public.company_type[] := array['operator','landlord','agent','vendor','other']::public.company_type[];
@@ -42,13 +47,6 @@ declare
   lastn   text[] := array['Hartley','Nair','Coombes','Wallace','Khan','Doyle','Fletcher','Mehta',
                           'Bishop','Ramsey','Greco','Okafor','Lambert','Power','Sturgess','Vale',
                           'Ashby','Quinn','Renshaw','Maddox'];
-
-  dtypes  text[] := array['freehold','new_lease','lease_assignment','sublease','unknown'];
-  fitout  text[] := array['fully_fitted','part_fitted','shell'];
-  pqual   text[] := array['fixed','offers_in_region','offers_in_excess','on_application'];
-  uclass  text[] := array['sui_generis_pub_bar','sui_generis_nightclub','E','A3','A4'];
-  towns   text[] := array['London','Manchester','Bristol','Leeds','Brighton','Birmingham','Liverpool','Bath'];
-  dstatus text[] := array['available','under_offer','let','available','available'];
 begin
   -- 1. Shared demo agency (find-or-create) ───────────────────────────────────
   select id into demo_agency from public.agencies where name = 'SLC CDG Demo' limit 1;
@@ -56,10 +54,10 @@ begin
     insert into public.agencies (name) values ('SLC CDG Demo') returning id into demo_agency;
   end if;
 
-  -- 2. Six login-capable agents ───────────────────────────────────────────────
+  -- 2. Three login-capable agents (the real CDG team) ─────────────────────────
   -- (The signup trigger fires on insert and spins up a personal agency per user;
   --  we delete those in step 3 so each agent belongs only to the demo agency.)
-  for i in 1..6 loop
+  for i in 1..3 loop
     select id into uid from auth.users where email = emails[i];
     if uid is null then
       uid := gen_random_uuid();
@@ -94,7 +92,7 @@ begin
      and a.id in (select agency_id from public.agency_members where user_id = any(agent_ids));
 
   -- 4. Reset demo-agency data (join tables cascade via FK) ─────────────────────
-  delete from public.disposals where agency_id = demo_agency;
+  --    Disposals are owned by cdg_listings.sql, so we leave that supply untouched.
   delete from public.contacts  where agency_id = demo_agency;
   delete from public.companies where agency_id = demo_agency;
 
@@ -109,8 +107,8 @@ begin
       array[tags[1+floor(random()*9)::int], tags[1+floor(random()*9)::int]],
       'https://example-' || i || '.co.uk',
       '+44 20 7' || lpad((floor(random()*900000)+100000)::int::text, 6, '0'),
-      agent_ids[1+floor(random()*6)::int],
-      agent_ids[1+floor(random()*6)::int]
+      agent_ids[1+floor(random()*3)::int],
+      agent_ids[1+floor(random()*3)::int]
     ) returning id into cid;
     company_ids := array_append(company_ids, cid);
   end loop;
@@ -126,42 +124,13 @@ begin
       'contact' || i || '@slc.test',
       '+44 7' || lpad((floor(random()*900000000)+100000000)::bigint::text, 9, '0'),
       croles[1+floor(random()*6)::int],
-      agent_ids[1+floor(random()*6)::int],
-      agent_ids[1+floor(random()*6)::int]
+      agent_ids[1+floor(random()*3)::int],
+      agent_ids[1+floor(random()*3)::int]
     );
   end loop;
 
-  -- 7. 40 disposals (supply) ───────────────────────────────────────────────────
-  for i in 1..40 loop
-    insert into public.disposals (
-      agency_id, source, source_ref, status, title, city, postcode,
-      use_class, disposal_type, to_let, for_sale, rent_pa, premium, guide_price,
-      price_qualifier, size_sqft, covers_internal, covers_external, fit_out_state,
-      lead_agent_id, created_by
-    ) values (
-      demo_agency, 'seed', 'seed-' || i, dstatus[1+floor(random()*5)::int],
-      concepts[1+floor(random()*15)::int] || ' unit, ' || places[1+floor(random()*20)::int],
-      towns[1+floor(random()*8)::int],
-      chr(65+floor(random()*26)::int) || chr(65+floor(random()*26)::int)
-        || (floor(random()*9)+1)::int || ' ' || (floor(random()*9)+1)::int
-        || chr(65+floor(random()*26)::int) || chr(65+floor(random()*26)::int),
-      uclass[1+floor(random()*5)::int],
-      dtypes[1+floor(random()*5)::int],
-      random() < 0.7, random() < 0.3,
-      (floor(random()*120)+30)*1000,
-      case when random() < 0.5 then (floor(random()*200)+20)*1000 else null end,
-      case when random() < 0.4 then (floor(random()*900)+100)*1000 else null end,
-      pqual[1+floor(random()*4)::int],
-      floor(random()*4000)+600,
-      floor(random()*120)+20,
-      floor(random()*40),
-      fitout[1+floor(random()*3)::int],
-      agent_ids[1+floor(random()*6)::int],
-      agent_ids[1+floor(random()*6)::int]
-    );
-  end loop;
-
-  -- 8. Additional agents (collaborators) — random subset, never the lead ───────
+  -- 7. Additional agents (collaborators) — random subset, never the lead ───────
+  --    (Disposal collaborators are assigned by cdg_listings.sql, which owns supply.)
   insert into public.company_agents (agency_id, company_id, user_id)
     select c.agency_id, c.id, m.user_id
       from public.companies c join public.agency_members m on m.agency_id = c.agency_id
@@ -174,12 +143,6 @@ begin
      where c.agency_id = demo_agency and m.user_id is distinct from c.lead_agent_id and random() < 0.18
     on conflict do nothing;
 
-  insert into public.disposal_agents (agency_id, disposal_id, user_id)
-    select d.agency_id, d.id, m.user_id
-      from public.disposals d join public.agency_members m on m.agency_id = d.agency_id
-     where d.agency_id = demo_agency and m.user_id is distinct from d.lead_agent_id and random() < 0.22
-    on conflict do nothing;
-
-  raise notice 'Seed complete: agency %, % agents, 50 companies, 75 contacts, 40 disposals.',
+  raise notice 'Seed complete: agency %, % agents, 50 companies, 75 contacts (disposals via cdg_listings.sql).',
     demo_agency, array_length(agent_ids, 1);
 end $$;
