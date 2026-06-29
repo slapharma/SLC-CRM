@@ -672,24 +672,30 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
           created_at: string
           email: string | null
           full_name: string | null
           id: string
+          phone: string | null
           updated_at: string
         }
         Insert: {
+          avatar_url?: string | null
           created_at?: string
           email?: string | null
           full_name?: string | null
           id: string
+          phone?: string | null
           updated_at?: string
         }
         Update: {
+          avatar_url?: string | null
           created_at?: string
           email?: string | null
           full_name?: string | null
           id?: string
+          phone?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -799,6 +805,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_update_agent: {
+        Args: {
+          p_agency_id: string
+          p_avatar_url: string
+          p_email: string
+          p_full_name: string
+          p_phone: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
       admin_create_agent: {
         Args: {
           p_agency_id: string

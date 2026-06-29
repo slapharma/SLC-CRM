@@ -10,7 +10,6 @@ import {
 } from "lucide-react";
 
 import { ActivityTimeline } from "@/components/activity-timeline";
-import { PageHeader } from "@/components/page-header";
 import { buttonVariants } from "@/components/ui/button";
 import {
   Card,
@@ -47,6 +46,14 @@ export default async function DashboardPage() {
       .limit(8),
   ]);
 
+  const { data: membership } = await supabase
+    .from("agency_members")
+    .select("agencies(name)")
+    .limit(1)
+    .maybeSingle();
+  const agencyName =
+    (membership?.agencies as { name: string } | null)?.name ?? "Your agency";
+
   const kpis = [
     { label: "Companies", value: companies.count ?? 0, icon: Building2 },
     { label: "Active listings", value: listings.count ?? 0, icon: Store },
@@ -56,7 +63,21 @@ export default async function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-6xl">
-      <PageHeader title="Dashboard" description="Your agency at a glance." />
+      <div className="mb-6 flex items-center gap-4">
+        {/* CDG Leisure brand mark — identifies the agency account. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/cdg-logo.svg"
+          alt="CDG Leisure"
+          className="h-10 w-auto shrink-0"
+        />
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">{agencyName}</h1>
+          <p className="text-sm text-muted-foreground">
+            Your agency at a glance.
+          </p>
+        </div>
+      </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {kpis.map((kpi) => {

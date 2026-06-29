@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "SLC CRM — Leisure & Licensed Property",
-    template: "%s · SLC CRM",
+    default: "CliftonAi-CRM — Leisure & Licensed Property",
+    template: "%s · CliftonAi-CRM",
   },
   description:
     "CRM for the UK leisure & licensed commercial property sector — companies, listings, acquisition requirements and supply↔demand matching.",

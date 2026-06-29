@@ -12,7 +12,7 @@ export default function AuthLayout({
         <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
           <Building2 className="h-5 w-5" />
         </div>
-        <span className="text-lg font-semibold tracking-tight">SLC CRM</span>
+        <span className="text-lg font-semibold tracking-tight">CliftonAi-CRM</span>
       </Link>
       <div className="w-full max-w-sm">{children}</div>
     </div>

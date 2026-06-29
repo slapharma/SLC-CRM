@@ -43,7 +43,7 @@ export default function LandingPage() {
             <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
               <Building2 className="h-5 w-5" />
             </div>
-            <span className="text-lg font-semibold tracking-tight">SLC CRM</span>
+            <span className="text-lg font-semibold tracking-tight">CliftonAi-CRM</span>
           </div>
           <nav className="flex items-center gap-2">
             <Link
@@ -110,7 +110,7 @@ export default function LandingPage() {
         <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-2 px-6 py-6 text-sm text-muted-foreground sm:flex-row">
           <span className="flex items-center gap-2">
             <Handshake className="h-4 w-4" />
-            SLC CRM
+            CliftonAi-CRM
           </span>
           <span className="flex items-center gap-2">
             <Users className="h-4 w-4" />

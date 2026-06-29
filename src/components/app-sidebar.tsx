@@ -58,7 +58,7 @@ export function AppSidebar({ isAdmin = false }: { isAdmin?: boolean }) {
         <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
           <Building2 className="h-4 w-4" />
         </div>
-        <span className="font-semibold tracking-tight text-foreground">SLC CRM</span>
+        <span className="font-semibold tracking-tight text-foreground">CliftonAi-CRM</span>
       </div>
 
       <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-4">

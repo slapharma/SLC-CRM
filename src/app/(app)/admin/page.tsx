@@ -43,7 +43,7 @@ export default async function AdminPage() {
   const ids = (memberRows ?? []).map((m) => m.user_id);
   const { data: profiles } = await supabase
     .from("profiles")
-    .select("id, full_name, email")
+    .select("id, full_name, email, phone, avatar_url")
     .in("id", ids);
   const profileOf = new Map((profiles ?? []).map((p) => [p.id, p]));
 
@@ -54,16 +54,20 @@ export default async function AdminPage() {
         id: m.user_id,
         role: m.role,
         email: p?.email ?? null,
-        name: p?.full_name ?? p?.email ?? "Unknown agent",
+        fullName: p?.full_name ?? null,
+        phone: p?.phone ?? null,
+        avatarUrl: p?.avatar_url ?? null,
       };
     })
-    .sort((a, b) =>
-      a.role === b.role
-        ? a.name.localeCompare(b.name)
+    .sort((a, b) => {
+      const an = a.fullName ?? a.email ?? "";
+      const bn = b.fullName ?? b.email ?? "";
+      return a.role === b.role
+        ? an.localeCompare(bn)
         : a.role === "admin"
           ? -1
-          : 1,
-    );
+          : 1;
+    });
 
   return (
     <div className="mx-auto max-w-3xl">

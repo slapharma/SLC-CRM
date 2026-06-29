@@ -39,6 +39,34 @@ export async function createAgent(
   return { message: `Added ${email}.` };
 }
 
+/** Edit an agent's details: name, email, phone, photo (admin only — RPC-enforced). */
+export async function updateAgent(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const supabase = await createClient();
+  const agencyId = await currentAgencyId(supabase);
+  if (!agencyId) return { error: "No agency is linked to your account." };
+
+  const userId = str(formData, "user_id");
+  const email = str(formData, "email");
+  if (!userId) return { error: "Missing user." };
+  if (!email) return { error: "Email is required." };
+
+  const { error } = await supabase.rpc("admin_update_agent", {
+    p_agency_id: agencyId,
+    p_user_id: userId,
+    p_email: email,
+    p_full_name: str(formData, "full_name"),
+    p_phone: str(formData, "phone"),
+    p_avatar_url: str(formData, "avatar_url"),
+  });
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin");
+  return { message: "Saved." };
+}
+
 /** Reset an agent's password (admin only — enforced in the RPC). */
 export async function setAgentPassword(
   _prev: FormState,
