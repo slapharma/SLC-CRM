@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { AppSidebar } from "@/components/app-sidebar";
 import { TopBar } from "@/components/top-bar";
+import type { Note } from "@/components/notifications-bell";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 
@@ -12,6 +13,7 @@ export default async function AppLayout({
 }) {
   let user: { email?: string } | null = null;
   let isAdmin = false;
+  let notifications: Note[] = [];
 
   // Real auth boundary lives here (the proxy only does optimistic session refresh).
   // Before Supabase is provisioned we render a demo shell instead of locking people out.
@@ -34,13 +36,25 @@ export default async function AppLayout({
       .limit(1)
       .maybeSingle();
     isAdmin = Boolean(adminRow);
+
+    const { data: noteRows } = await supabase
+      .from("notifications")
+      .select("id, title, body, link, read_at, created_at")
+      .order("created_at", { ascending: false })
+      .limit(20);
+    notifications = noteRows ?? [];
   }
 
   return (
     <div className="flex min-h-screen">
       <AppSidebar isAdmin={isAdmin} />
       <div className="flex min-w-0 flex-1 flex-col">
-        <TopBar user={user} demo={!isSupabaseConfigured} />
+        <TopBar
+          user={user}
+          demo={!isSupabaseConfigured}
+          isAdmin={isAdmin}
+          notifications={notifications}
+        />
         <main className="flex-1 overflow-x-hidden p-6 text-sm">{children}</main>
       </div>
     </div>

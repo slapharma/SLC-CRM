@@ -1,17 +1,20 @@
 import * as React from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ExternalLink, FileDown } from "lucide-react";
+import { ExternalLink, FileDown, Pencil } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { listingStatusBadge, matchScoreBadge } from "@/lib/badges";
+import { dealStageBadge, listingStatusBadge, matchScoreBadge } from "@/lib/badges";
 import { deleteDisposal } from "@/lib/actions/disposals";
 import { scoreMatch } from "@/lib/matching/score";
 import { CreateDealButton } from "@/components/create-deal-button";
 import { MatchReasons } from "@/components/match-reasons";
 import { DisposalAssignmentForm } from "@/components/disposal-assignment-form";
+import { DisposalDocuments, type DisposalDoc } from "@/components/disposal-documents";
+import { DisposalAreas } from "@/components/disposal-areas";
+import { ListingShareActions } from "@/components/listing-share-actions";
 import { getAgencyMembers } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
@@ -61,12 +64,42 @@ export default async function ListingDetailPage({
     .sort((a, b) => b.score - a.score)
     .slice(0, 10);
 
+  // Deals already created from this listing ("under offer to X").
+  const { data: dealRows } = await supabase
+    .from("deals")
+    .select("id, title, stage, value")
+    .eq("listing_id", id)
+    .order("updated_at", { ascending: false });
+  const deals = dealRows ?? [];
+
   const { data: agentRows } = await supabase
     .from("disposal_agents")
     .select("user_id")
     .eq("disposal_id", id);
   const agents = await getAgencyMembers(supabase, d.agency_id);
   const additionalAgentIds = (agentRows ?? []).map((r) => r.user_id);
+
+  const { data: docRows } = await supabase
+    .from("disposal_documents")
+    .select("id, name, doc_type, size_bytes, file_path")
+    .eq("disposal_id", id)
+    .order("created_at");
+  const docs: DisposalDoc[] = await Promise.all(
+    (docRows ?? []).map(async (r) => {
+      const { data: signed } = await supabase.storage
+        .from("disposal-docs")
+        .createSignedUrl(r.file_path, 3600);
+      return { ...r, url: signed?.signedUrl ?? null };
+    }),
+  );
+
+  const { data: areaRows } = await supabase
+    .from("disposal_areas")
+    .select("id, name, size_sqft, size_sqm, rent_pa, availability")
+    .eq("disposal_id", id)
+    .order("sort_order")
+    .order("created_at");
+  const areas = areaRows ?? [];
 
   let leadAgent:
     | {
@@ -120,6 +153,17 @@ export default async function ListingDetailPage({
               Source
             </a>
           ) : null}
+          <ListingShareActions
+            title={d.title ?? "Listing"}
+            summary={d.summary ?? undefined}
+          />
+          <Link
+            href={`/listings/${d.id}/edit`}
+            className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}
+          >
+            <Pencil />
+            Edit
+          </Link>
           <form action={deleteDisposal}>
             <input type="hidden" name="id" value={d.id} />
             <Button
@@ -210,12 +254,30 @@ export default async function ListingDetailPage({
 
       <Card className="mt-4">
         <CardHeader>
-          <CardTitle>Matching requirements</CardTitle>
+          <CardTitle>Available area</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <DisposalAreas disposalId={d.id} areas={areas} />
+        </CardContent>
+      </Card>
+
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle>Documents</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <DisposalDocuments disposalId={d.id} docs={docs} />
+        </CardContent>
+      </Card>
+
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle>MatchMaker Opportunities</CardTitle>
         </CardHeader>
         <CardContent>
           {matches.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No operator requirements match this listing yet.
+              No operator enquiries match this listing yet.
             </p>
           ) : (
             <ul className="space-y-3">
@@ -225,7 +287,7 @@ export default async function ListingDetailPage({
                   <li key={rq.id} className="rounded-md border p-3">
                     <div className="flex items-center justify-between gap-2">
                       <Link
-                        href={`/requirements/${rq.id}`}
+                        href={`/enquiries/${rq.id}`}
                         className="font-medium text-foreground hover:text-info hover:underline"
                       >
                         {rq.title}
@@ -245,6 +307,41 @@ export default async function ListingDetailPage({
           )}
         </CardContent>
       </Card>
+
+      {deals.length > 0 ? (
+        <Card className="mt-4">
+          <CardHeader>
+            <CardTitle>Deals</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-3">
+              {deals.map((deal) => {
+                const ds = dealStageBadge(deal.stage);
+                return (
+                  <li key={deal.id} className="rounded-md border p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <Link
+                        href={`/deals/${deal.id}`}
+                        className="font-medium text-foreground hover:text-info hover:underline"
+                      >
+                        {deal.title}
+                      </Link>
+                      <div className="flex items-center gap-2">
+                        {deal.value != null ? (
+                          <span className="font-mono text-sm tabular-nums text-muted-foreground">
+                            {money(deal.value)}
+                          </span>
+                        ) : null}
+                        <Badge tone={ds.tone}>{ds.label}</Badge>
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </CardContent>
+        </Card>
+      ) : null}
 
       {leadAgent ? (
         <Card className="mt-4">

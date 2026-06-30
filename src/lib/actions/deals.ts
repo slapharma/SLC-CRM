@@ -123,7 +123,7 @@ export async function updateDealStage(formData: FormData): Promise<void> {
     await satisfyRequirementOnClose(supabase, row?.requirement_id ?? null, stage);
     revalidatePath("/deals");
     revalidatePath(`/deals/${id}`);
-    if (stage === "completed") revalidatePath("/requirements");
+    if (stage === "completed") revalidatePath("/enquiries");
   }
 }
 
@@ -157,7 +157,7 @@ export async function updateDeal(
   await satisfyRequirementOnClose(supabase, row?.requirement_id ?? null, stage);
   revalidatePath("/deals");
   revalidatePath(`/deals/${id}`);
-  if (stage === "completed") revalidatePath("/requirements");
+  if (stage === "completed") revalidatePath("/enquiries");
   return { message: "Saved." };
 }
 

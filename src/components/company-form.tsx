@@ -5,6 +5,7 @@ import { useActionState } from "react";
 import Link from "next/link";
 
 import { AgentFields } from "@/components/agent-fields";
+import { ContactCreatableSelect, type EntityOption } from "@/components/creatable-select";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,11 +29,13 @@ export function CompanyForm({
   company,
   agents,
   additionalAgentIds,
+  contacts = [],
 }: {
   action: (state: FormState, formData: FormData) => Promise<FormState>;
   company?: Tables<"companies">;
   agents: AgentOption[];
   additionalAgentIds?: string[];
+  contacts?: EntityOption[];
 }) {
   const [state, formAction, pending] = useActionState<FormState, FormData>(
     action,
@@ -87,6 +90,10 @@ export function CompanyForm({
       <Field label="Notes" htmlFor="notes">
         <Textarea id="notes" name="notes" defaultValue={company?.notes ?? ""} />
       </Field>
+
+      {!company ? (
+        <ContactCreatableSelect label="Add contact" options={contacts} />
+      ) : null}
 
       <AgentFields
         agents={agents}

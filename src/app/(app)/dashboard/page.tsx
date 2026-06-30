@@ -57,7 +57,7 @@ export default async function DashboardPage() {
   const kpis = [
     { label: "Companies", value: companies.count ?? 0, icon: Building2, href: "/companies" },
     { label: "Active listings", value: listings.count ?? 0, icon: Store, href: "/listings" },
-    { label: "Live requirements", value: requirements.count ?? 0, icon: Target, href: "/requirements" },
+    { label: "Live enquiries", value: requirements.count ?? 0, icon: Target, href: "/enquiries" },
     { label: "Open deals", value: deals.count ?? 0, icon: Handshake, href: "/deals" },
   ];
 

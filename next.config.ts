@@ -10,6 +10,18 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/listings/[id]/particulars": ["./src/lib/pdf/fonts/**"],
   },
+  // #3: the demand entity is now "Enquiries" at /enquiries. Redirect the old
+  // /requirements URLs (bookmarks, external links) to the new path.
+  async redirects() {
+    return [
+      { source: "/requirements", destination: "/enquiries", permanent: true },
+      {
+        source: "/requirements/:path*",
+        destination: "/enquiries/:path*",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

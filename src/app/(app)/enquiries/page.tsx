@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Plus, Search, Target } from "lucide-react";
+import { Plus, Target } from "lucide-react";
 
 import { EmptyState } from "@/components/empty-state";
+import { FilterBar, FilterSelect } from "@/components/filter-bar";
 import { PageHeader } from "@/components/page-header";
+import { SortHeader } from "@/components/sort-header";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import {
@@ -15,26 +17,37 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { requirementStatusBadge } from "@/lib/badges";
+import { resolveSort } from "@/lib/sort";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
-export const metadata: Metadata = { title: "Requirements" };
+export const metadata: Metadata = { title: "Enquiries" };
 
 export default async function RequirementsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; sort?: string; dir?: string; status?: string }>;
 }) {
-  const { q } = await searchParams;
+  const { q, sort, dir, status } = await searchParams;
   const supabase = await createClient();
+
+  const { column, ascending } = resolveSort(
+    sort,
+    dir,
+    { title: "title", max_rent: "max_rent", status: "status" },
+    { column: "title", ascending: true },
+  );
 
   let query = supabase
     .from("requirements")
     .select("id, title, status, target_towns, max_rent, company_id")
-    .order("title");
+    .order(column, { ascending });
   if (q) query = query.ilike("title", `%${q}%`);
+  if (status) query = query.eq("status", status as never);
   const { data } = await query;
   const rows = data ?? [];
+
+  const params = { q, sort, dir, status };
 
   const ids = [
     ...new Set(rows.map((r) => r.company_id).filter((v): v is string => Boolean(v))),
@@ -51,46 +64,53 @@ export default async function RequirementsPage({
   return (
     <div className="mx-auto max-w-6xl">
       <PageHeader
-        title="Requirements"
-        description="Acquisition briefs — the criteria matched against disposals."
+        title="Enquiries"
+        description="Operator enquiries — the criteria matched against disposals."
         action={
-          <Link href="/requirements/new" className={cn(buttonVariants({ size: "sm" }))}>
+          <Link href="/enquiries/new" className={cn(buttonVariants({ size: "sm" }))}>
             <Plus />
-            New requirement
+            New enquiry
           </Link>
         }
       />
 
-      <form className="mb-4 max-w-sm">
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            name="q"
-            type="search"
-            defaultValue={q ?? ""}
-            placeholder="Search requirements…"
-            aria-label="Search requirements"
-            className="h-9 w-full rounded-md border border-input bg-background pl-8 pr-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
-        </div>
-      </form>
+      <FilterBar
+        q={q}
+        sort={sort}
+        dir={dir}
+        placeholder="Search enquiries…"
+        basePath="/enquiries"
+        hasActiveFilters={Boolean(status)}
+      >
+        <FilterSelect
+          name="status"
+          label="Status"
+          value={status}
+          options={[
+            { value: "active", label: "Active" },
+            { value: "on_hold", label: "On hold" },
+            { value: "satisfied", label: "Satisfied" },
+            { value: "withdrawn", label: "Withdrawn" },
+          ]}
+        />
+      </FilterBar>
 
       {rows.length === 0 ? (
         <EmptyState
           icon={Target}
-          title={q ? "No matches" : "No requirements yet"}
+          title={q ? "No matches" : "No enquiries yet"}
           description={
             q
               ? "Try a different search term."
-              : "Capture an operator's acquisition brief to match against disposals."
+              : "Capture an operator's enquiry to match against disposals."
           }
           action={
             q ? undefined : (
               <Link
-                href="/requirements/new"
+                href="/enquiries/new"
                 className={cn(buttonVariants({ size: "sm" }))}
               >
-                New requirement
+                New enquiry
               </Link>
             )
           }
@@ -99,11 +119,11 @@ export default async function RequirementsPage({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Title</TableHead>
+              <SortHeader column="title" label="Title" params={params} />
               <TableHead>Operator</TableHead>
               <TableHead>Towns</TableHead>
-              <TableHead>Max rent</TableHead>
-              <TableHead>Status</TableHead>
+              <SortHeader column="max_rent" label="Max rent" params={params} />
+              <SortHeader column="status" label="Status" params={params} />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -113,7 +133,7 @@ export default async function RequirementsPage({
                 <TableRow key={r.id}>
                   <TableCell>
                     <Link
-                      href={`/requirements/${r.id}`}
+                      href={`/enquiries/${r.id}`}
                       className="font-medium text-foreground hover:text-info hover:underline"
                     >
                       {r.title}

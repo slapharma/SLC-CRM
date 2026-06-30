@@ -45,6 +45,7 @@ export type ParticularsData = {
   agentName: string | null;
   agentPhone: string | null;
   agentEmail: string | null;
+  agents: string[]; // internal CDG team assigned to this listing (lead first)
   generatedOn: string; // dd/mm/yyyy
   heroImage: Buffer | null;
 };
@@ -399,6 +400,17 @@ export function ParticularsDocument({ d }: { d: ParticularsData }) {
                 </Text>
               ) : null}
             </View>
+
+            {d.agents.length > 0 ? (
+              <View style={styles.section}>
+                <Text style={styles.sectionHead}>CDG Team</Text>
+                {d.agents.map((a, i) => (
+                  <Text key={i} style={styles.agentLine}>
+                    {a}
+                  </Text>
+                ))}
+              </View>
+            ) : null}
           </View>
         </View>
 

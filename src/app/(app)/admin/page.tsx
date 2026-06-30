@@ -1,8 +1,15 @@
 import type { Metadata } from "next";
 
 import { AdminPanel, type Member } from "@/components/admin-panel";
+import { DataImport } from "@/components/data-import";
 import { PageHeader } from "@/components/page-header";
-import { Card, CardContent } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { currentAgencyId } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
 
@@ -78,6 +85,18 @@ export default async function AdminPage() {
         description="Add agents, manage roles and reset passwords."
       />
       <AdminPanel members={members} currentUserId={user.id} />
+
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle>Import data</CardTitle>
+          <CardDescription>
+            Bulk-import Companies, Contacts, Enquiries and Listings from CSV.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <DataImport />
+        </CardContent>
+      </Card>
     </div>
   );
 }

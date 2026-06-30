@@ -1,0 +1,114 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+
+import { currentAgencyId } from "@/lib/supabase/agency";
+import { createClient } from "@/lib/supabase/server";
+import type { FormState } from "@/lib/actions/types";
+
+const str = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim();
+
+/** Add a deadline / reminder to a deal (#11) and notify the deal owner. */
+export async function addDealReminder(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "You must be signed in." };
+
+  const agencyId = await currentAgencyId(supabase);
+  if (!agencyId) return { error: "No agency is linked to your account." };
+
+  const dealId = str(formData, "deal_id");
+  const title = str(formData, "title");
+  const dueAt = str(formData, "due_at");
+  if (!dealId) return { error: "Missing deal." };
+  if (!title) return { error: "A reminder title is required." };
+  if (!dueAt) return { error: "A due date is required." };
+
+  const { error } = await supabase.from("deal_reminders").insert({
+    agency_id: agencyId,
+    deal_id: dealId,
+    title,
+    due_at: new Date(dueAt).toISOString(),
+    created_by: user.id,
+  });
+  if (error) return { error: error.message };
+
+  // Notify the deal owner (if someone else set the reminder).
+  const { data: deal } = await supabase
+    .from("deals")
+    .select("title, created_by")
+    .eq("id", dealId)
+    .maybeSingle();
+  if (deal?.created_by && deal.created_by !== user.id) {
+    await supabase.from("notifications").insert({
+      agency_id: agencyId,
+      user_id: deal.created_by,
+      title: `Reminder set on “${deal.title}”`,
+      body: `${title} — due ${new Date(dueAt).toLocaleString("en-GB")}`,
+      link: `/deals/${dealId}`,
+    });
+  }
+
+  revalidatePath(`/deals/${dealId}`);
+  return { message: "Reminder added." };
+}
+
+/** Toggle a reminder's done state. */
+export async function toggleDealReminder(formData: FormData): Promise<void> {
+  const supabase = await createClient();
+  const id = str(formData, "id");
+  const dealId = str(formData, "deal_id");
+  const done = str(formData, "done") === "true";
+  if (!id) return;
+  await supabase.from("deal_reminders").update({ done: !done }).eq("id", id);
+  if (dealId) revalidatePath(`/deals/${dealId}`);
+}
+
+/** Delete a reminder. */
+export async function deleteDealReminder(formData: FormData): Promise<void> {
+  const supabase = await createClient();
+  const id = str(formData, "id");
+  const dealId = str(formData, "deal_id");
+  if (!id) return;
+  await supabase.from("deal_reminders").delete().eq("id", id);
+  if (dealId) revalidatePath(`/deals/${dealId}`);
+}
+
+/**
+ * Record that a deal update was shared (#11) and notify the deal owner. Called
+ * from the client share buttons after they open the mail/WhatsApp composer.
+ */
+export async function logDealShare(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "You must be signed in." };
+
+  const agencyId = await currentAgencyId(supabase);
+  if (!agencyId) return { error: "No agency." };
+
+  const dealId = str(formData, "deal_id");
+  const channel = str(formData, "channel");
+  if (!dealId) return { error: "Missing deal." };
+
+  await supabase.from("activities").insert({
+    agency_id: agencyId,
+    created_by: user.id,
+    type: "note",
+    subject: `Update shared via ${channel || "link"}`,
+    entity_type: "deal",
+    entity_id: dealId,
+  });
+
+  revalidatePath(`/deals/${dealId}`);
+  return { message: "Logged." };
+}

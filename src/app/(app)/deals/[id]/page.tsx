@@ -6,8 +6,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DealForm } from "@/components/deal-form";
+import { DealReminders } from "@/components/deal-reminders";
+import { DealShareActions } from "@/components/deal-share-actions";
+import { ActivityTimeline } from "@/components/activity-timeline";
+import { LogActivityForm } from "@/components/log-activity-form";
 import { dealStageBadge } from "@/lib/badges";
 import { deleteDeal } from "@/lib/actions/deals";
+import { isPast } from "@/lib/time";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function DealDetailPage({
@@ -52,6 +57,34 @@ export default async function DealDetailPage({
 
   const sb = dealStageBadge(deal.stage);
 
+  let ownerName: string | null = null;
+  if (deal.created_by) {
+    const { data: prof } = await supabase
+      .from("profiles")
+      .select("full_name, email")
+      .eq("id", deal.created_by)
+      .maybeSingle();
+    ownerName = prof?.full_name ?? prof?.email ?? null;
+  }
+
+  const { data: reminderRows } = await supabase
+    .from("deal_reminders")
+    .select("id, title, due_at, done")
+    .eq("deal_id", id)
+    .order("due_at");
+  const reminders = (reminderRows ?? []).map((r) => ({
+    ...r,
+    overdue: isPast(r.due_at),
+  }));
+
+  const { data: activities } = await supabase
+    .from("activities")
+    .select("id, type, subject, body, occurred_at")
+    .eq("entity_type", "deal")
+    .eq("entity_id", id)
+    .order("occurred_at", { ascending: false })
+    .limit(30);
+
   return (
     <div className="mx-auto max-w-4xl">
       <Link
@@ -77,18 +110,30 @@ export default async function DealDetailPage({
               "No value set"
             )}
           </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Created {new Date(deal.created_at).toLocaleDateString("en-GB")}
+            {ownerName ? ` · ${ownerName}` : ""}
+          </p>
         </div>
-        <form action={deleteDeal} className="shrink-0">
-          <input type="hidden" name="id" value={deal.id} />
-          <Button
-            type="submit"
-            variant="ghost"
-            size="sm"
-            className="text-destructive hover:bg-destructive/10"
-          >
-            Delete
-          </Button>
-        </form>
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          <DealShareActions
+            dealId={deal.id}
+            title={deal.title}
+            stage={sb.label}
+            value={deal.value}
+          />
+          <form action={deleteDeal}>
+            <input type="hidden" name="id" value={deal.id} />
+            <Button
+              type="submit"
+              variant="ghost"
+              size="sm"
+              className="text-destructive hover:bg-destructive/10"
+            >
+              Delete
+            </Button>
+          </form>
+        </div>
       </div>
 
       <div className="mb-4 grid gap-4 sm:grid-cols-2">
@@ -129,13 +174,13 @@ export default async function DealDetailPage({
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Target className="h-4 w-4 text-muted-foreground" />
-              Requirement
+              Enquiry
             </CardTitle>
           </CardHeader>
           <CardContent className="text-sm">
             {requirement ? (
               <Link
-                href={`/requirements/${requirement.id}`}
+                href={`/enquiries/${requirement.id}`}
                 className="font-medium text-foreground hover:text-info hover:underline"
               >
                 {requirement.title}
@@ -162,6 +207,25 @@ export default async function DealDetailPage({
               notes: deal.notes,
             }}
           />
+        </CardContent>
+      </Card>
+
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle>Reminders &amp; deadlines</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <DealReminders dealId={deal.id} reminders={reminders} />
+        </CardContent>
+      </Card>
+
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle>Updates &amp; notes</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <LogActivityForm entityType="deal" entityId={deal.id} />
+          <ActivityTimeline activities={activities ?? []} />
         </CardContent>
       </Card>
     </div>

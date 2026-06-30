@@ -4,4 +4,9 @@
 export type AuthState = { error?: string; message?: string };
 
 /** Generic server-action result for forms (create/edit). */
-export type FormState = { error?: string; message?: string };
+export type FormState = {
+  error?: string;
+  message?: string;
+  /** Set by inline "quick-create" actions so a modal can select the new record. */
+  created?: { id: string; name: string };
+};

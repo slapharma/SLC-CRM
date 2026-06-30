@@ -48,6 +48,13 @@ export function LogActivityForm({
           ))}
         </Select>
         <Input name="subject" placeholder="Subject…" aria-label="Subject" />
+        <Input
+          name="occurred_on"
+          type="date"
+          aria-label="Date (defaults to today)"
+          title="Date — leave blank for today"
+          className="w-40 shrink-0"
+        />
       </div>
       <Textarea name="body" placeholder="Add a note…" rows={2} />
       <div className="flex items-center gap-2">

@@ -197,19 +197,19 @@ export default async function CompanyDetailPage({
 
       <Card className="mt-4">
         <CardHeader className="flex-row items-center justify-between space-y-0">
-          <CardTitle>Requirements</CardTitle>
+          <CardTitle>Enquiries</CardTitle>
           <Link
-            href={`/requirements/new?company=${company.id}`}
+            href={`/enquiries/new?company=${company.id}`}
             className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}
           >
             <Plus />
-            Add requirement
+            Add enquiry
           </Link>
         </CardHeader>
         <CardContent>
           {(requirements ?? []).length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No acquisition requirements yet.
+              No enquiries yet.
             </p>
           ) : (
             <ul className="divide-y">
@@ -221,7 +221,7 @@ export default async function CompanyDetailPage({
                     className="flex items-center justify-between gap-2 py-2 text-sm"
                   >
                     <Link
-                      href={`/requirements/${rq.id}`}
+                      href={`/enquiries/${rq.id}`}
                       className="font-medium text-foreground hover:text-info hover:underline"
                     >
                       {rq.title}

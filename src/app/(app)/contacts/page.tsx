@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Plus, Search, Users } from "lucide-react";
+import { Plus, Users } from "lucide-react";
 
 import { EmptyState } from "@/components/empty-state";
+import { FilterBar, FilterSelect } from "@/components/filter-bar";
 import { PageHeader } from "@/components/page-header";
+import { SortHeader } from "@/components/sort-header";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import {
@@ -15,6 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { contactRoleBadge } from "@/lib/badges";
+import { resolveSort } from "@/lib/sort";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
@@ -23,18 +26,28 @@ export const metadata: Metadata = { title: "Contacts" };
 export default async function ContactsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; sort?: string; dir?: string; role?: string }>;
 }) {
-  const { q } = await searchParams;
+  const { q, sort, dir, role } = await searchParams;
   const supabase = await createClient();
+
+  const { column, ascending } = resolveSort(
+    sort,
+    dir,
+    { name: "first_name", role: "role" },
+    { column: "first_name", ascending: true },
+  );
 
   let query = supabase
     .from("contacts")
     .select("id, first_name, last_name, role, email, phone, company_id")
-    .order("first_name");
+    .order(column, { ascending });
   if (q) query = query.or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%`);
+  if (role) query = query.eq("role", role as never);
   const { data } = await query;
   const rows = data ?? [];
+
+  const params = { q, sort, dir, role };
 
   const ids = [
     ...new Set(rows.map((r) => r.company_id).filter((v): v is string => Boolean(v))),
@@ -61,19 +74,28 @@ export default async function ContactsPage({
         }
       />
 
-      <form className="mb-4 max-w-sm">
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            name="q"
-            type="search"
-            defaultValue={q ?? ""}
-            placeholder="Search contacts…"
-            aria-label="Search contacts"
-            className="h-9 w-full rounded-md border border-input bg-background pl-8 pr-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
-        </div>
-      </form>
+      <FilterBar
+        q={q}
+        sort={sort}
+        dir={dir}
+        placeholder="Search contacts…"
+        basePath="/contacts"
+        hasActiveFilters={Boolean(role)}
+      >
+        <FilterSelect
+          name="role"
+          label="Role"
+          value={role}
+          options={[
+            { value: "acquisitions", label: "Acquisitions" },
+            { value: "landlord", label: "Landlord" },
+            { value: "solicitor", label: "Solicitor" },
+            { value: "agent", label: "Agent" },
+            { value: "finance", label: "Finance" },
+            { value: "other", label: "Other" },
+          ]}
+        />
+      </FilterBar>
 
       {rows.length === 0 ? (
         <EmptyState
@@ -94,8 +116,8 @@ export default async function ContactsPage({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Role</TableHead>
+              <SortHeader column="name" label="Name" params={params} />
+              <SortHeader column="role" label="Role" params={params} />
               <TableHead>Company</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Phone</TableHead>

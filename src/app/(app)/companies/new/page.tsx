@@ -14,6 +14,15 @@ export default async function NewCompanyPage() {
   const agencyId = await currentAgencyId(supabase);
   const agents = agencyId ? await getAgencyMembers(supabase, agencyId) : [];
 
+  const { data: contactRows } = await supabase
+    .from("contacts")
+    .select("id, first_name, last_name")
+    .order("first_name");
+  const contacts = (contactRows ?? []).map((c) => ({
+    id: c.id,
+    name: [c.first_name, c.last_name].filter(Boolean).join(" "),
+  }));
+
   return (
     <div className="mx-auto max-w-3xl">
       <PageHeader
@@ -22,7 +31,7 @@ export default async function NewCompanyPage() {
       />
       <Card>
         <CardContent className="pt-6">
-          <CompanyForm action={createCompany} agents={agents} />
+          <CompanyForm action={createCompany} agents={agents} contacts={contacts} />
         </CardContent>
       </Card>
     </div>

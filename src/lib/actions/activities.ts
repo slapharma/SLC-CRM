@@ -18,7 +18,7 @@ const PATH: Record<string, string> = {
   company: "companies",
   contact: "contacts",
   listing: "listings",
-  requirement: "requirements",
+  requirement: "enquiries",
   deal: "deals",
 };
 
@@ -42,6 +42,14 @@ export async function logActivity(
   const entityType = str(formData, "entity_type");
   const entityId = str(formData, "entity_id") || null;
 
+  // Optional back-dating: a yyyy-mm-dd from the form maps to that day; blank/
+  // invalid falls back to the column default (insert time).
+  const occurredOn = str(formData, "occurred_on");
+  const occurredAt =
+    occurredOn && /^\d{4}-\d{2}-\d{2}$/.test(occurredOn)
+      ? new Date(`${occurredOn}T12:00:00`).toISOString()
+      : null;
+
   const { error } = await supabase.from("activities").insert({
     agency_id: agencyId,
     created_by: user.id,
@@ -56,6 +64,7 @@ export async function logActivity(
       ? oneOf<EntityType>(entityType, Constants.public.Enums.entity_type, "company")
       : null,
     entity_id: entityId,
+    ...(occurredAt ? { occurred_at: occurredAt } : {}),
   });
   if (error) return { error: error.message };
 

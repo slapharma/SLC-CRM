@@ -35,7 +35,11 @@ async function fetchHero(images: ImageItem[]): Promise<Buffer | null> {
   }
 }
 
-function buildData(d: Record<string, unknown>, hero: Buffer | null): ParticularsData {
+function buildData(
+  d: Record<string, unknown>,
+  hero: Buffer | null,
+  agents: string[],
+): ParticularsData {
   const g = <T,>(k: string) => d[k] as T;
 
   const toLet = g<boolean>("to_let");
@@ -106,6 +110,7 @@ function buildData(d: Record<string, unknown>, hero: Buffer | null): Particulars
     agentName: g<string | null>("agent_name"),
     agentPhone: g<string | null>("agent_phone"),
     agentEmail: g<string | null>("agent_email"),
+    agents,
     generatedOn: new Date().toLocaleDateString("en-GB"),
     heroImage: hero,
   };
@@ -133,10 +138,34 @@ export async function GET(
     .maybeSingle();
   if (!row) return new Response("Not found", { status: 404 });
 
+  // Internal CDG team assigned to this listing (lead first, then collaborators).
+  const { data: agentRows } = await supabase
+    .from("disposal_agents")
+    .select("user_id")
+    .eq("disposal_id", id);
+  const orderedIds = [
+    row.lead_agent_id,
+    ...(agentRows ?? []).map((a) => a.user_id),
+  ].filter((v): v is string => Boolean(v));
+  let agentNames: string[] = [];
+  if (orderedIds.length) {
+    const { data: profs } = await supabase
+      .from("profiles")
+      .select("id, full_name, email")
+      .in("id", [...new Set(orderedIds)]);
+    const nameOf = new Map(
+      (profs ?? []).map((p) => [p.id, p.full_name ?? p.email ?? "Agent"]),
+    );
+    const seen = new Set<string>();
+    agentNames = orderedIds
+      .filter((uid) => !seen.has(uid) && seen.add(uid))
+      .map((uid) => nameOf.get(uid) ?? "Agent");
+  }
+
   registerBrandFonts();
   const images = (Array.isArray(row.images) ? row.images : []) as ImageItem[];
   const hero = await fetchHero(images);
-  const data = buildData(row as Record<string, unknown>, hero);
+  const data = buildData(row as Record<string, unknown>, hero, agentNames);
 
   // ParticularsDocument renders a <Document> at runtime; createElement loses
   // that in the type system, so assert the element shape renderToBuffer wants.

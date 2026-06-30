@@ -16,10 +16,10 @@ import {
 
 import { cn } from "@/lib/utils";
 
-type NavItem = { href: string; label: string; icon: LucideIcon };
-type NavGroup = { label: string; items: NavItem[] };
+export type NavItem = { href: string; label: string; icon: LucideIcon };
+export type NavGroup = { label: string; items: NavItem[] };
 
-const NAV: NavGroup[] = [
+export const NAV: NavGroup[] = [
   {
     label: "Workspace",
     items: [{ href: "/dashboard", label: "Dashboard", icon: LayoutDashboard }],
@@ -30,7 +30,7 @@ const NAV: NavGroup[] = [
       { href: "/companies", label: "Companies", icon: Building2 },
       { href: "/contacts", label: "Contacts", icon: Users },
       { href: "/listings", label: "Listings", icon: Store },
-      { href: "/requirements", label: "Enquiries", icon: Target },
+      { href: "/enquiries", label: "Enquiries", icon: Target },
     ],
   },
   {

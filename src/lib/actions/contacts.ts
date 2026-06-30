@@ -36,6 +36,7 @@ function payload(fd: FormData) {
     company_id: nullable(fd, "company_id"),
     notes: nullable(fd, "notes"),
     lead_agent_id: nullable(fd, "lead_agent_id"),
+    marketing_opt_in: fd.get("marketing_opt_in") != null,
   };
 }
 
@@ -111,6 +112,48 @@ export async function updateContact(
   revalidatePath("/contacts");
   revalidatePath(`/contacts/${id}`);
   redirect(`/contacts/${id}`);
+}
+
+/**
+ * Inline quick-create used by the "+ New contact" modal (#13). Creates a minimal
+ * contact (optionally pre-linked to a company) and returns its id + display name
+ * so the caller can select it — no redirect.
+ */
+export async function quickCreateContact(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "You must be signed in." };
+
+  const agencyId = await currentAgencyId(supabase);
+  if (!agencyId) return { error: "No agency is linked to your account." };
+
+  const first = str(formData, "first_name");
+  if (!first) return { error: "A first name is required." };
+
+  const { data, error } = await supabase
+    .from("contacts")
+    .insert({
+      agency_id: agencyId,
+      created_by: user.id,
+      first_name: first,
+      last_name: nullable(formData, "last_name"),
+      email: nullable(formData, "email"),
+      phone: nullable(formData, "phone"),
+      company_id: nullable(formData, "company_id"),
+      marketing_opt_in: formData.get("marketing_opt_in") != null,
+    })
+    .select("id, first_name, last_name")
+    .single();
+  if (error || !data) return { error: error?.message ?? "Could not create contact." };
+
+  const name = [data.first_name, data.last_name].filter(Boolean).join(" ");
+  revalidatePath("/contacts");
+  return { created: { id: data.id, name }, message: `Added ${name}.` };
 }
 
 export async function deleteContact(formData: FormData): Promise<void> {

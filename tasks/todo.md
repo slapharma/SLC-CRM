@@ -163,3 +163,95 @@ writes without sign-off); server action / API route to persist (will read
 
 ## Review
 _(to be filled in as phases complete)_
+
+---
+
+# UPGRADES BATCH (17 items) — phased plan
+
+Phased delivery; each phase ends with a build/lint check + quick verification before the next.
+
+**Patterns to follow:** Listings = `disposals` table. Server actions in `src/lib/actions/*`; client-component forms in `src/components/*`. Multi-tenant RLS by `agency_id` (`currentAgencyId()`, `getAgencyMembers()`). Agent ownership = `lead_agent_id` + `*_agents` join tables; `activities` = polymorphic timeline. UI primitives in `src/components/ui/*`. DB keeps internal names `requirements`/`requirement`; only UI copy becomes "Enquiries".
+
+**Scoping decisions (adjust on approval):**
+- #3 route: rename `/requirements` → `/enquiries` (+ redirect); table names unchanged.
+- #11 notifications/share: in-app notifications + reminders/deadlines in DB; "share by email/WhatsApp" = prefilled `mailto:` / `wa.me` links (no mail/WhatsApp backend exists).
+- #4 Post to CDG: no public CDG submission API — formatted "Post to CDG" export/copy; Share = Web Share/copy link; Print = print view.
+- #7: remove the CDG-import UI from the Listings page (keep scraper lib/scripts).
+- Migrations: written to `supabase/migrations/`, applied to the linked Supabase project via MCP after a cost/safety confirm.
+
+## Phase 0 — Schema + global rename
+- [x] Migrations applied to live DB: `manager` enum value; `contacts.marketing_opt_in`; `disposal_documents` + `disposal-docs` bucket; `disposal_areas`; `deal_reminders` + `notifications`; `database.types.ts` regenerated (by parallel session)
+- [x] #9a manager role in admin dropdowns + `asRole()`; 2 manager users seeded (agent4=Daniel Goldberg, agent5=Rachel Stein, Demo!2026)
+- [x] #3/#5 copy relabel: all user-facing "Requirements"→"Enquiries", "Matching requirements/listings"→"MatchMaker Opportunities", "Matches" page→"MatchMaker Opportunities" (sidebar, list/new/edit/detail, form, dashboard, search, top-bar, company detail, listing detail, deals, landing)
+- [x] #3 route move `/requirements`→`/enquiries`: folder moved (git mv), all route strings + sidebar NAV + revalidatePath + activities PATH updated (action MODULE path kept), `/requirements*`→`/enquiries*` redirect in next.config
+- [x] Verified: tsc + eslint clean AND clean `next build` passes (all routes incl. /enquiries/*, /listings/new, /listings/[id]/edit present)
+
+## Phase 1 — Records CRUD & relationship modals (#1, #12, #13, #14, #15)
+- [x] #15 New Listing: button on Listings page + `disposal-form.tsx` + `createDisposal` action + `/listings/new`
+- [x] #1 Edit Listing: `/listings/[id]/edit`, Edit button on detail, pen icon on each list row, `updateDisposal`
+- [x] Reusable modal pattern: `ui/modal.tsx` (portalled) + `creatable-select.tsx` (CreatableSelect + Company/Contact wrappers) + `quickCreateCompany`/`quickCreateContact` actions (return `created` in FormState)
+- [x] #13 New Company: "Add contact" field with "+ New contact" modal; `createCompany` links chosen contact via `link_contact`
+- [x] #14 New Contact: company dropdown → "+ New company" modal; "Approves marketing communications" checkbox (`contacts.marketing_opt_in`)
+- [x] #12 Enquiries form: operator company dropdown → "+ New company" modal
+- [x] tsc clean — [ ] eslint (pending classifier) — [ ] browser verification (deferred to when other dev server stops, alongside route move)
+
+## Phase 2 — Listings enhancements (#2, #4, #7, #10) — DONE (tsc+eslint clean)
+- [x] #7 removed CDG-import block from Listings page (import-disposal-form.tsx now orphaned; scraper lib/scripts kept)
+- [x] #2 PDF uploads: `disposal-documents.tsx` (upload to private `disposal-docs` bucket client-side → `addDisposalDocument`; signed-URL download; delete) + `disposal-documents` action file
+- [x] #10 available-area schedule: `disposal-areas.tsx` editable table + `addDisposalArea`/`deleteDisposalArea`; "Available area" card on listing detail
+- [x] #4 Share / Print / Post-to-CDG: `listing-share-actions.tsx` (Web Share/copy-link · window.print · copy particulars for CDG) in listing header
+- [x] tsc + eslint clean — [ ] browser verification deferred
+
+## Phase 3 — List sorting & filtering (#6) — DONE (tsc+eslint clean)
+- [x] Shared `lib/sort.ts` + `sort-header.tsx` (URL-driven sortable column links) + `filter-bar.tsx` (`FilterBar` + `FilterSelect`, GET form preserving sort)
+- [x] Companies (sort name/type; filter type), Contacts (sort name/role; filter role), Enquiries (sort title/max_rent/status; filter status), Listings (sort title/city/use_class/size/rent/status; filter status + disposal_type)
+
+## Phase 4 — MatchMaker (#16) — DONE (tsc+eslint clean)
+- [x] Stats bar (active enquiries · live listings · opportunities · avg score) + filters (min score, town/name keyword, use class)
+
+## Phase 5 — Deals deep feature (#11, #17) — DONE (tsc+eslint clean)
+- [x] #17 cards: created date + owner agent + "View deal" button on each kanban card
+- [x] Detail: created date + owner in header; share buttons (email/WhatsApp via `deal-share-actions.tsx` + `logDealShare`)
+- [x] Chronological updates/notes timeline (reuses LogActivityForm + ActivityTimeline, entity_type 'deal')
+- [x] Deadlines + reminders: `deal-reminders.tsx` + `deal-reminders` actions (add/toggle/delete); overdue flag computed server-side (lib/time.ts)
+- [x] In-app notifications: `notifications-bell.tsx` in top bar (server-fetched initial via layout, re-reads on open); reminder creation notifies the deal owner
+
+## Phase 6 — Admin bulk import + agent visibility (#8, #9b)
+- [x] #8 CSV import for Companies/Contacts/Enquiries/Listings in Admin (`lib/csv.ts` parser+templates, `import-data.ts` action, `data-import.tsx` UI) + downloadable CSV templates per entity. (XLS → "save as CSV"; SheetJS could be added for native .xls.)
+- [x] #9b verified: Companies, Contacts, Listings already show lead + additional agents. GAPS REMAINING:
+      - Enquiries have NO agent fields in the schema (0007 only added agents to companies/contacts/disposals) → needs a migration (requirements.lead_agent_id + requirement_agents) + form/display wiring.
+      - Listing PDF shows only the source/CDG agent (agent_name), not the internal lead/additional agents → needs particulars-document + route change.
+- [x] Verified: tsc + eslint clean AND full `next build` green (Phases 0–6)
+
+## #9b completion — DONE (migration 0014 applied + build-green)
+- [x] Enquiry agent assignment: migration `0014_requirement_agents` (requirements.lead_agent_id + requirement_agents table + RLS) applied to live DB; types regenerated
+- [x] Enquiry form gains AgentFields (lead + additional); create/update actions sync requirement_agents; enquiry detail shows an "Agents" card
+- [x] Listing PDF: "CDG Team" block lists internal lead + additional agents (particulars-document + route)
+
+## Phase 7 — Heatmaps (added) — DONE (build-green)
+- [x] Reusable `heatmap.tsx` (CSS-grid density matrix, teal scale, server-rendered)
+- [x] Listings: town × status (driven by the page's existing status/type/search filters)
+- [x] Companies: sector tag × company type (driven by the page's type/search filters)
+- [x] Deals: stage × value band, with an agent filter
+
+## FINAL STATUS
+All 17 upgrade items + heatmaps + native .xls import implemented. Verified: tsc clean, eslint clean, full `next build` green; migrations 0011–0014 applied to live `slc-crm`.
+
+Live browser verification (preview server, throwaway admin since the parallel session replaced demo logins with real CDG emails):
+- Listings: New-listing button, Status/Type filters, town×status heatmap (live data), sortable headers, per-row Edit ✓
+- New-listing form renders all sections + Lead/Additional agents ✓
+- MatchMaker: stats bar (17/81/760/64%) + town/min-score/use-class filters + scored pairs ✓
+- Admin: Import-data card, 4 entities, 4 templates, file inputs accept .xls, Manager role option ✓
+- Deals: stage×value heatmap, agent filter, View-deal buttons; deal detail has Created date/agent, Reminders & deadlines, Updates & notes, Email/WhatsApp share ✓
+- Enquiry detail: Agents card + Lead agent + MatchMaker Opportunities ✓
+- KNOWN LIMITATION: server-action POSTs (create/edit) bounce to /login in the preview harness (cookie/Origin quirk) — could not exercise create/edit mutations there. Production build is green and the new mutations mirror existing working actions; confirm create/edit in a real browser.
+- xlsx (SheetJS) added → npm audit reports advisories (2 moderate, 1 high) on the npm build; consider the CDN distribution if that matters.
+- Throwaway verify-bot@slc.test account deleted after testing.
+
+## Phase 7 — Heatmaps (added)
+SVG/CSS heatmap visuals (no map/chart dep) rendered on each page, each with relevant filters.
+- [ ] Reusable `Heatmap` component (matrix grid, colour-scaled cells, legend) + shared filter bar.
+- [ ] Listings heatmap: density by **region/town × use class** (or status). Filters: status, use class, town/region, to-let/for-sale.
+- [ ] Companies heatmap: density by **sector tag × company type** (or region). Filters: type, sector tag, lead agent.
+- [ ] Deals heatmap: **stage × value band** (or stage × month). Filters: stage, lead agent, value band, date range.
+- [ ] Build + lint

@@ -5,6 +5,7 @@ import { useActionState } from "react";
 import Link from "next/link";
 
 import { AgentFields } from "@/components/agent-fields";
+import { CompanyCreatableSelect } from "@/components/creatable-select";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -73,20 +74,10 @@ export function ContactForm({
             ))}
           </Select>
         </Field>
-        <Field label="Company" htmlFor="company_id">
-          <Select
-            id="company_id"
-            name="company_id"
-            defaultValue={c?.company_id ?? defaultCompanyId ?? ""}
-          >
-            <option value="">— None —</option>
-            {companies.map((co) => (
-              <option key={co.id} value={co.id}>
-                {co.name}
-              </option>
-            ))}
-          </Select>
-        </Field>
+        <CompanyCreatableSelect
+          options={companies}
+          defaultValue={c?.company_id ?? defaultCompanyId ?? ""}
+        />
       </div>
 
       <div className="grid gap-5 sm:grid-cols-2">
@@ -101,6 +92,16 @@ export function ContactForm({
       <Field label="Notes" htmlFor="notes">
         <Textarea id="notes" name="notes" defaultValue={c?.notes ?? ""} />
       </Field>
+
+      <label className="flex cursor-pointer items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          name="marketing_opt_in"
+          defaultChecked={c?.marketing_opt_in ?? false}
+          className="h-4 w-4 rounded border-input accent-primary"
+        />
+        Approves receiving marketing communications
+      </label>
 
       <AgentFields
         agents={agents}

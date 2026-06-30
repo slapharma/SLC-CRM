@@ -140,6 +140,7 @@ function AddAgentCard() {
               <Label htmlFor="role">Role</Label>
               <Select id="role" name="role" defaultValue="agent">
                 <option value="agent">Agent</option>
+                <option value="manager">Manager</option>
                 <option value="admin">Admin</option>
               </Select>
             </div>
@@ -203,13 +204,24 @@ function MemberRow({ member, isSelf }: { member: Member; isSelf: boolean }) {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Badge tone={member.role === "admin" ? "teal" : "slate"}>{member.role}</Badge>
+          <Badge
+            tone={
+              member.role === "admin"
+                ? "teal"
+                : member.role === "manager"
+                  ? "violet"
+                  : "slate"
+            }
+          >
+            {member.role}
+          </Badge>
           {isSelf ? null : (
             <>
               <form action={updateAgentRole} className="flex items-center gap-1.5">
                 <input type="hidden" name="user_id" value={member.id} />
                 <Select name="role" defaultValue={member.role} className="h-8 w-auto text-xs">
                   <option value="agent">Agent</option>
+                  <option value="manager">Manager</option>
                   <option value="admin">Admin</option>
                 </Select>
                 <Button type="submit" variant="secondary" size="sm">

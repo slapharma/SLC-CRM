@@ -17,6 +17,7 @@ import { deleteRequirement } from "@/lib/actions/requirements";
 import { scoreMatch } from "@/lib/matching/score";
 import { CreateDealButton } from "@/components/create-deal-button";
 import { MatchReasons } from "@/components/match-reasons";
+import { getAgencyMembers } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
@@ -61,6 +62,20 @@ export default async function RequirementDetailPage({
 
   const s = requirementStatusBadge(r.status);
 
+  const { data: agentRows } = await supabase
+    .from("requirement_agents")
+    .select("user_id")
+    .eq("requirement_id", id);
+  const members = await getAgencyMembers(supabase, r.agency_id);
+  const nameOf = new Map(members.map((m) => [m.id, m.name]));
+  const leadAgentName = r.lead_agent_id
+    ? (nameOf.get(r.lead_agent_id) ?? "Unknown agent")
+    : null;
+  const additionalAgents = (agentRows ?? []).map((row) => ({
+    id: row.user_id,
+    name: nameOf.get(row.user_id) ?? "Unknown agent",
+  }));
+
   const { data: disposals } = await supabase.from("disposals").select("*");
   const matches = (disposals ?? [])
     .filter((d) => isListingMatchable(d.status))
@@ -91,7 +106,7 @@ export default async function RequirementDetailPage({
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <Link
-            href={`/requirements/${r.id}/edit`}
+            href={`/enquiries/${r.id}/edit`}
             className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}
           >
             <Pencil />
@@ -174,16 +189,38 @@ export default async function RequirementDetailPage({
             <p className="whitespace-pre-wrap text-foreground">{r.notes ?? "—"}</p>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Agents</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            <Row label="Lead agent">{leadAgentName ?? "—"}</Row>
+            <Row label="Agents">
+              {additionalAgents.length > 0 ? (
+                <span className="flex flex-wrap gap-1.5">
+                  {additionalAgents.map((a) => (
+                    <Badge key={a.id} tone="slate">
+                      {a.name}
+                    </Badge>
+                  ))}
+                </span>
+              ) : (
+                "—"
+              )}
+            </Row>
+          </CardContent>
+        </Card>
       </div>
 
       <Card className="mt-4">
         <CardHeader>
-          <CardTitle>Matching listings</CardTitle>
+          <CardTitle>MatchMaker Opportunities</CardTitle>
         </CardHeader>
         <CardContent>
           {matches.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No matching listings yet — import disposals to generate matches.
+              No MatchMaker opportunities yet — add disposals to generate matches.
             </p>
           ) : (
             <ul className="space-y-3">

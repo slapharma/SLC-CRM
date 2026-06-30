@@ -903,6 +903,42 @@ export type Database = {
         }
         Relationships: []
       }
+      requirement_agents: {
+        Row: {
+          agency_id: string
+          created_at: string
+          requirement_id: string
+          user_id: string
+        }
+        Insert: {
+          agency_id: string
+          created_at?: string
+          requirement_id: string
+          user_id: string
+        }
+        Update: {
+          agency_id?: string
+          created_at?: string
+          requirement_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "requirement_agents_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "requirement_agents_requirement_id_fkey"
+            columns: ["requirement_id"]
+            isOneToOne: false
+            referencedRelation: "requirements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       requirements: {
         Row: {
           agency_id: string
@@ -912,6 +948,7 @@ export type Database = {
           created_by: string | null
           fit_out_prefs: string[]
           id: string
+          lead_agent_id: string | null
           max_covers: number | null
           max_guide_price: number | null
           max_premium: number | null
@@ -937,6 +974,7 @@ export type Database = {
           created_by?: string | null
           fit_out_prefs?: string[]
           id?: string
+          lead_agent_id?: string | null
           max_covers?: number | null
           max_guide_price?: number | null
           max_premium?: number | null
@@ -962,6 +1000,7 @@ export type Database = {
           created_by?: string | null
           fit_out_prefs?: string[]
           id?: string
+          lead_agent_id?: string | null
           max_covers?: number | null
           max_guide_price?: number | null
           max_premium?: number | null

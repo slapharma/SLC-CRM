@@ -87,8 +87,55 @@ export async function createCompany(
 
   await syncCompanyAgents(supabase, data.id, agencyId, extra);
 
+  // #13: optionally attach a contact chosen (or quick-created) on the form.
+  const linkContact = nullable(formData, "link_contact");
+  if (linkContact) {
+    await supabase
+      .from("contacts")
+      .update({ company_id: data.id })
+      .eq("id", linkContact);
+    revalidatePath(`/contacts/${linkContact}`);
+  }
+
   revalidatePath("/companies");
   redirect(`/companies/${data.id}`);
+}
+
+/**
+ * Inline quick-create used by the "+ New company" modal (#12/#14). Creates a
+ * minimal company and returns its id + name so the caller can select it — no
+ * redirect.
+ */
+export async function quickCreateCompany(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "You must be signed in." };
+
+  const agencyId = await currentAgencyId(supabase);
+  if (!agencyId) return { error: "No agency is linked to your account." };
+
+  const name = str(formData, "name");
+  if (!name) return { error: "Company name is required." };
+
+  const { data, error } = await supabase
+    .from("companies")
+    .insert({
+      agency_id: agencyId,
+      created_by: user.id,
+      name,
+      type: asType(str(formData, "type")),
+    })
+    .select("id, name")
+    .single();
+  if (error || !data) return { error: error?.message ?? "Could not create company." };
+
+  revalidatePath("/companies");
+  return { created: { id: data.id, name: data.name }, message: `Added ${data.name}.` };
 }
 
 export async function updateCompany(

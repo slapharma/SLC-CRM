@@ -28,7 +28,7 @@ export default async function SearchPage({
       <div className="mx-auto max-w-4xl">
         <PageHeader title="Search" />
         <p className="text-sm text-muted-foreground">
-          Search companies, contacts, listings and requirements from the bar above.
+          Search companies, contacts, listings and enquiries from the bar above.
         </p>
       </div>
     );
@@ -36,24 +36,52 @@ export default async function SearchPage({
 
   const supabase = await createClient();
   const like = `%${term}%`;
-  const [companies, contacts, disposals, requirements] = await Promise.all([
-    supabase.from("companies").select("id, name, type").ilike("name", like).limit(10),
+  const [companies, contactsByField, disposals, requirements] = await Promise.all([
+    supabase
+      .from("companies")
+      .select("id, name, type")
+      .or(`name.ilike.${like},phone.ilike.${like},website.ilike.${like}`)
+      .limit(10),
     supabase
       .from("contacts")
       .select("id, first_name, last_name, role")
-      .or(`first_name.ilike.${like},last_name.ilike.${like}`)
+      .or(
+        `first_name.ilike.${like},last_name.ilike.${like},email.ilike.${like},phone.ilike.${like}`,
+      )
       .limit(10),
     supabase
       .from("disposals")
       .select("id, title, city, status")
-      .or(`title.ilike.${like},city.ilike.${like}`)
+      .or(
+        `title.ilike.${like},city.ilike.${like},postcode.ilike.${like},address_line.ilike.${like},area.ilike.${like}`,
+      )
       .limit(10),
-    supabase.from("requirements").select("id, title, status").ilike("title", like).limit(10),
+    supabase
+      .from("requirements")
+      .select("id, title, status")
+      .or(`title.ilike.${like},notes.ilike.${like}`)
+      .limit(10),
   ]);
+
+  // Also surface contacts found via their firm (company name match), deduped.
+  let contactRows = contactsByField.data ?? [];
+  const companyIds = (companies.data ?? []).map((c) => c.id);
+  if (companyIds.length) {
+    const { data: byFirm } = await supabase
+      .from("contacts")
+      .select("id, first_name, last_name, role")
+      .in("company_id", companyIds)
+      .limit(10);
+    const seen = new Set(contactRows.map((c) => c.id));
+    contactRows = [...contactRows, ...(byFirm ?? []).filter((c) => !seen.has(c.id))].slice(
+      0,
+      10,
+    );
+  }
 
   const total =
     (companies.data?.length ?? 0) +
-    (contacts.data?.length ?? 0) +
+    contactRows.length +
     (disposals.data?.length ?? 0) +
     (requirements.data?.length ?? 0);
 
@@ -74,7 +102,7 @@ export default async function SearchPage({
           />
           <Group
             title="Contacts"
-            items={(contacts.data ?? []).map((c) => ({
+            items={contactRows.map((c) => ({
               href: `/contacts/${c.id}`,
               label: [c.first_name, c.last_name].filter(Boolean).join(" "),
               badge: contactRoleBadge(c.role),
@@ -89,9 +117,9 @@ export default async function SearchPage({
             }))}
           />
           <Group
-            title="Requirements"
+            title="Enquiries"
             items={(requirements.data ?? []).map((r) => ({
-              href: `/requirements/${r.id}`,
+              href: `/enquiries/${r.id}`,
               label: r.title,
               badge: requirementStatusBadge(r.status),
             }))}

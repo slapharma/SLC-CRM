@@ -10,7 +10,8 @@ import type { FormState } from "@/lib/actions/types";
 type MemberRole = Database["public"]["Enums"]["member_role"];
 
 const str = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim();
-const asRole = (v: string): MemberRole => (v === "admin" ? "admin" : "agent");
+const asRole = (v: string): MemberRole =>
+  v === "admin" ? "admin" : v === "manager" ? "manager" : "agent";
 
 /** Create a new agent in the caller's agency (admin only — enforced in the RPC). */
 export async function createAgent(
