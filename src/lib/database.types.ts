@@ -113,42 +113,57 @@ export type Database = {
       }
       companies: {
         Row: {
+          address_line: string | null
           agency_id: string
+          city: string | null
           created_at: string
           created_by: string | null
           id: string
+          lat: number | null
           lead_agent_id: string | null
+          lng: number | null
           name: string
           notes: string | null
           phone: string | null
+          postcode: string | null
           sector_tags: string[]
           type: Database["public"]["Enums"]["company_type"]
           updated_at: string
           website: string | null
         }
         Insert: {
+          address_line?: string | null
           agency_id: string
+          city?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
+          lat?: number | null
           lead_agent_id?: string | null
+          lng?: number | null
           name: string
           notes?: string | null
           phone?: string | null
+          postcode?: string | null
           sector_tags?: string[]
           type?: Database["public"]["Enums"]["company_type"]
           updated_at?: string
           website?: string | null
         }
         Update: {
+          address_line?: string | null
           agency_id?: string
+          city?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
+          lat?: number | null
           lead_agent_id?: string | null
+          lng?: number | null
           name?: string
           notes?: string | null
           phone?: string | null
+          postcode?: string | null
           sector_tags?: string[]
           type?: Database["public"]["Enums"]["company_type"]
           updated_at?: string
@@ -238,7 +253,9 @@ export type Database = {
       }
       contacts: {
         Row: {
+          address_line: string | null
           agency_id: string
+          city: string | null
           company_id: string | null
           created_at: string
           created_by: string | null
@@ -246,15 +263,20 @@ export type Database = {
           first_name: string
           id: string
           last_name: string | null
+          lat: number | null
           lead_agent_id: string | null
+          lng: number | null
           marketing_opt_in: boolean
           notes: string | null
           phone: string | null
+          postcode: string | null
           role: Database["public"]["Enums"]["contact_role"]
           updated_at: string
         }
         Insert: {
+          address_line?: string | null
           agency_id: string
+          city?: string | null
           company_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -262,15 +284,20 @@ export type Database = {
           first_name: string
           id?: string
           last_name?: string | null
+          lat?: number | null
           lead_agent_id?: string | null
+          lng?: number | null
           marketing_opt_in?: boolean
           notes?: string | null
           phone?: string | null
+          postcode?: string | null
           role?: Database["public"]["Enums"]["contact_role"]
           updated_at?: string
         }
         Update: {
+          address_line?: string | null
           agency_id?: string
+          city?: string | null
           company_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -278,10 +305,13 @@ export type Database = {
           first_name?: string
           id?: string
           last_name?: string | null
+          lat?: number | null
           lead_agent_id?: string | null
+          lng?: number | null
           marketing_opt_in?: boolean
           notes?: string | null
           phone?: string | null
+          postcode?: string | null
           role?: Database["public"]["Enums"]["contact_role"]
           updated_at?: string
         }

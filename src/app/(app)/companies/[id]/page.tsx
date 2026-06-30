@@ -18,6 +18,7 @@ import {
 } from "@/lib/badges";
 import { deleteCompany } from "@/lib/actions/companies";
 import { ActivityTimeline } from "@/components/activity-timeline";
+import { LocationMap } from "@/components/location-map";
 import { LogActivityForm } from "@/components/log-activity-form";
 import { getAgencyMembers } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
@@ -131,6 +132,11 @@ export default async function CompanyDetailPage({
               )}
             </Detail>
             <Detail label="Phone">{company.phone ?? "—"}</Detail>
+            <Detail label="Address">
+              {[company.address_line, company.city, company.postcode]
+                .filter(Boolean)
+                .join(", ") || "—"}
+            </Detail>
             <Detail label="Lead agent">{leadAgentName ?? "—"}</Detail>
             <Detail label="Agents">
               {additionalAgents.length > 0 ? (
@@ -194,6 +200,17 @@ export default async function CompanyDetailPage({
           </CardContent>
         </Card>
       </div>
+
+      {company.lat != null && company.lng != null ? (
+        <Card className="mt-4">
+          <CardHeader>
+            <CardTitle>Location</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <LocationMap lat={company.lat} lng={company.lng} label={company.name} />
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card className="mt-4">
         <CardHeader className="flex-row items-center justify-between space-y-0">

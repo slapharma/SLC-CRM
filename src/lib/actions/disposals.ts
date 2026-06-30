@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import { currentAgencyId } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
+import { geocodeForSave } from "@/lib/maps/geocode";
 import type { TablesInsert } from "@/lib/database.types";
 import type { FormState } from "@/lib/actions/types";
 
@@ -97,9 +98,17 @@ export async function createDisposal(
   if (!str(formData, "title")) return { error: "Title is required." };
 
   const fields = disposalFieldsFromForm(formData);
+  // Geocode the address → lat/lng (no-op when no address or no server key).
+  const geo = await geocodeForSave(fields);
   const { data, error } = await supabase
     .from("disposals")
-    .insert({ ...fields, agency_id: agencyId, source: "manual", created_by: user.id })
+    .insert({
+      ...fields,
+      ...(geo ?? {}),
+      agency_id: agencyId,
+      source: "manual",
+      created_by: user.id,
+    })
     .select("id")
     .single();
   if (error || !data) return { error: error?.message ?? "Could not create the listing." };
@@ -129,7 +138,17 @@ export async function updateDisposal(
   if (!str(formData, "title")) return { error: "Title is required." };
 
   const fields = disposalFieldsFromForm(formData);
-  const { error } = await supabase.from("disposals").update(fields).eq("id", id);
+  // Re-geocode only when the address changed or coords are missing.
+  const { data: existing } = await supabase
+    .from("disposals")
+    .select("address_line, city, postcode, lat, lng")
+    .eq("id", id)
+    .maybeSingle();
+  const geo = await geocodeForSave(fields, existing);
+  const { error } = await supabase
+    .from("disposals")
+    .update({ ...fields, ...(geo ?? {}) })
+    .eq("id", id);
   if (error) return { error: error.message };
 
   await syncDisposalAgents(supabase, agencyId, id, fields.lead_agent_id ?? null, formData);

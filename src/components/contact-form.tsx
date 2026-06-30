@@ -89,6 +89,23 @@ export function ContactForm({
         </Field>
       </div>
 
+      <Field label="Address" htmlFor="address_line">
+        <Input
+          id="address_line"
+          name="address_line"
+          placeholder="Street address"
+          defaultValue={c?.address_line ?? ""}
+        />
+      </Field>
+      <div className="grid gap-5 sm:grid-cols-2">
+        <Field label="Town / city" htmlFor="city">
+          <Input id="city" name="city" defaultValue={c?.city ?? ""} />
+        </Field>
+        <Field label="Postcode" htmlFor="postcode">
+          <Input id="postcode" name="postcode" defaultValue={c?.postcode ?? ""} />
+        </Field>
+      </div>
+
       <Field label="Notes" htmlFor="notes">
         <Textarea id="notes" name="notes" defaultValue={c?.notes ?? ""} />
       </Field>

@@ -4,6 +4,7 @@ import { Plus, Users } from "lucide-react";
 
 import { EmptyState } from "@/components/empty-state";
 import { FilterBar, FilterSelect } from "@/components/filter-bar";
+import { FilterTiles } from "@/components/filter-tiles";
 import { PageHeader } from "@/components/page-header";
 import { SortHeader } from "@/components/sort-header";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +18,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { contactRoleBadge } from "@/lib/badges";
-import { resolveSort } from "@/lib/sort";
+import { filterHref, resolveSort } from "@/lib/sort";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
@@ -43,11 +44,26 @@ export default async function ContactsPage({
     .select("id, first_name, last_name, role, email, phone, company_id")
     .order(column, { ascending });
   if (q) query = query.or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%`);
-  if (role) query = query.eq("role", role as never);
   const { data } = await query;
+  // `rows` is the tile base (q filtered). The role facet is applied to the table
+  // in memory so the tile counts always show the full distribution.
   const rows = data ?? [];
+  const listRows = role ? rows.filter((c) => c.role === role) : rows;
 
   const params = { q, sort, dir, role };
+
+  const ROLE_TILES = [
+    { value: "acquisitions", label: "Acquisitions" },
+    { value: "landlord", label: "Landlord" },
+    { value: "solicitor", label: "Solicitor" },
+    { value: "agent", label: "Agent" },
+    { value: "finance", label: "Finance" },
+    { value: "other", label: "Other" },
+  ];
+  const roleTiles = ROLE_TILES.map((r) => ({
+    ...r,
+    count: rows.filter((c) => c.role === r.value).length,
+  }));
 
   const ids = [
     ...new Set(rows.map((r) => r.company_id).filter((v): v is string => Boolean(v))),
@@ -97,15 +113,25 @@ export default async function ContactsPage({
         />
       </FilterBar>
 
-      {rows.length === 0 ? (
+      {rows.length > 0 ? (
+        <FilterTiles
+          tiles={roleTiles}
+          activeValue={role}
+          hrefFor={(v) => filterHref(params, { role: v === role ? null : v })}
+        />
+      ) : null}
+
+      {listRows.length === 0 ? (
         <EmptyState
           icon={Users}
-          title={q ? "No matches" : "No contacts yet"}
+          title={q || role ? "No matches" : "No contacts yet"}
           description={
-            q ? "Try a different search term." : "Add the people behind your companies."
+            q || role
+              ? "Try a different search or filter."
+              : "Add the people behind your companies."
           }
           action={
-            q ? undefined : (
+            q || role ? undefined : (
               <Link href="/contacts/new" className={cn(buttonVariants({ size: "sm" }))}>
                 New contact
               </Link>
@@ -124,7 +150,7 @@ export default async function ContactsPage({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rows.map((c) => {
+            {listRows.map((c) => {
               const r = contactRoleBadge(c.role);
               return (
                 <TableRow key={c.id}>

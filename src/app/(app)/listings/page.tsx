@@ -19,7 +19,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { listingStatusBadge } from "@/lib/badges";
-import { resolveSort } from "@/lib/sort";
+import { filterHref, resolveSort } from "@/lib/sort";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
@@ -37,9 +37,10 @@ export default async function ListingsPage({
     dir?: string;
     status?: string;
     disposal_type?: string;
+    town?: string;
   }>;
 }) {
-  const { q, sort, dir, status, disposal_type } = await searchParams;
+  const { q, sort, dir, status, disposal_type, town } = await searchParams;
   const supabase = await createClient();
 
   const { column, ascending } = resolveSort(
@@ -63,14 +64,20 @@ export default async function ListingsPage({
     )
     .order(column, { ascending });
   if (q) query = query.or(`title.ilike.%${q}%,city.ilike.%${q}%`);
-  if (status) query = query.eq("status", status);
   if (disposal_type) query = query.eq("disposal_type", disposal_type);
   const { data } = await query;
+  // `rows` is the heatmap base (q + type filtered). The town/status facets that
+  // the heatmap controls are applied to the table in memory, so the grid keeps
+  // showing the full distribution for re-slicing.
   const rows = data ?? [];
+  const listRows = rows.filter(
+    (r) =>
+      (!town || (r.city ?? "—") === town) && (!status || (r.status ?? "—") === status),
+  );
 
-  const params = { q, sort, dir, status, disposal_type };
+  const params = { q, sort, dir, status, disposal_type, town };
 
-  // Heatmap: town × status (reflects the active filters above).
+  // Heatmap: town × status — click a cell/label to filter the table below.
   const townCounts = new Map<string, number>();
   for (const r of rows) {
     const t = r.city ?? "—";
@@ -115,7 +122,7 @@ export default async function ListingsPage({
         dir={dir}
         placeholder="Search by title or town…"
         basePath="/listings"
-        hasActiveFilters={Boolean(status || disposal_type)}
+        hasActiveFilters={Boolean(status || disposal_type || town)}
       >
         <FilterSelect
           name="status"
@@ -146,21 +153,30 @@ export default async function ListingsPage({
       {rows.length > 0 ? (
         <Card className="mb-5">
           <CardHeader>
-            <CardTitle>Heatmap — town × status</CardTitle>
+            <CardTitle>Portfolio Spread — town × status</CardTitle>
           </CardHeader>
           <CardContent>
-            <Heatmap rowLabels={heatTowns} colLabels={heatStatuses} matrix={heatMatrix} />
+            <Heatmap
+              rowLabels={heatTowns}
+              colLabels={heatStatuses}
+              matrix={heatMatrix}
+              selectedRow={town}
+              selectedCol={status}
+              cellHref={(t, s) => filterHref(params, { town: t, status: s })}
+              rowHref={(t) => filterHref(params, { town: t === town ? null : t })}
+              colHref={(s) => filterHref(params, { status: s === status ? null : s })}
+            />
           </CardContent>
         </Card>
       ) : null}
 
-      {rows.length === 0 ? (
+      {listRows.length === 0 ? (
         <EmptyState
           icon={Store}
-          title={q ? "No matches" : "No listings yet"}
+          title={q || status || town || disposal_type ? "No matches" : "No listings yet"}
           description={
-            q
-              ? "Try a different search term."
+            q || status || town || disposal_type
+              ? "Try a different search or filter."
               : "Click “New listing” to add your first premises."
           }
         />
@@ -190,7 +206,7 @@ export default async function ListingsPage({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rows.map((d) => {
+            {listRows.map((d) => {
               const s = listingStatusBadge(d.status);
               return (
                 <TableRow key={d.id}>

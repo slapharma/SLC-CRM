@@ -19,7 +19,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { companyTypeBadge } from "@/lib/badges";
-import { resolveSort } from "@/lib/sort";
+import { filterHref, resolveSort } from "@/lib/sort";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
@@ -28,9 +28,15 @@ export const metadata: Metadata = { title: "Companies" };
 export default async function CompaniesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; sort?: string; dir?: string; type?: string }>;
+  searchParams: Promise<{
+    q?: string;
+    sort?: string;
+    dir?: string;
+    type?: string;
+    tag?: string;
+  }>;
 }) {
-  const { q, sort, dir, type } = await searchParams;
+  const { q, sort, dir, type, tag } = await searchParams;
   const supabase = await createClient();
 
   const { column, ascending } = resolveSort(
@@ -45,13 +51,18 @@ export default async function CompaniesPage({
     .select("id, name, type, sector_tags, website")
     .order(column, { ascending });
   if (q) query = query.ilike("name", `%${q}%`);
-  if (type) query = query.eq("type", type as never);
   const { data } = await query;
+  // `rows` is the heatmap base (q filtered). The tag/type facets that the
+  // heatmap controls are applied to the table in memory so the grid keeps the
+  // full distribution.
   const rows = data ?? [];
+  const listRows = rows.filter(
+    (c) => (!type || c.type === type) && (!tag || c.sector_tags.includes(tag)),
+  );
 
-  const params = { q, sort, dir, type };
+  const params = { q, sort, dir, type, tag };
 
-  // Heatmap: sector tag × company type (reflects the active filters above).
+  // Heatmap: sector tag × company type — click a cell/label to filter below.
   const tagCounts = new Map<string, number>();
   for (const c of rows) for (const t of c.sector_tags) tagCounts.set(t, (tagCounts.get(t) ?? 0) + 1);
   const heatTags = [...tagCounts.entries()]
@@ -90,7 +101,7 @@ export default async function CompaniesPage({
         dir={dir}
         placeholder="Search companies…"
         basePath="/companies"
-        hasActiveFilters={Boolean(type)}
+        hasActiveFilters={Boolean(type || tag)}
       >
         <FilterSelect
           name="type"
@@ -109,29 +120,41 @@ export default async function CompaniesPage({
       {rows.length > 0 && heatTags.length > 0 ? (
         <Card className="mb-5">
           <CardHeader>
-            <CardTitle>Heatmap — sector × type</CardTitle>
+            <CardTitle>Portfolio Spread — sector × type</CardTitle>
           </CardHeader>
           <CardContent>
             <Heatmap
               rowLabels={heatTags}
               colLabels={heatTypes.map((t) => t.label)}
               matrix={heatMatrix}
+              selectedRow={tag}
+              selectedCol={heatTypes.find((t) => t.value === type)?.label}
+              cellHref={(rowTag, _label, _ri, ci) =>
+                filterHref(params, { tag: rowTag, type: heatTypes[ci].value })
+              }
+              rowHref={(rowTag) =>
+                filterHref(params, { tag: rowTag === tag ? null : rowTag })
+              }
+              colHref={(_label, ci) => {
+                const val = heatTypes[ci].value;
+                return filterHref(params, { type: val === type ? null : val });
+              }}
             />
           </CardContent>
         </Card>
       ) : null}
 
-      {rows.length === 0 ? (
+      {listRows.length === 0 ? (
         <EmptyState
           icon={Building2}
-          title={q ? "No matches" : "No companies yet"}
+          title={q || type || tag ? "No matches" : "No companies yet"}
           description={
-            q
-              ? "Try a different search term."
+            q || type || tag
+              ? "Try a different search or filter."
               : "Add your first operator, landlord, agent or vendor."
           }
           action={
-            q ? undefined : (
+            q || type || tag ? undefined : (
               <Link
                 href="/companies/new"
                 className={cn(buttonVariants({ size: "sm" }))}
@@ -152,7 +175,7 @@ export default async function CompaniesPage({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rows.map((c) => {
+            {listRows.map((c) => {
               const t = companyTypeBadge(c.type);
               return (
                 <TableRow key={c.id}>

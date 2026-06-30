@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import { currentAgencyId } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
+import { geocodeForSave } from "@/lib/maps/geocode";
 import type { Database } from "@/lib/database.types";
 import type { FormState } from "@/lib/actions/types";
 
@@ -68,6 +69,12 @@ export async function createCompany(
   if (!name) return { error: "Company name is required." };
 
   const { lead, extra } = agents(formData);
+  const address = {
+    address_line: nullable(formData, "address_line"),
+    city: nullable(formData, "city"),
+    postcode: nullable(formData, "postcode"),
+  };
+  const geo = await geocodeForSave(address);
   const { data, error } = await supabase
     .from("companies")
     .insert({
@@ -80,6 +87,8 @@ export async function createCompany(
       phone: nullable(formData, "phone"),
       notes: nullable(formData, "notes"),
       lead_agent_id: lead,
+      ...address,
+      ...(geo ?? {}),
     })
     .select("id")
     .single();
@@ -153,6 +162,17 @@ export async function updateCompany(
   if (!agencyId) return { error: "No agency is linked to your account." };
 
   const { lead, extra } = agents(formData);
+  const address = {
+    address_line: nullable(formData, "address_line"),
+    city: nullable(formData, "city"),
+    postcode: nullable(formData, "postcode"),
+  };
+  const { data: existing } = await supabase
+    .from("companies")
+    .select("address_line, city, postcode, lat, lng")
+    .eq("id", id)
+    .maybeSingle();
+  const geo = await geocodeForSave(address, existing);
   const { error } = await supabase
     .from("companies")
     .update({
@@ -163,6 +183,8 @@ export async function updateCompany(
       phone: nullable(formData, "phone"),
       notes: nullable(formData, "notes"),
       lead_agent_id: lead,
+      ...address,
+      ...(geo ?? {}),
     })
     .eq("id", id);
   if (error) return { error: error.message };

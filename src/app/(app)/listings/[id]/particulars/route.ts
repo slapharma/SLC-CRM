@@ -3,6 +3,7 @@ import { createElement, type ReactElement } from "react";
 import { renderToBuffer, type DocumentProps } from "@react-pdf/renderer";
 
 import { createClient } from "@/lib/supabase/server";
+import { staticMapUrl } from "@/lib/maps/static-map";
 import { registerBrandFonts } from "@/lib/pdf/fonts";
 import {
   ParticularsDocument,
@@ -35,9 +36,27 @@ async function fetchHero(images: ImageItem[]): Promise<Buffer | null> {
   }
 }
 
+// Static Maps PNG of the listing location (null when no coords or no server key).
+async function fetchStaticMap(
+  lat: number | null,
+  lng: number | null,
+): Promise<Buffer | null> {
+  if (lat == null || lng == null) return null;
+  const url = staticMapUrl(lat, lng);
+  if (!url) return null;
+  try {
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) return null;
+    return Buffer.from(await res.arrayBuffer());
+  } catch {
+    return null;
+  }
+}
+
 function buildData(
   d: Record<string, unknown>,
   hero: Buffer | null,
+  map: Buffer | null,
   agents: string[],
 ): ParticularsData {
   const g = <T,>(k: string) => d[k] as T;
@@ -113,6 +132,7 @@ function buildData(
     agents,
     generatedOn: new Date().toLocaleDateString("en-GB"),
     heroImage: hero,
+    mapImage: map,
   };
 }
 
@@ -164,8 +184,11 @@ export async function GET(
 
   registerBrandFonts();
   const images = (Array.isArray(row.images) ? row.images : []) as ImageItem[];
-  const hero = await fetchHero(images);
-  const data = buildData(row as Record<string, unknown>, hero, agentNames);
+  const [hero, map] = await Promise.all([
+    fetchHero(images),
+    fetchStaticMap(row.lat, row.lng),
+  ]);
+  const data = buildData(row as Record<string, unknown>, hero, map, agentNames);
 
   // ParticularsDocument renders a <Document> at runtime; createElement loses
   // that in the type system, so assert the element shape renderToBuffer wants.

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import { currentAgencyId } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
+import { geocodeForSave } from "@/lib/maps/geocode";
 import { Constants, type Database } from "@/lib/database.types";
 import type { FormState } from "@/lib/actions/types";
 
@@ -34,6 +35,9 @@ function payload(fd: FormData) {
     phone: nullable(fd, "phone"),
     role: asRole(str(fd, "role")),
     company_id: nullable(fd, "company_id"),
+    address_line: nullable(fd, "address_line"),
+    city: nullable(fd, "city"),
+    postcode: nullable(fd, "postcode"),
     notes: nullable(fd, "notes"),
     lead_agent_id: nullable(fd, "lead_agent_id"),
     marketing_opt_in: fd.get("marketing_opt_in") != null,
@@ -77,9 +81,10 @@ export async function createContact(
   const data = payload(formData);
   if (!data.first_name) return { error: "A first name is required." };
 
+  const geo = await geocodeForSave(data);
   const { data: row, error } = await supabase
     .from("contacts")
-    .insert({ agency_id: agencyId, created_by: user.id, ...data })
+    .insert({ agency_id: agencyId, created_by: user.id, ...data, ...(geo ?? {}) })
     .select("id")
     .single();
   if (error) return { error: error.message };
@@ -104,7 +109,16 @@ export async function updateContact(
   const agencyId = await currentAgencyId(supabase);
   if (!agencyId) return { error: "No agency is linked to your account." };
 
-  const { error } = await supabase.from("contacts").update(data).eq("id", id);
+  const { data: existing } = await supabase
+    .from("contacts")
+    .select("address_line, city, postcode, lat, lng")
+    .eq("id", id)
+    .maybeSingle();
+  const geo = await geocodeForSave(data, existing);
+  const { error } = await supabase
+    .from("contacts")
+    .update({ ...data, ...(geo ?? {}) })
+    .eq("id", id);
   if (error) return { error: error.message };
 
   await syncContactAgents(supabase, id, agencyId, agents(formData).extra);

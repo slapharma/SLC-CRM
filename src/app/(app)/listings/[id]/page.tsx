@@ -15,6 +15,7 @@ import { DisposalAssignmentForm } from "@/components/disposal-assignment-form";
 import { DisposalDocuments, type DisposalDoc } from "@/components/disposal-documents";
 import { DisposalAreas } from "@/components/disposal-areas";
 import { ListingShareActions } from "@/components/listing-share-actions";
+import { LocationMap } from "@/components/location-map";
 import { getAgencyMembers } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
@@ -190,6 +191,20 @@ export default async function ListingDetailPage({
             />
           ))}
         </div>
+      ) : null}
+
+      {d.lat != null && d.lng != null ? (
+        <Card className="mb-4">
+          <CardHeader>
+            <CardTitle>Location</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {location ? (
+              <p className="mb-3 text-sm text-muted-foreground">{location}</p>
+            ) : null}
+            <LocationMap lat={d.lat} lng={d.lng} label={d.title ?? "Listing"} />
+          </CardContent>
+        </Card>
       ) : null}
 
       <div className="grid gap-4 md:grid-cols-2">

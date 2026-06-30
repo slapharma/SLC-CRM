@@ -85,7 +85,7 @@ export default async function MatchesPage({
           const Icon = stat.icon;
           return (
             <Card key={stat.label}>
-              <CardContent className="flex items-center justify-between p-4">
+              <CardContent className="flex items-center justify-between p-4 sm:p-4">
                 <div>
                   <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                     {stat.label}
@@ -140,7 +140,7 @@ export default async function MatchesPage({
             const ms = matchScoreBadge(score);
             return (
               <Card key={`${rq.id}-${d.id}`}>
-                <CardContent className="p-4">
+                <CardContent className="p-4 sm:p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="text-sm">
                       <Link

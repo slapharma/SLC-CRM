@@ -87,6 +87,27 @@ export function CompanyForm({
         </Field>
       </div>
 
+      <Field
+        label="Address"
+        htmlFor="address_line"
+        hint="Used to place the company on the map"
+      >
+        <Input
+          id="address_line"
+          name="address_line"
+          placeholder="Street address"
+          defaultValue={company?.address_line ?? ""}
+        />
+      </Field>
+      <div className="grid gap-5 sm:grid-cols-2">
+        <Field label="Town / city" htmlFor="city">
+          <Input id="city" name="city" defaultValue={company?.city ?? ""} />
+        </Field>
+        <Field label="Postcode" htmlFor="postcode">
+          <Input id="postcode" name="postcode" defaultValue={company?.postcode ?? ""} />
+        </Field>
+      </div>
+
       <Field label="Notes" htmlFor="notes">
         <Textarea id="notes" name="notes" defaultValue={company?.notes ?? ""} />
       </Field>

@@ -48,6 +48,7 @@ export type ParticularsData = {
   agents: string[]; // internal CDG team assigned to this listing (lead first)
   generatedOn: string; // dd/mm/yyyy
   heroImage: Buffer | null;
+  mapImage: Buffer | null; // Static Maps PNG of the location (null → placeholder)
 };
 
 const DISCLAIMER =
@@ -183,6 +184,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     position: "relative",
   },
+  mapImg: { width: "100%", height: 150, objectFit: "cover" },
   mapPin: { fontSize: 22, color: TEAL, fontWeight: 700 },
   mapAddr: { fontSize: 8, color: MUTED, marginTop: 6, textAlign: "center", paddingHorizontal: 10 },
   postcodeBadge: {
@@ -376,8 +378,17 @@ export function ParticularsDocument({ d }: { d: ParticularsData }) {
 
           <View style={styles.p2Side}>
             <View style={styles.mapPanel}>
-              <Text style={styles.mapPin}>◉</Text>
-              {d.address ? <Text style={styles.mapAddr}>{d.address}</Text> : null}
+              {d.mapImage ? (
+                // eslint-disable-next-line jsx-a11y/alt-text
+                <Image style={styles.mapImg} src={d.mapImage} />
+              ) : (
+                <>
+                  <Text style={styles.mapPin}>◉</Text>
+                  {d.address ? (
+                    <Text style={styles.mapAddr}>{d.address}</Text>
+                  ) : null}
+                </>
+              )}
               {d.postcode ? (
                 <Text style={styles.postcodeBadge}>{d.postcode}</Text>
               ) : null}

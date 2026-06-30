@@ -6,6 +6,7 @@ import {
   Building2,
   Handshake,
   LayoutDashboard,
+  Map as MapIcon,
   ShieldCheck,
   Sparkles,
   Store,
@@ -22,7 +23,10 @@ export type NavGroup = { label: string; items: NavItem[] };
 export const NAV: NavGroup[] = [
   {
     label: "Workspace",
-    items: [{ href: "/dashboard", label: "Dashboard", icon: LayoutDashboard }],
+    items: [
+      { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { href: "/map", label: "Map", icon: MapIcon },
+    ],
   },
   {
     label: "Records",

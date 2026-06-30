@@ -17,6 +17,25 @@ export function sortHref(
 }
 
 /**
+ * Build an href that keeps the current params and applies a `patch`. A patch
+ * value of null/"" clears that key. Used by the click-to-filter grids so a grid
+ * click preserves the active search (`q`), sort, and any other filters.
+ */
+export function filterHref(
+  params: Record<string, string | undefined>,
+  patch: Record<string, string | null | undefined>,
+): string {
+  const sp = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) if (v) sp.set(k, v);
+  for (const [k, v] of Object.entries(patch)) {
+    if (v == null || v === "") sp.delete(k);
+    else sp.set(k, v);
+  }
+  const s = sp.toString();
+  return s ? `?${s}` : "?";
+}
+
+/**
  * Resolve a requested sort column against a whitelist → the DB column + ascending
  * flag. Falls back to `fallback` when the requested column isn't allowed.
  */

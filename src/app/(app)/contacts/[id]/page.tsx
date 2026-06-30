@@ -8,6 +8,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { contactRoleBadge } from "@/lib/badges";
 import { deleteContact } from "@/lib/actions/contacts";
+import { LocationMap } from "@/components/location-map";
 import { getAgencyMembers } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
@@ -53,6 +54,9 @@ export default async function ContactDetailPage({
 
   const r = contactRoleBadge(contact.role);
   const name = [contact.first_name, contact.last_name].filter(Boolean).join(" ");
+  const address = [contact.address_line, contact.city, contact.postcode]
+    .filter(Boolean)
+    .join(", ");
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -110,6 +114,7 @@ export default async function ContactDetailPage({
             )}
           </Row>
           <Row label="Phone">{contact.phone ?? "—"}</Row>
+          <Row label="Address">{address || "—"}</Row>
           <Row label="Lead agent">{leadAgentName ?? "—"}</Row>
           <Row label="Agents">
             {additionalAgents.length > 0 ? (
@@ -129,6 +134,17 @@ export default async function ContactDetailPage({
           </Row>
         </CardContent>
       </Card>
+
+      {contact.lat != null && contact.lng != null ? (
+        <Card className="mt-4">
+          <CardHeader>
+            <CardTitle>Location</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <LocationMap lat={contact.lat} lng={contact.lng} label={name} />
+          </CardContent>
+        </Card>
+      ) : null}
     </div>
   );
 }

@@ -10,6 +10,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DealStageSelect } from "@/components/deal-stage-select";
 import { dealStageBadge } from "@/lib/badges";
+import { filterHref } from "@/lib/sort";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
@@ -46,9 +47,9 @@ type DealRow = {
 export default async function DealsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ agent?: string }>;
+  searchParams: Promise<{ agent?: string; stage?: string; band?: string }>;
 }) {
-  const { agent } = await searchParams;
+  const { agent, stage, band } = await searchParams;
   const supabase = await createClient();
   const { data } = await supabase
     .from("deals")
@@ -89,7 +90,6 @@ export default async function DealsPage({
     );
   }
 
-  const deals = agent ? allDeals.filter((d) => d.created_by === agent) : allDeals;
   const agentOptions = agentIds.map((id) => ({
     value: id,
     label: agentName.get(id) ?? "Agent",
@@ -103,9 +103,21 @@ export default async function DealsPage({
     { label: "£250k+", test: (v) => v != null && v >= 250000 },
     { label: "No value", test: (v) => v == null },
   ];
+
+  // The heatmap reflects the agent filter only (the facets it controls —
+  // stage/band — are applied to the kanban below so the grid stays re-sliceable).
+  const agentDeals = agent
+    ? allDeals.filter((d) => d.created_by === agent)
+    : allDeals;
+  const bandTest = band ? BANDS.find((b) => b.label === band)?.test : undefined;
+  const deals = agentDeals.filter(
+    (d) => (!stage || d.stage === stage) && (!bandTest || bandTest(d.value)),
+  );
+
+  const params = { agent, stage, band };
   const stageLabels = STAGE_ORDER.map((s) => dealStageBadge(s).label);
-  const heatMatrix = STAGE_ORDER.map((stage) =>
-    BANDS.map((b) => deals.filter((d) => d.stage === stage && b.test(d.value)).length),
+  const heatMatrix = STAGE_ORDER.map((s) =>
+    BANDS.map((b) => agentDeals.filter((d) => d.stage === s && b.test(d.value)).length),
   );
 
   const byStage = new Map<string, DealRow[]>();
@@ -155,16 +167,41 @@ export default async function DealsPage({
 
       <Card className="mb-5">
         <CardHeader>
-          <CardTitle>Heatmap — stage × deal value</CardTitle>
+          <CardTitle>Portfolio Spread — stage × deal value</CardTitle>
         </CardHeader>
         <CardContent>
           <Heatmap
             rowLabels={stageLabels}
             colLabels={BANDS.map((b) => b.label)}
             matrix={heatMatrix}
+            selectedRow={stage ? dealStageBadge(stage).label : undefined}
+            selectedCol={band}
+            cellHref={(_rl, _cl, ri, ci) =>
+              filterHref(params, { stage: STAGE_ORDER[ri], band: BANDS[ci].label })
+            }
+            rowHref={(_rl, ri) => {
+              const st = STAGE_ORDER[ri];
+              return filterHref(params, { stage: st === stage ? null : st });
+            }}
+            colHref={(cl) => filterHref(params, { band: cl === band ? null : cl })}
           />
         </CardContent>
       </Card>
+
+      {stage || band ? (
+        <div className="mb-3 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+          <span>
+            Showing {stage ? dealStageBadge(stage).label : "all stages"}
+            {band ? ` · ${band}` : ""} ({deals.length})
+          </span>
+          <Link
+            href={filterHref(params, { stage: null, band: null })}
+            className="text-foreground hover:underline"
+          >
+            Clear grid filter
+          </Link>
+        </div>
+      ) : null}
 
       <div className="-mx-2 overflow-x-auto pb-4">
         <div className="flex min-w-max gap-3 px-2">

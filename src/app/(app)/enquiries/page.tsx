@@ -4,6 +4,7 @@ import { Plus, Target } from "lucide-react";
 
 import { EmptyState } from "@/components/empty-state";
 import { FilterBar, FilterSelect } from "@/components/filter-bar";
+import { FilterTiles } from "@/components/filter-tiles";
 import { PageHeader } from "@/components/page-header";
 import { SortHeader } from "@/components/sort-header";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +18,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { requirementStatusBadge } from "@/lib/badges";
-import { resolveSort } from "@/lib/sort";
+import { filterHref, resolveSort } from "@/lib/sort";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
@@ -43,11 +44,24 @@ export default async function RequirementsPage({
     .select("id, title, status, target_towns, max_rent, company_id")
     .order(column, { ascending });
   if (q) query = query.ilike("title", `%${q}%`);
-  if (status) query = query.eq("status", status as never);
   const { data } = await query;
+  // `rows` is the tile base (q filtered). The status facet is applied to the
+  // table in memory so the tile counts always show the full distribution.
   const rows = data ?? [];
+  const listRows = status ? rows.filter((r) => r.status === status) : rows;
 
   const params = { q, sort, dir, status };
+
+  const STATUS_TILES = [
+    { value: "active", label: "Active" },
+    { value: "on_hold", label: "On hold" },
+    { value: "satisfied", label: "Satisfied" },
+    { value: "withdrawn", label: "Withdrawn" },
+  ];
+  const statusTiles = STATUS_TILES.map((s) => ({
+    ...s,
+    count: rows.filter((r) => r.status === s.value).length,
+  }));
 
   const ids = [
     ...new Set(rows.map((r) => r.company_id).filter((v): v is string => Boolean(v))),
@@ -95,17 +109,25 @@ export default async function RequirementsPage({
         />
       </FilterBar>
 
-      {rows.length === 0 ? (
+      {rows.length > 0 ? (
+        <FilterTiles
+          tiles={statusTiles}
+          activeValue={status}
+          hrefFor={(v) => filterHref(params, { status: v === status ? null : v })}
+        />
+      ) : null}
+
+      {listRows.length === 0 ? (
         <EmptyState
           icon={Target}
-          title={q ? "No matches" : "No enquiries yet"}
+          title={q || status ? "No matches" : "No enquiries yet"}
           description={
-            q
-              ? "Try a different search term."
+            q || status
+              ? "Try a different search or filter."
               : "Capture an operator's enquiry to match against disposals."
           }
           action={
-            q ? undefined : (
+            q || status ? undefined : (
               <Link
                 href="/enquiries/new"
                 className={cn(buttonVariants({ size: "sm" }))}
@@ -127,7 +149,7 @@ export default async function RequirementsPage({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rows.map((r) => {
+            {listRows.map((r) => {
               const s = requirementStatusBadge(r.status);
               return (
                 <TableRow key={r.id}>
