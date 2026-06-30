@@ -56,17 +56,17 @@ export default async function MapPage() {
   return (
     <div className="mx-auto max-w-6xl">
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Location heatmap</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Location map</h1>
         <p className="text-sm text-muted-foreground">
-          Where your listings, companies and contacts are concentrated across the UK.
+          Where your listings, companies and contacts are across the UK.
         </p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Concentration</CardTitle>
+          <CardTitle>Locations</CardTitle>
           <CardDescription>
-            A live density overlay built from every geocoded record.
+            Every geocoded record, pinned on the map.
           </CardDescription>
         </CardHeader>
         <CardContent>

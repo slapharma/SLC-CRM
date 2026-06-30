@@ -5,7 +5,6 @@ import { MapPin } from "lucide-react";
 
 import { GOOGLE_MAPS_BROWSER_KEY } from "@/lib/maps/config";
 import { loadGoogleMaps } from "@/lib/maps/loader";
-import { createHeatmapOverlay } from "@/lib/maps/heatmap-overlay";
 import { cn } from "@/lib/utils";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -19,17 +18,30 @@ export type MapLayers = {
 
 type LayerKey = keyof MapLayers;
 
-// One single-hue ramp per entity so overlapping layers stay distinguishable.
-const LAYER_META: { key: LayerKey; label: string; color: string; rgb: string }[] = [
-  { key: "listings", label: "Listings", color: "#1ab6b6", rgb: "26,182,182" },
-  { key: "companies", label: "Companies", color: "#f59e0b", rgb: "245,158,11" },
-  { key: "contacts", label: "Contacts", color: "#7c3aed", rgb: "124,58,237" },
+const LAYER_META: { key: LayerKey; label: string }[] = [
+  { key: "listings", label: "Listings" },
+  { key: "companies", label: "Companies" },
+  { key: "contacts", label: "Contacts" },
 ];
+
+// CDG logo blue — every pin uses the brand colour (see public/cdg-logo.svg).
+const PIN_COLOR = "#2bc5cb";
+const PIN_STROKE = "#1a7e82";
+
+// A teardrop map-pin marker icon (data-URI SVG) in the brand colour.
+const PIN_SVG =
+  "data:image/svg+xml;charset=UTF-8," +
+  encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="26" height="38" viewBox="0 0 26 38">' +
+      `<path d="M13 0C5.82 0 0 5.82 0 13c0 9.4 11.4 23 13 25 1.6-2 13-15.6 13-25C26 5.82 20.18 0 13 0Z" fill="${PIN_COLOR}" stroke="${PIN_STROKE}" stroke-width="1.5"/>` +
+      '<circle cx="13" cy="13" r="4.5" fill="#ffffff"/>' +
+      "</svg>",
+  );
 
 export function ConcentrationMap({ layers }: { layers: MapLayers }) {
   const ref = React.useRef<HTMLDivElement>(null);
   const mapRef = React.useRef<any>(null);
-  const layerObjs = React.useRef<Partial<Record<LayerKey, any>>>({});
+  const markerObjs = React.useRef<Partial<Record<LayerKey, any[]>>>({});
   const [failed, setFailed] = React.useState(false);
   const [active, setActive] = React.useState<Record<LayerKey, boolean>>({
     listings: true,
@@ -60,14 +72,25 @@ export function ConcentrationMap({ layers }: { layers: MapLayers }) {
         });
         mapRef.current = map;
 
+        const icon = {
+          url: PIN_SVG,
+          scaledSize: new maps.Size(26, 38),
+          anchor: new maps.Point(13, 38),
+        };
+
         const bounds = new maps.LatLngBounds();
-        for (const { key, rgb } of LAYER_META) {
-          for (const p of layers[key]) {
-            bounds.extend(new maps.LatLng(p.lat, p.lng));
-          }
-          const layer = createHeatmapOverlay(maps, layers[key], rgb, 30);
-          layer.setMap(active[key] ? map : null);
-          layerObjs.current[key] = layer;
+        for (const { key, label } of LAYER_META) {
+          const markers = layers[key].map((p) => {
+            const position = { lat: p.lat, lng: p.lng };
+            bounds.extend(position);
+            return new maps.Marker({
+              position,
+              map: active[key] ? map : null,
+              icon,
+              title: label,
+            });
+          });
+          markerObjs.current[key] = markers;
         }
 
         if (!bounds.isEmpty()) {
@@ -89,12 +112,14 @@ export function ConcentrationMap({ layers }: { layers: MapLayers }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [layers, total]);
 
-  // Toggle layer visibility without rebuilding the map.
+  // Toggle marker visibility per layer without rebuilding the map.
   React.useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
     for (const { key } of LAYER_META) {
-      layerObjs.current[key]?.setMap(active[key] ? map : null);
+      for (const m of markerObjs.current[key] ?? []) {
+        m.setMap(active[key] ? map : null);
+      }
     }
   }, [active]);
 
@@ -116,7 +141,7 @@ export function ConcentrationMap({ layers }: { layers: MapLayers }) {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        {LAYER_META.map(({ key, label, color }) => (
+        {LAYER_META.map(({ key, label }) => (
           <button
             key={key}
             type="button"
@@ -129,9 +154,10 @@ export function ConcentrationMap({ layers }: { layers: MapLayers }) {
                 : "text-muted-foreground opacity-60 hover:bg-muted/40",
             )}
           >
-            <span
-              className="h-2.5 w-2.5 rounded-full"
-              style={{ backgroundColor: color }}
+            <MapPin
+              className="h-3.5 w-3.5"
+              style={{ color: PIN_COLOR }}
+              aria-hidden
             />
             {label}
             <span className="font-mono text-xs tabular-nums text-muted-foreground">
@@ -143,12 +169,11 @@ export function ConcentrationMap({ layers }: { layers: MapLayers }) {
       <div
         ref={ref}
         role="img"
-        aria-label="Heatmap of listings, companies and contacts across the UK"
+        aria-label="Map of listings, companies and contacts across the UK"
         className="h-[32rem] w-full overflow-hidden rounded-md border"
       />
       <p className="text-xs text-muted-foreground">
-        Warmer areas show where records are most concentrated. Toggle a layer with
-        the buttons above.
+        Each pin marks a geocoded record. Toggle a layer with the buttons above.
       </p>
     </div>
   );

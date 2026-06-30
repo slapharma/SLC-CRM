@@ -16,10 +16,9 @@ declare global {
 let loaderPromise: Promise<GoogleMaps> | null = null;
 
 /**
- * Load the Maps JS API. Core classes (Map, Marker, OverlayView) need no extra
- * library — the concentration heatmap is a custom OverlayView, not the removed
- * `visualization.HeatmapLayer`. Returns a cached promise so concurrent callers
- * share one network request.
+ * Load the Maps JS API. Core classes (Map, Marker) need no extra library, so we
+ * request none. Returns a cached promise so concurrent callers share one network
+ * request.
  */
 export function loadGoogleMaps(
   apiKey: string,
