@@ -40,7 +40,11 @@ async function syncCompanyAgents(
   agencyId: string,
   extra: string[],
 ) {
-  await supabase.from("company_agents").delete().eq("company_id", companyId);
+  await supabase
+    .from("company_agents")
+    .delete()
+    .eq("company_id", companyId)
+    .eq("agency_id", agencyId);
   if (extra.length > 0) {
     await supabase.from("company_agents").insert(
       extra.map((user_id) => ({
@@ -86,6 +90,8 @@ export async function createCompany(
       website: nullable(formData, "website"),
       phone: nullable(formData, "phone"),
       notes: nullable(formData, "notes"),
+      company_number: nullable(formData, "company_number"),
+      vat_number: nullable(formData, "vat_number"),
       lead_agent_id: lead,
       ...address,
       ...(geo ?? {}),
@@ -102,7 +108,8 @@ export async function createCompany(
     await supabase
       .from("contacts")
       .update({ company_id: data.id })
-      .eq("id", linkContact);
+      .eq("id", linkContact)
+      .eq("agency_id", agencyId);
     revalidatePath(`/contacts/${linkContact}`);
   }
 
@@ -182,11 +189,14 @@ export async function updateCompany(
       website: nullable(formData, "website"),
       phone: nullable(formData, "phone"),
       notes: nullable(formData, "notes"),
+      company_number: nullable(formData, "company_number"),
+      vat_number: nullable(formData, "vat_number"),
       lead_agent_id: lead,
       ...address,
       ...(geo ?? {}),
     })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("agency_id", agencyId);
   if (error) return { error: error.message };
 
   await syncCompanyAgents(supabase, id, agencyId, extra);
@@ -198,9 +208,17 @@ export async function updateCompany(
 
 export async function deleteCompany(formData: FormData): Promise<void> {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const agencyId = user ? await currentAgencyId(supabase) : null;
   const id = String(formData.get("id") ?? "");
-  if (id) {
-    await supabase.from("companies").delete().eq("id", id);
+  if (id && agencyId) {
+    await supabase
+      .from("companies")
+      .delete()
+      .eq("id", id)
+      .eq("agency_id", agencyId);
     revalidatePath("/companies");
   }
   redirect("/companies");

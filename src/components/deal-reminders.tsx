@@ -104,6 +104,10 @@ export function DealReminders({
                   <button
                     type="submit"
                     aria-label={`Delete ${r.title}`}
+                    onClick={(e) => {
+                      if (!window.confirm(`Delete the reminder “${r.title}”?`))
+                        e.preventDefault();
+                    }}
                     className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                   >
                     <Trash2 className="h-4 w-4" />

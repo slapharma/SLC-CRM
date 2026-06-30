@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, Building2, Target } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DealForm } from "@/components/deal-form";
 import { DealReminders } from "@/components/deal-reminders";
@@ -124,14 +124,14 @@ export default async function DealDetailPage({
           />
           <form action={deleteDeal}>
             <input type="hidden" name="id" value={deal.id} />
-            <Button
-              type="submit"
+            <ConfirmSubmitButton
+              confirmMessage="Delete this deal? Its reminders and activity will be removed and this can't be undone."
               variant="ghost"
               size="sm"
               className="text-destructive hover:bg-destructive/10"
             >
               Delete
-            </Button>
+            </ConfirmSubmitButton>
           </form>
         </div>
       </div>

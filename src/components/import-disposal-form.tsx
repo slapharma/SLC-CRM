@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import Link from "next/link";
 import { Download } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -35,7 +36,12 @@ export function ImportDisposalForm() {
       ) : null}
       {state.message ? (
         <p className="text-xs text-emerald-600 dark:text-emerald-400">
-          {state.message}
+          {state.message}{" "}
+          {state.id ? (
+            <Link href={`/listings/${state.id}`} className="font-medium underline">
+              Open listing →
+            </Link>
+          ) : null}
         </p>
       ) : null}
       {state.warnings?.length ? (

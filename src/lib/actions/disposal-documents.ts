@@ -54,12 +54,23 @@ export async function addDisposalDocument(
 /** Remove a document row and its underlying storage object. */
 export async function deleteDisposalDocument(formData: FormData): Promise<void> {
   const supabase = await createClient();
+  const agencyId = await currentAgencyId(supabase);
   const id = str(formData, "id");
   const disposalId = str(formData, "disposal_id");
-  const filePath = str(formData, "file_path");
-  if (!id) return;
+  if (!id || !agencyId) return;
 
-  if (filePath) await supabase.storage.from(DOCS_BUCKET).remove([filePath]);
-  await supabase.from("disposal_documents").delete().eq("id", id);
+  // Delete the metadata row scoped to our agency FIRST, then only remove the
+  // storage object if a row we actually own was deleted — never touch another
+  // agency's file.
+  const { data: deleted } = await supabase
+    .from("disposal_documents")
+    .delete()
+    .eq("id", id)
+    .eq("agency_id", agencyId)
+    .select("file_path")
+    .maybeSingle();
+  if (deleted?.file_path) {
+    await supabase.storage.from(DOCS_BUCKET).remove([deleted.file_path]);
+  }
   if (disposalId) revalidatePath(`/listings/${disposalId}`);
 }

@@ -56,6 +56,19 @@ export function matchScoreBadge(score: number): BadgeSpec {
   return { tone: "slate", label: `${score}% match` };
 }
 
+export function kycRiskBadge(risk: string): BadgeSpec {
+  switch (risk) {
+    case "low":
+      return { tone: "emerald", label: "Low risk" };
+    case "medium":
+      return { tone: "amber", label: "Medium risk" };
+    case "high":
+      return { tone: "red", label: "High risk" };
+    default:
+      return { tone: "slate", label: "Not assessed" };
+  }
+}
+
 export function requirementStatusBadge(status: string): BadgeSpec {
   switch (status) {
     case "active":

@@ -32,12 +32,14 @@ async function satisfyRequirementOnClose(
   supabase: Awaited<ReturnType<typeof createClient>>,
   requirementId: string | null,
   stage: DealStage,
+  agencyId: string,
 ) {
   if (stage !== "completed" || !requirementId) return;
   await supabase
     .from("requirements")
     .update({ status: "satisfied" as ReqStatus })
-    .eq("id", requirementId);
+    .eq("id", requirementId)
+    .eq("agency_id", agencyId);
 }
 
 /**
@@ -113,14 +115,17 @@ export async function updateDealStage(formData: FormData): Promise<void> {
   if (!id) return;
 
   const supabase = await createClient();
+  const agencyId = await currentAgencyId(supabase);
+  if (!agencyId) return;
   const { data: row, error } = await supabase
     .from("deals")
     .update({ stage })
     .eq("id", id)
+    .eq("agency_id", agencyId)
     .select("requirement_id")
     .maybeSingle();
   if (!error) {
-    await satisfyRequirementOnClose(supabase, row?.requirement_id ?? null, stage);
+    await satisfyRequirementOnClose(supabase, row?.requirement_id ?? null, stage, agencyId);
     revalidatePath("/deals");
     revalidatePath(`/deals/${id}`);
     if (stage === "completed") revalidatePath("/enquiries");
@@ -140,6 +145,8 @@ export async function updateDeal(
   const stage = asStage(str(formData, "stage"));
 
   const supabase = await createClient();
+  const agencyId = await currentAgencyId(supabase);
+  if (!agencyId) return { error: "No agency is linked to your account." };
   const { data: row, error } = await supabase
     .from("deals")
     .update({
@@ -150,11 +157,12 @@ export async function updateDeal(
       notes: nullableStr(formData, "notes"),
     })
     .eq("id", id)
+    .eq("agency_id", agencyId)
     .select("requirement_id")
     .maybeSingle();
   if (error) return { error: error.message };
 
-  await satisfyRequirementOnClose(supabase, row?.requirement_id ?? null, stage);
+  await satisfyRequirementOnClose(supabase, row?.requirement_id ?? null, stage, agencyId);
   revalidatePath("/deals");
   revalidatePath(`/deals/${id}`);
   if (stage === "completed") revalidatePath("/enquiries");
@@ -164,8 +172,13 @@ export async function updateDeal(
 export async function deleteDeal(formData: FormData): Promise<void> {
   const id = str(formData, "id");
   const supabase = await createClient();
-  if (id) {
-    await supabase.from("deals").delete().eq("id", id);
+  const agencyId = await currentAgencyId(supabase);
+  if (id && agencyId) {
+    await supabase
+      .from("deals")
+      .delete()
+      .eq("id", id)
+      .eq("agency_id", agencyId);
     revalidatePath("/deals");
   }
   redirect("/deals");

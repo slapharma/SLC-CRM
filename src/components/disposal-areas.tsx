@@ -89,6 +89,10 @@ export function DisposalAreas({
                       <button
                         type="submit"
                         aria-label={`Delete ${a.name}`}
+                        onClick={(e) => {
+                          if (!window.confirm(`Delete the “${a.name}” area row?`))
+                            e.preventDefault();
+                        }}
                         className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                       >
                         <Trash2 className="h-4 w-4" />

@@ -83,7 +83,11 @@ async function syncRequirementAgents(
   agencyId: string,
   extra: string[],
 ) {
-  await supabase.from("requirement_agents").delete().eq("requirement_id", requirementId);
+  await supabase
+    .from("requirement_agents")
+    .delete()
+    .eq("requirement_id", requirementId)
+    .eq("agency_id", agencyId);
   if (extra.length > 0) {
     await supabase.from("requirement_agents").insert(
       extra.map((user_id) => ({
@@ -138,7 +142,11 @@ export async function updateRequirement(
   const data = payload(formData);
   if (!data.title) return { error: "A requirement title is required." };
 
-  const { error } = await supabase.from("requirements").update(data).eq("id", id);
+  const { error } = await supabase
+    .from("requirements")
+    .update(data)
+    .eq("id", id)
+    .eq("agency_id", agencyId);
   if (error) return { error: error.message };
 
   await syncRequirementAgents(supabase, id, agencyId, agents(formData).extra);
@@ -150,9 +158,14 @@ export async function updateRequirement(
 
 export async function deleteRequirement(formData: FormData): Promise<void> {
   const supabase = await createClient();
+  const agencyId = await currentAgencyId(supabase);
   const id = String(formData.get("id") ?? "");
-  if (id) {
-    await supabase.from("requirements").delete().eq("id", id);
+  if (id && agencyId) {
+    await supabase
+      .from("requirements")
+      .delete()
+      .eq("id", id)
+      .eq("agency_id", agencyId);
     revalidatePath("/enquiries");
   }
   redirect("/enquiries");

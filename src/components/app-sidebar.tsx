@@ -7,6 +7,7 @@ import {
   Handshake,
   LayoutDashboard,
   Map as MapIcon,
+  ScrollText,
   ShieldCheck,
   Sparkles,
   Store,
@@ -35,6 +36,7 @@ export const NAV: NavGroup[] = [
       { href: "/contacts", label: "Contacts", icon: Users },
       { href: "/listings", label: "Listings", icon: Store },
       { href: "/enquiries", label: "Enquiries", icon: Target },
+      { href: "/kyc", label: "KYC", icon: ScrollText },
     ],
   },
   {

@@ -14,6 +14,72 @@ export type Database = {
   }
   public: {
     Tables: {
+      kyc_reports: {
+        Row: {
+          agency_id: string
+          company_id: string
+          company_number: string | null
+          created_at: string
+          created_by: string | null
+          error: string | null
+          flags: string[]
+          id: string
+          payload: Json | null
+          risk_rating: Database["public"]["Enums"]["kyc_risk"]
+          sources: string[]
+          status: Database["public"]["Enums"]["kyc_report_status"]
+          summary: Json | null
+          updated_at: string
+        }
+        Insert: {
+          agency_id: string
+          company_id: string
+          company_number?: string | null
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          flags?: string[]
+          id?: string
+          payload?: Json | null
+          risk_rating?: Database["public"]["Enums"]["kyc_risk"]
+          sources?: string[]
+          status?: Database["public"]["Enums"]["kyc_report_status"]
+          summary?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          agency_id?: string
+          company_id?: string
+          company_number?: string | null
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          flags?: string[]
+          id?: string
+          payload?: Json | null
+          risk_rating?: Database["public"]["Enums"]["kyc_risk"]
+          sources?: string[]
+          status?: Database["public"]["Enums"]["kyc_report_status"]
+          summary?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kyc_reports_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kyc_reports_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       activities: {
         Row: {
           agency_id: string
@@ -116,6 +182,7 @@ export type Database = {
           address_line: string | null
           agency_id: string
           city: string | null
+          company_number: string | null
           created_at: string
           created_by: string | null
           id: string
@@ -129,12 +196,14 @@ export type Database = {
           sector_tags: string[]
           type: Database["public"]["Enums"]["company_type"]
           updated_at: string
+          vat_number: string | null
           website: string | null
         }
         Insert: {
           address_line?: string | null
           agency_id: string
           city?: string | null
+          company_number?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -148,12 +217,14 @@ export type Database = {
           sector_tags?: string[]
           type?: Database["public"]["Enums"]["company_type"]
           updated_at?: string
+          vat_number?: string | null
           website?: string | null
         }
         Update: {
           address_line?: string | null
           agency_id?: string
           city?: string | null
+          company_number?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -167,6 +238,7 @@ export type Database = {
           sector_tags?: string[]
           type?: Database["public"]["Enums"]["company_type"]
           updated_at?: string
+          vat_number?: string | null
           website?: string | null
         }
         Relationships: [
@@ -1130,6 +1202,8 @@ export type Database = {
         | "completed"
         | "fell_through"
       entity_type: "company" | "contact" | "listing" | "requirement" | "deal"
+      kyc_report_status: "pending" | "complete" | "failed"
+      kyc_risk: "low" | "medium" | "high" | "unknown"
       licence_status: "held" | "late" | "none"
       match_status: "suggested" | "shortlisted" | "rejected" | "converted"
       member_role: "admin" | "agent" | "manager"

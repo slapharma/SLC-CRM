@@ -61,21 +61,31 @@ export async function addDealReminder(
 /** Toggle a reminder's done state. */
 export async function toggleDealReminder(formData: FormData): Promise<void> {
   const supabase = await createClient();
+  const agencyId = await currentAgencyId(supabase);
   const id = str(formData, "id");
   const dealId = str(formData, "deal_id");
   const done = str(formData, "done") === "true";
-  if (!id) return;
-  await supabase.from("deal_reminders").update({ done: !done }).eq("id", id);
+  if (!id || !agencyId) return;
+  await supabase
+    .from("deal_reminders")
+    .update({ done: !done })
+    .eq("id", id)
+    .eq("agency_id", agencyId);
   if (dealId) revalidatePath(`/deals/${dealId}`);
 }
 
 /** Delete a reminder. */
 export async function deleteDealReminder(formData: FormData): Promise<void> {
   const supabase = await createClient();
+  const agencyId = await currentAgencyId(supabase);
   const id = str(formData, "id");
   const dealId = str(formData, "deal_id");
-  if (!id) return;
-  await supabase.from("deal_reminders").delete().eq("id", id);
+  if (!id || !agencyId) return;
+  await supabase
+    .from("deal_reminders")
+    .delete()
+    .eq("id", id)
+    .eq("agency_id", agencyId);
   if (dealId) revalidatePath(`/deals/${dealId}`);
 }
 
