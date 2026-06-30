@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Building2, Menu, ShieldCheck, X } from "lucide-react";
@@ -16,6 +17,12 @@ import { cn } from "@/lib/utils";
 export function MobileNav({ isAdmin = false }: { isAdmin?: boolean }) {
   const pathname = usePathname();
   const [open, setOpen] = React.useState(false);
+  const [mounted, setMounted] = React.useState(false);
+  const triggerRef = React.useRef<HTMLButtonElement>(null);
+  const closeRef = React.useRef<HTMLButtonElement>(null);
+
+  // Portals need a DOM target, which only exists after mount (SSR-safe).
+  React.useEffect(() => setMounted(true), []);
 
   const groups: NavGroup[] = isAdmin
     ? [
@@ -27,7 +34,8 @@ export function MobileNav({ isAdmin = false }: { isAdmin?: boolean }) {
       ]
     : NAV;
 
-  // Lock body scroll + Esc-to-close while the drawer is open.
+  // Lock body scroll + Esc-to-close while the drawer is open; move focus into
+  // the drawer on open and restore it to the trigger on close.
   React.useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -36,30 +44,31 @@ export function MobileNav({ isAdmin = false }: { isAdmin?: boolean }) {
     document.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    closeRef.current?.focus();
     return () => {
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = prev;
+      triggerRef.current?.focus();
     };
   }, [open]);
 
-  return (
-    <div className="md:hidden">
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        aria-label="Open navigation menu"
-        aria-expanded={open}
-        className="flex h-9 w-9 items-center justify-center rounded-md border border-input text-foreground hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        <Menu className="h-5 w-5" />
-      </button>
-
-      {open ? (
-        <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="Navigation">
+  // The drawer is portaled to <body> so its `fixed inset-0` is sized against the
+  // viewport. Rendering it inside the sticky TopBar — which has `backdrop-blur`,
+  // a containing block for fixed descendants — collapsed it to the header's
+  // 56px height, hiding all nav links on mobile.
+  const drawer =
+    open && mounted
+      ? createPortal(
           <div
-            className="absolute inset-0 bg-foreground/30 backdrop-blur-sm"
-            onClick={() => setOpen(false)}
-          />
+            className="fixed inset-0 z-50 md:hidden"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Navigation"
+          >
+            <div
+              className="absolute inset-0 bg-foreground/30 backdrop-blur-sm"
+              onClick={() => setOpen(false)}
+            />
           <aside className="absolute inset-y-0 left-0 flex w-64 flex-col border-r bg-sidebar text-sidebar-foreground shadow-lg">
             <div className="flex h-14 items-center justify-between gap-2 border-b px-4">
               <div className="flex items-center gap-2">
@@ -71,6 +80,7 @@ export function MobileNav({ isAdmin = false }: { isAdmin?: boolean }) {
                 </span>
               </div>
               <button
+                ref={closeRef}
                 type="button"
                 onClick={() => setOpen(false)}
                 aria-label="Close navigation menu"
@@ -116,8 +126,24 @@ export function MobileNav({ isAdmin = false }: { isAdmin?: boolean }) {
               ))}
             </nav>
           </aside>
-        </div>
-      ) : null}
+        </div>,
+          document.body,
+        )
+      : null;
+
+  return (
+    <div className="md:hidden">
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-label="Open navigation menu"
+        aria-expanded={open}
+        className="flex h-9 w-9 items-center justify-center rounded-md border border-input text-foreground hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <Menu className="h-5 w-5" />
+      </button>
+      {drawer}
     </div>
   );
 }
