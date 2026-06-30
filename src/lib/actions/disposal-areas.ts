@@ -52,9 +52,14 @@ export async function addDisposalArea(
 /** Delete a row from the available-area schedule. */
 export async function deleteDisposalArea(formData: FormData): Promise<void> {
   const supabase = await createClient();
+  const agencyId = await currentAgencyId(supabase);
   const id = str(formData, "id");
   const disposalId = str(formData, "disposal_id");
-  if (!id) return;
-  await supabase.from("disposal_areas").delete().eq("id", id);
+  if (!id || !agencyId) return;
+  await supabase
+    .from("disposal_areas")
+    .delete()
+    .eq("id", id)
+    .eq("agency_id", agencyId);
   if (disposalId) revalidatePath(`/listings/${disposalId}`);
 }

@@ -73,7 +73,11 @@ async function syncDisposalAgents(
   const extra = Array.from(
     new Set(fd.getAll("additional_agents").map((v) => String(v)).filter(Boolean)),
   ).filter((u) => u !== lead);
-  await supabase.from("disposal_agents").delete().eq("disposal_id", disposalId);
+  await supabase
+    .from("disposal_agents")
+    .delete()
+    .eq("disposal_id", disposalId)
+    .eq("agency_id", agencyId);
   if (extra.length > 0) {
     await supabase.from("disposal_agents").insert(
       extra.map((user_id) => ({ agency_id: agencyId, disposal_id: disposalId, user_id })),
@@ -148,7 +152,8 @@ export async function updateDisposal(
   const { error } = await supabase
     .from("disposals")
     .update({ ...fields, ...(geo ?? {}) })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("agency_id", agencyId);
   if (error) return { error: error.message };
 
   await syncDisposalAgents(supabase, agencyId, id, fields.lead_agent_id ?? null, formData);
@@ -158,12 +163,17 @@ export async function updateDisposal(
   redirect(`/listings/${id}`);
 }
 
-/** Delete a disposal (RLS ensures it's the caller's agency). */
+/** Delete a disposal (agency-scoped, with RLS as a second layer). */
 export async function deleteDisposal(formData: FormData): Promise<void> {
   const supabase = await createClient();
+  const agencyId = await currentAgencyId(supabase);
   const id = String(formData.get("id") ?? "");
-  if (id) {
-    await supabase.from("disposals").delete().eq("id", id);
+  if (id && agencyId) {
+    await supabase
+      .from("disposals")
+      .delete()
+      .eq("id", id)
+      .eq("agency_id", agencyId);
     revalidatePath("/listings");
   }
   redirect("/listings");
@@ -194,10 +204,15 @@ export async function updateDisposalAssignment(
   const { error } = await supabase
     .from("disposals")
     .update({ lead_agent_id: lead })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("agency_id", agencyId);
   if (error) return { error: error.message };
 
-  await supabase.from("disposal_agents").delete().eq("disposal_id", id);
+  await supabase
+    .from("disposal_agents")
+    .delete()
+    .eq("disposal_id", id)
+    .eq("agency_id", agencyId);
   if (extra.length > 0) {
     await supabase.from("disposal_agents").insert(
       extra.map((user_id) => ({ agency_id: agencyId, disposal_id: id, user_id })),

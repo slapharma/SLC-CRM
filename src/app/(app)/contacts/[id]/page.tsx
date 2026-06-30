@@ -4,10 +4,11 @@ import { notFound } from "next/navigation";
 import { Pencil } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { contactRoleBadge } from "@/lib/badges";
 import { deleteContact } from "@/lib/actions/contacts";
+import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { LocationMap } from "@/components/location-map";
 import { getAgencyMembers } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
@@ -75,14 +76,14 @@ export default async function ContactDetailPage({
           </Link>
           <form action={deleteContact}>
             <input type="hidden" name="id" value={contact.id} />
-            <Button
-              type="submit"
+            <ConfirmSubmitButton
+              confirmMessage="Delete this contact? Their activity log and agent links will be removed and this can't be undone."
               variant="ghost"
               size="sm"
               className="text-destructive hover:bg-destructive/10"
             >
               Delete
-            </Button>
+            </ConfirmSubmitButton>
           </form>
         </div>
       </div>

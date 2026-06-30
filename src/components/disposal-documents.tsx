@@ -120,6 +120,14 @@ export function DisposalDocuments({
                   <button
                     type="submit"
                     aria-label={`Delete ${doc.name}`}
+                    onClick={(e) => {
+                      if (
+                        !window.confirm(
+                          `Delete “${doc.name}”? The file is permanently removed.`,
+                        )
+                      )
+                        e.preventDefault();
+                    }}
                     className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                   >
                     <Trash2 className="h-4 w-4" />

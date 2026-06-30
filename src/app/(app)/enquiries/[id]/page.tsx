@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { Pencil } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   isListingMatchable,
@@ -14,6 +14,7 @@ import {
   propertyUseBadge,
 } from "@/lib/badges";
 import { deleteRequirement } from "@/lib/actions/requirements";
+import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { scoreMatch } from "@/lib/matching/score";
 import { CreateDealButton } from "@/components/create-deal-button";
 import { MatchReasons } from "@/components/match-reasons";
@@ -114,14 +115,14 @@ export default async function RequirementDetailPage({
           </Link>
           <form action={deleteRequirement}>
             <input type="hidden" name="id" value={r.id} />
-            <Button
-              type="submit"
+            <ConfirmSubmitButton
+              confirmMessage="Delete this enquiry? Its matches and agent links will be removed and this can't be undone."
               variant="ghost"
               size="sm"
               className="text-destructive hover:bg-destructive/10"
             >
               Delete
-            </Button>
+            </ConfirmSubmitButton>
           </form>
         </div>
       </div>

@@ -53,7 +53,11 @@ async function syncContactAgents(
   agencyId: string,
   extra: string[],
 ) {
-  await supabase.from("contact_agents").delete().eq("contact_id", contactId);
+  await supabase
+    .from("contact_agents")
+    .delete()
+    .eq("contact_id", contactId)
+    .eq("agency_id", agencyId);
   if (extra.length > 0) {
     await supabase.from("contact_agents").insert(
       extra.map((user_id) => ({
@@ -118,7 +122,8 @@ export async function updateContact(
   const { error } = await supabase
     .from("contacts")
     .update({ ...data, ...(geo ?? {}) })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("agency_id", agencyId);
   if (error) return { error: error.message };
 
   await syncContactAgents(supabase, id, agencyId, agents(formData).extra);
@@ -172,9 +177,17 @@ export async function quickCreateContact(
 
 export async function deleteContact(formData: FormData): Promise<void> {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const agencyId = user ? await currentAgencyId(supabase) : null;
   const id = String(formData.get("id") ?? "");
-  if (id) {
-    await supabase.from("contacts").delete().eq("id", id);
+  if (id && agencyId) {
+    await supabase
+      .from("contacts")
+      .delete()
+      .eq("id", id)
+      .eq("agency_id", agencyId);
     revalidatePath("/contacts");
   }
   redirect("/contacts");

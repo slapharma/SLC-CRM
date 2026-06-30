@@ -17,12 +17,8 @@ import { cn } from "@/lib/utils";
 export function MobileNav({ isAdmin = false }: { isAdmin?: boolean }) {
   const pathname = usePathname();
   const [open, setOpen] = React.useState(false);
-  const [mounted, setMounted] = React.useState(false);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
   const closeRef = React.useRef<HTMLButtonElement>(null);
-
-  // Portals need a DOM target, which only exists after mount (SSR-safe).
-  React.useEffect(() => setMounted(true), []);
 
   const groups: NavGroup[] = isAdmin
     ? [
@@ -45,20 +41,21 @@ export function MobileNav({ isAdmin = false }: { isAdmin?: boolean }) {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     closeRef.current?.focus();
+    const trigger = triggerRef.current;
     return () => {
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = prev;
-      triggerRef.current?.focus();
+      trigger?.focus();
     };
   }, [open]);
 
   // The drawer is portaled to <body> so its `fixed inset-0` is sized against the
   // viewport. Rendering it inside the sticky TopBar — which has `backdrop-blur`,
   // a containing block for fixed descendants — collapsed it to the header's
-  // 56px height, hiding all nav links on mobile.
-  const drawer =
-    open && mounted
-      ? createPortal(
+  // 56px height, hiding all nav links on mobile. `open` is only ever set by a
+  // client click, so createPortal never runs during SSR.
+  const drawer = open
+    ? createPortal(
           <div
             className="fixed inset-0 z-50 md:hidden"
             role="dialog"

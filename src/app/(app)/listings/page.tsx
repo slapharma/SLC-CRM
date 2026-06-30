@@ -5,6 +5,7 @@ import { Pencil, Plus, Store } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { FilterBar, FilterSelect } from "@/components/filter-bar";
 import { Heatmap } from "@/components/heatmap";
+import { ImportDisposalForm } from "@/components/import-disposal-form";
 import { PageHeader } from "@/components/page-header";
 import { SortHeader } from "@/components/sort-header";
 import { Badge } from "@/components/ui/badge";
@@ -115,6 +116,15 @@ export default async function ListingsPage({
           </Link>
         }
       />
+
+      <Card className="mb-4">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm">Import from CDG Leisure</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ImportDisposalForm />
+        </CardContent>
+      </Card>
 
       <FilterBar
         q={q}
