@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { Pencil, Plus } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -14,9 +14,11 @@ import {
 import {
   companyTypeBadge,
   contactRoleBadge,
+  kycRiskBadge,
   requirementStatusBadge,
 } from "@/lib/badges";
 import { deleteCompany } from "@/lib/actions/companies";
+import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { ActivityTimeline } from "@/components/activity-timeline";
 import { LocationMap } from "@/components/location-map";
 import { LogActivityForm } from "@/components/log-activity-form";
@@ -73,6 +75,14 @@ export default async function CompanyDetailPage({
     name: nameOf.get(r.user_id) ?? "Unknown agent",
   }));
 
+  const { data: kycReport } = await supabase
+    .from("kyc_reports")
+    .select("id, risk_rating, flags, created_at")
+    .eq("company_id", id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
   const t = companyTypeBadge(company.type);
 
   return (
@@ -99,14 +109,14 @@ export default async function CompanyDetailPage({
           </Link>
           <form action={deleteCompany}>
             <input type="hidden" name="id" value={company.id} />
-            <Button
-              type="submit"
+            <ConfirmSubmitButton
+              confirmMessage={`Delete “${company.name}”? This also removes its contacts' link, activity and deals, and can't be undone.`}
               variant="ghost"
               size="sm"
               className="text-destructive hover:bg-destructive/10"
             >
               Delete
-            </Button>
+            </ConfirmSubmitButton>
           </form>
         </div>
       </div>
@@ -200,6 +210,50 @@ export default async function CompanyDetailPage({
           </CardContent>
         </Card>
       </div>
+
+      <Card className="mt-4">
+        <CardHeader className="flex-row items-center justify-between space-y-0">
+          <CardTitle>KYC</CardTitle>
+          <Link
+            href={`/kyc?company=${company.id}`}
+            className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}
+          >
+            {kycReport ? "View / refresh" : "Run KYC report"}
+          </Link>
+        </CardHeader>
+        <CardContent className="text-sm">
+          {kycReport ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Badge tone={kycRiskBadge(kycReport.risk_rating).tone}>
+                  {kycRiskBadge(kycReport.risk_rating).label}
+                </Badge>
+                <span className="text-muted-foreground">
+                  Last run{" "}
+                  {new Date(kycReport.created_at).toLocaleDateString("en-GB", {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                  })}
+                </span>
+              </div>
+              {(kycReport.flags ?? []).length > 0 ? (
+                <ul className="space-y-1 text-muted-foreground">
+                  {kycReport.flags.slice(0, 4).map((f, i) => (
+                    <li key={i}>• {f}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-muted-foreground">No risk flags raised.</p>
+              )}
+            </div>
+          ) : (
+            <p className="text-muted-foreground">
+              No KYC report yet. Run one to verify status, ownership and sanctions.
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       {company.lat != null && company.lng != null ? (
         <Card className="mt-4">

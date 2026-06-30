@@ -108,6 +108,29 @@ export function CompanyForm({
         </Field>
       </div>
 
+      <div className="grid gap-5 sm:grid-cols-2">
+        <Field
+          label="Companies House number (CRN)"
+          htmlFor="company_number"
+          hint="Used for KYC checks against Companies House"
+        >
+          <Input
+            id="company_number"
+            name="company_number"
+            placeholder="e.g. 01234567"
+            defaultValue={company?.company_number ?? ""}
+          />
+        </Field>
+        <Field label="VAT number" htmlFor="vat_number">
+          <Input
+            id="vat_number"
+            name="vat_number"
+            placeholder="e.g. GB123456789"
+            defaultValue={company?.vat_number ?? ""}
+          />
+        </Field>
+      </div>
+
       <Field label="Notes" htmlFor="notes">
         <Textarea id="notes" name="notes" defaultValue={company?.notes ?? ""} />
       </Field>
