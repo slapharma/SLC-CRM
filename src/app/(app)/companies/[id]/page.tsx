@@ -26,6 +26,7 @@ import { LocationMap } from "@/components/location-map";
 import { LogActivityForm } from "@/components/log-activity-form";
 import { SendToTeam } from "@/components/send-to-team";
 import { DeepDiveView } from "@/components/deep-dive-view";
+import { getContactRoles, roleLabel } from "@/lib/contact-roles";
 import { getAgencyMembers } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
@@ -53,6 +54,7 @@ export default async function CompanyDetailPage({
     .select("id, first_name, last_name, role, email")
     .eq("company_id", id)
     .order("first_name");
+  const contactRoles = await getContactRoles();
 
   const { data: requirements } = await supabase
     .from("requirements")
@@ -213,7 +215,7 @@ export default async function CompanyDetailPage({
             ) : (
               <ul className="space-y-2.5">
                 {contacts!.map((ct) => {
-                  const r = contactRoleBadge(ct.role);
+                  const r = contactRoleBadge(ct.role, roleLabel(contactRoles, ct.role));
                   return (
                     <li
                       key={ct.id}

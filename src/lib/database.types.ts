@@ -289,6 +289,33 @@ export type Database = {
           },
         ]
       }
+      contact_roles: {
+        Row: {
+          created_at: string
+          id: string
+          is_system: boolean
+          label: string
+          slug: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_system?: boolean
+          label: string
+          slug: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_system?: boolean
+          label?: string
+          slug?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
       contacts: {
         Row: {
           address_line: string | null
@@ -308,7 +335,7 @@ export type Database = {
           notes: string | null
           phone: string | null
           postcode: string | null
-          role: Database["public"]["Enums"]["contact_role"]
+          role: string
           updated_at: string
         }
         Insert: {
@@ -329,7 +356,7 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           postcode?: string | null
-          role?: Database["public"]["Enums"]["contact_role"]
+          role?: string
           updated_at?: string
         }
         Update: {
@@ -350,7 +377,7 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           postcode?: string | null
-          role?: Database["public"]["Enums"]["contact_role"]
+          role?: string
           updated_at?: string
         }
         Relationships: [
@@ -1369,6 +1396,7 @@ export type Database = {
         Returns: undefined
       }
       auth_agency_ids: { Args: never; Returns: string[] }
+      contact_role_in_use: { Args: { p_slug: string }; Returns: number }
       current_agency_openrouter: {
         Args: never
         Returns: {
@@ -1377,6 +1405,7 @@ export type Database = {
         }[]
       }
       is_agency_admin: { Args: { p_agency_id: string }; Returns: boolean }
+      is_any_agency_admin: { Args: never; Returns: boolean }
       seed_agency: {
         Args: { p_agency_id: string; p_user_id: string }
         Returns: undefined
@@ -1385,13 +1414,6 @@ export type Database = {
     Enums: {
       activity_type: "call" | "email" | "viewing" | "note" | "meeting" | "task"
       company_type: "operator" | "landlord" | "agent" | "vendor" | "other"
-      contact_role:
-        | "acquisitions"
-        | "landlord"
-        | "solicitor"
-        | "agent"
-        | "finance"
-        | "other"
       deal_stage:
         | "lead"
         | "viewing"
@@ -1547,14 +1569,6 @@ export const Constants = {
     Enums: {
       activity_type: ["call", "email", "viewing", "note", "meeting", "task"],
       company_type: ["operator", "landlord", "agent", "vendor", "other"],
-      contact_role: [
-        "acquisitions",
-        "landlord",
-        "solicitor",
-        "agent",
-        "finance",
-        "other",
-      ],
       deal_stage: [
         "lead",
         "viewing",

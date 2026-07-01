@@ -32,21 +32,29 @@ export function companyTypeBadge(type: string): BadgeSpec {
   }
 }
 
-export function contactRoleBadge(role: string): BadgeSpec {
-  switch (role) {
-    case "acquisitions":
-      return { tone: "teal", label: "Acquisitions" };
-    case "landlord":
-      return { tone: "sky", label: "Landlord" };
-    case "solicitor":
-      return { tone: "violet", label: "Solicitor" };
-    case "agent":
-      return { tone: "indigo", label: "Agent" };
-    case "finance":
-      return { tone: "amber", label: "Finance" };
-    default:
-      return { tone: "slate", label: "Other" };
-  }
+// Contact roles are now editable data (Admin → "Edit roles"), so the label comes
+// from the DB — pass it in. Tone is keyed off the historical slugs; custom roles
+// fall back to slate. The label fallbacks only apply when a slug outlives its row.
+const CONTACT_ROLE_TONES: Record<string, BadgeTone> = {
+  acquisitions: "teal",
+  landlord: "sky",
+  solicitor: "violet",
+  agent: "indigo",
+  finance: "amber",
+};
+const CONTACT_ROLE_FALLBACK_LABELS: Record<string, string> = {
+  acquisitions: "Acquisitions",
+  landlord: "Landlord",
+  solicitor: "Solicitor",
+  agent: "Agent",
+  finance: "Finance",
+  other: "Other",
+};
+export function contactRoleBadge(slug: string, label?: string): BadgeSpec {
+  return {
+    tone: CONTACT_ROLE_TONES[slug] ?? "slate",
+    label: label ?? CONTACT_ROLE_FALLBACK_LABELS[slug] ?? slug,
+  };
 }
 
 export function matchScoreBadge(score: number): BadgeSpec {

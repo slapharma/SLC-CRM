@@ -16,15 +16,6 @@ import type { Tables } from "@/lib/database.types";
 import type { AgentOption } from "@/lib/supabase/agency";
 import { cn } from "@/lib/utils";
 
-const ROLES = [
-  ["acquisitions", "Acquisitions"],
-  ["landlord", "Landlord"],
-  ["solicitor", "Solicitor"],
-  ["agent", "Agent"],
-  ["finance", "Finance"],
-  ["other", "Other"],
-] as const;
-
 export function ContactForm({
   action,
   contact,
@@ -32,6 +23,7 @@ export function ContactForm({
   defaultCompanyId,
   agents,
   additionalAgentIds,
+  roles,
 }: {
   action: (state: FormState, formData: FormData) => Promise<FormState>;
   contact?: Tables<"contacts">;
@@ -39,6 +31,7 @@ export function ContactForm({
   defaultCompanyId?: string;
   agents: AgentOption[];
   additionalAgentIds?: string[];
+  roles: { slug: string; label: string }[];
 }) {
   const [state, formAction, pending] = useActionState<FormState, FormData>(
     action,
@@ -67,9 +60,9 @@ export function ContactForm({
       <div className="grid gap-5 sm:grid-cols-2">
         <Field label="Role" htmlFor="role">
           <Select id="role" name="role" defaultValue={c?.role ?? "other"}>
-            {ROLES.map(([v, l]) => (
-              <option key={v} value={v}>
-                {l}
+            {roles.map((r) => (
+              <option key={r.slug} value={r.slug}>
+                {r.label}
               </option>
             ))}
           </Select>

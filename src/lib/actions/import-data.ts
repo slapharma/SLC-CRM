@@ -52,6 +52,11 @@ export async function importEntityCsv(
   const header = rows[0].map((h) => h.trim().toLowerCase());
   const colIdx = (name: string) => header.indexOf(name);
 
+  // Contact roles are editable data now — validate imported roles against the
+  // live slug list (fallback "other") rather than a fixed enum.
+  const { data: roleRows } = await supabase.from("contact_roles").select("slug");
+  const roleSlugs = (roleRows ?? []).map((r) => r.slug);
+
   const base = { agency_id: agencyId, created_by: user.id };
   const records: Record<string, unknown>[] = [];
   const errors: string[] = [];
@@ -81,7 +86,7 @@ export async function importEntityCsv(
           last_name: get("last_name") || null,
           email: get("email") || null,
           phone: get("phone") || null,
-          role: oneOf(get("role"), Constants.public.Enums.contact_role, "other"),
+          role: oneOf(get("role"), roleSlugs, "other"),
           marketing_opt_in: boolOf(get("marketing_opt_in")),
           notes: get("notes") || null,
         });

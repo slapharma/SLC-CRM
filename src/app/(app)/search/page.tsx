@@ -12,6 +12,7 @@ import {
   requirementStatusBadge,
   type BadgeSpec,
 } from "@/lib/badges";
+import { getContactRoles, roleLabel } from "@/lib/contact-roles";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Search" };
@@ -79,6 +80,8 @@ export default async function SearchPage({
     );
   }
 
+  const contactRoles = await getContactRoles();
+
   const total =
     (companies.data?.length ?? 0) +
     contactRows.length +
@@ -105,7 +108,7 @@ export default async function SearchPage({
             items={contactRows.map((c) => ({
               href: `/contacts/${c.id}`,
               label: [c.first_name, c.last_name].filter(Boolean).join(" "),
-              badge: contactRoleBadge(c.role),
+              badge: contactRoleBadge(c.role, roleLabel(contactRoles, c.role)),
             }))}
           />
           <Group

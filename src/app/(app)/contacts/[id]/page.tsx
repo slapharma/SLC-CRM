@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { contactRoleBadge } from "@/lib/badges";
+import { getContactRoles, roleLabel } from "@/lib/contact-roles";
 import { deleteContact } from "@/lib/actions/contacts";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { LocationMap } from "@/components/location-map";
@@ -57,7 +58,8 @@ export default async function ContactDetailPage({
     name: nameOf.get(row.user_id) ?? "Unknown agent",
   }));
 
-  const r = contactRoleBadge(contact.role);
+  const roles = await getContactRoles();
+  const r = contactRoleBadge(contact.role, roleLabel(roles, contact.role));
   const name = [contact.first_name, contact.last_name].filter(Boolean).join(" ");
   const address = [contact.address_line, contact.city, contact.postcode]
     .filter(Boolean)

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useActionState, useMemo, useState } from "react";
-import { ChevronDown, Plug } from "lucide-react";
+import { ChevronDown, Plug, Plus, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,11 @@ import {
   updateAgent,
   updateAgentRole,
 } from "@/lib/actions/admin";
+import {
+  createContactRole,
+  deleteContactRole,
+  renameContactRole,
+} from "@/lib/actions/contact-roles";
 import { createClient } from "@/lib/supabase/client";
 import type { FormState } from "@/lib/actions/types";
 import { cn } from "@/lib/utils";
@@ -39,6 +44,14 @@ export type Member = {
   role: "admin" | "agent" | "manager";
 };
 
+export type ContactRoleItem = {
+  id: string;
+  slug: string;
+  label: string;
+  sort_order: number;
+  is_system: boolean;
+};
+
 const displayName = (m: Member) => m.fullName ?? m.email ?? "Unknown agent";
 
 export function AdminPanel({
@@ -46,11 +59,13 @@ export function AdminPanel({
   currentUserId,
   hasOpenRouterKey,
   openRouterModel,
+  contactRoles,
 }: {
   members: Member[];
   currentUserId: string;
   hasOpenRouterKey: boolean;
   openRouterModel: string;
+  contactRoles: ContactRoleItem[];
 }) {
   return (
     <div className="space-y-4">
@@ -70,6 +85,8 @@ export function AdminPanel({
           ))}
         </CardContent>
       </Card>
+
+      <EditRolesCard roles={contactRoles} />
 
       <AgencySettingsCard hasKey={hasOpenRouterKey} model={openRouterModel} />
     </div>
@@ -430,6 +447,112 @@ function MemberRow({ member, isSelf }: { member: Member; isSelf: boolean }) {
         </div>
       ) : null}
     </div>
+  );
+}
+
+function EditRolesCard({ roles }: { roles: ContactRoleItem[] }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Edit roles</CardTitle>
+        <CardDescription>
+          Rename the roles you can assign to contacts, or add new ones. Shared
+          across the whole team.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="divide-y">
+          {roles.map((r) => (
+            <RoleRow key={r.id} role={r} />
+          ))}
+        </div>
+        <AddRoleForm />
+      </CardContent>
+    </Card>
+  );
+}
+
+function RoleRow({ role }: { role: ContactRoleItem }) {
+  const [renameState, renameAction, renamePending] = useActionState<
+    FormState,
+    FormData
+  >(renameContactRole, {});
+  const [deleteState, deleteAction, deletePending] = useActionState<
+    FormState,
+    FormData
+  >(deleteContactRole, {});
+
+  return (
+    <div className="space-y-2 py-2 first:pt-0 last:pb-0">
+      <div className="flex items-center gap-2">
+        <form action={renameAction} className="flex flex-1 items-center gap-2">
+          <input type="hidden" name="id" value={role.id} />
+          <Input
+            name="label"
+            defaultValue={role.label}
+            aria-label={`Rename ${role.label}`}
+            className="h-8"
+          />
+          <Button
+            type="submit"
+            variant="secondary"
+            size="sm"
+            disabled={renamePending}
+          >
+            {renamePending ? "Saving…" : "Save"}
+          </Button>
+        </form>
+        {role.is_system ? (
+          <span className="px-1 text-xs text-muted-foreground">Default</span>
+        ) : (
+          <form action={deleteAction}>
+            <input type="hidden" name="id" value={role.id} />
+            <Button
+              type="submit"
+              variant="ghost"
+              size="sm"
+              className="text-destructive hover:bg-destructive/10"
+              disabled={deletePending}
+              title={`Delete ${role.label}`}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </form>
+        )}
+      </div>
+      <Notice state={renameState} />
+      <Notice state={deleteState} />
+    </div>
+  );
+}
+
+function AddRoleForm() {
+  const [state, action, pending] = useActionState<FormState, FormData>(
+    createContactRole,
+    {},
+  );
+
+  return (
+    <form action={action} className="space-y-2 rounded-md border bg-muted/30 p-3">
+      <div className="flex items-end gap-2">
+        <div className="flex-1 space-y-1">
+          <Label htmlFor="new-role-label" className="text-xs text-muted-foreground">
+            Add a role
+          </Label>
+          <Input
+            id="new-role-label"
+            name="label"
+            placeholder="e.g. Investor"
+            className="h-8"
+          />
+        </div>
+        <Button type="submit" size="sm" disabled={pending}>
+          <Plus className="h-4 w-4" />
+          {pending ? "Adding…" : "Add"}
+        </Button>
+      </div>
+      <Notice state={state} />
+    </form>
   );
 }
 

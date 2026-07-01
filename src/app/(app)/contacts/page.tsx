@@ -18,6 +18,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { contactRoleBadge } from "@/lib/badges";
+import { getContactRoles, roleLabel } from "@/lib/contact-roles";
 import { filterHref, resolveSort } from "@/lib/sort";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
@@ -52,15 +53,9 @@ export default async function ContactsPage({
 
   const params = { q, sort, dir, role };
 
-  const ROLE_TILES = [
-    { value: "acquisitions", label: "Acquisitions" },
-    { value: "landlord", label: "Landlord" },
-    { value: "solicitor", label: "Solicitor" },
-    { value: "agent", label: "Agent" },
-    { value: "finance", label: "Finance" },
-    { value: "other", label: "Other" },
-  ];
-  const roleTiles = ROLE_TILES.map((r) => ({
+  const roles = await getContactRoles();
+  const roleOptions = roles.map((r) => ({ value: r.slug, label: r.label }));
+  const roleTiles = roleOptions.map((r) => ({
     ...r,
     count: rows.filter((c) => c.role === r.value).length,
   }));
@@ -98,19 +93,7 @@ export default async function ContactsPage({
         basePath="/contacts"
         hasActiveFilters={Boolean(role)}
       >
-        <FilterSelect
-          name="role"
-          label="Role"
-          value={role}
-          options={[
-            { value: "acquisitions", label: "Acquisitions" },
-            { value: "landlord", label: "Landlord" },
-            { value: "solicitor", label: "Solicitor" },
-            { value: "agent", label: "Agent" },
-            { value: "finance", label: "Finance" },
-            { value: "other", label: "Other" },
-          ]}
-        />
+        <FilterSelect name="role" label="Role" value={role} options={roleOptions} />
       </FilterBar>
 
       {rows.length > 0 ? (
@@ -151,7 +134,7 @@ export default async function ContactsPage({
           </TableHeader>
           <TableBody>
             {listRows.map((c) => {
-              const r = contactRoleBadge(c.role);
+              const r = contactRoleBadge(c.role, roleLabel(roles, c.role));
               return (
                 <TableRow key={c.id}>
                   <TableCell>

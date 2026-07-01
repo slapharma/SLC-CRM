@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
 import { AdminPanel, type Member } from "@/components/admin-panel";
-import { ContactRolesPanel, type ContactRow } from "@/components/contact-roles-panel";
 import { DataImport } from "@/components/data-import";
+import { getContactRoles } from "@/lib/contact-roles";
 import { PageHeader } from "@/components/page-header";
 import {
   Card,
@@ -63,23 +63,7 @@ export default async function AdminPage() {
   const hasOpenRouterKey = Boolean(settings?.openrouter_api_key);
   const openRouterModel = settings?.openrouter_model ?? "perplexity/sonar";
 
-  // #2: contacts for the admin role editor (with their company name).
-  const { data: contactRows } = await supabase
-    .from("contacts")
-    .select("id, first_name, last_name, email, role, companies(name)")
-    .eq("agency_id", agencyId)
-    .order("first_name");
-  const contacts: ContactRow[] = (contactRows ?? []).map((c) => {
-    const co = c.companies as { name: string } | { name: string }[] | null;
-    const company = co == null ? null : Array.isArray(co) ? (co[0]?.name ?? null) : co.name;
-    return {
-      id: c.id,
-      name: [c.first_name, c.last_name].filter(Boolean).join(" ") || "Unnamed contact",
-      email: c.email,
-      company,
-      role: c.role,
-    };
-  });
+  const contactRoles = await getContactRoles();
 
   const members: Member[] = (memberRows ?? [])
     .map((m) => {
@@ -116,9 +100,8 @@ export default async function AdminPage() {
         currentUserId={user.id}
         hasOpenRouterKey={hasOpenRouterKey}
         openRouterModel={openRouterModel}
+        contactRoles={contactRoles}
       />
-
-      <ContactRolesPanel contacts={contacts} />
 
       <Card className="mt-4">
         <CardHeader>
