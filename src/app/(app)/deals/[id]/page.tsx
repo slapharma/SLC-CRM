@@ -10,9 +10,11 @@ import { DealReminders } from "@/components/deal-reminders";
 import { DealShareActions } from "@/components/deal-share-actions";
 import { ActivityTimeline } from "@/components/activity-timeline";
 import { LogActivityForm } from "@/components/log-activity-form";
+import { SendToTeam } from "@/components/send-to-team";
 import { dealStageBadge } from "@/lib/badges";
 import { deleteDeal } from "@/lib/actions/deals";
 import { isPast } from "@/lib/time";
+import { getAgencyMembers } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function DealDetailPage({
@@ -29,6 +31,11 @@ export default async function DealDetailPage({
     .eq("id", id)
     .maybeSingle();
   if (!deal) notFound();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const members = await getAgencyMembers(supabase, deal.agency_id);
 
   const [{ data: listing }, { data: requirement }, { data: company }] =
     await Promise.all([
@@ -116,6 +123,12 @@ export default async function DealDetailPage({
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          <SendToTeam
+            link={`/deals/${deal.id}`}
+            subject={deal.title}
+            agents={members}
+            meId={user?.id}
+          />
           <DealShareActions
             dealId={deal.id}
             title={deal.title}

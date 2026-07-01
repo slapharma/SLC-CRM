@@ -8,6 +8,7 @@ import { buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -22,6 +23,8 @@ import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { ActivityTimeline } from "@/components/activity-timeline";
 import { LocationMap } from "@/components/location-map";
 import { LogActivityForm } from "@/components/log-activity-form";
+import { SendToTeam } from "@/components/send-to-team";
+import { DeepDiveView } from "@/components/deep-dive-view";
 import { getAgencyMembers } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
@@ -33,6 +36,9 @@ export default async function CompanyDetailPage({
 }) {
   const { id } = await params;
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   const { data: company } = await supabase
     .from("companies")
@@ -83,6 +89,15 @@ export default async function CompanyDetailPage({
     .limit(1)
     .maybeSingle();
 
+  const { data: deepDive } = await supabase
+    .from("deep_dive_reports")
+    .select("markdown, created_at, model")
+    .eq("company_id", id)
+    .eq("status", "complete")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
   const t = companyTypeBadge(company.type);
 
   return (
@@ -99,7 +114,13 @@ export default async function CompanyDetailPage({
             </p>
           ) : null}
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          <SendToTeam
+            link={`/companies/${company.id}`}
+            subject={company.name}
+            agents={members}
+            meId={user?.id}
+          />
           <Link
             href={`/companies/${company.id}/edit`}
             className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}
@@ -265,6 +286,18 @@ export default async function CompanyDetailPage({
           </CardContent>
         </Card>
       ) : null}
+
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle>Deep Dive</CardTitle>
+          <CardDescription>
+            AI company research — long-term client value and how to close.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <DeepDiveView companyId={company.id} report={deepDive} />
+        </CardContent>
+      </Card>
 
       <Card className="mt-4">
         <CardHeader className="flex-row items-center justify-between space-y-0">

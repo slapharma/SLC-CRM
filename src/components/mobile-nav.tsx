@@ -4,9 +4,10 @@ import * as React from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Building2, Menu, ShieldCheck, X } from "lucide-react";
+import { Building2, Menu, X } from "lucide-react";
 
-import { NAV, type NavGroup } from "@/components/app-sidebar";
+import { NAV, visibleItems } from "@/components/app-sidebar";
+import { signOut } from "@/lib/actions/auth";
 import { cn } from "@/lib/utils";
 
 /**
@@ -19,16 +20,6 @@ export function MobileNav({ isAdmin = false }: { isAdmin?: boolean }) {
   const [open, setOpen] = React.useState(false);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
   const closeRef = React.useRef<HTMLButtonElement>(null);
-
-  const groups: NavGroup[] = isAdmin
-    ? [
-        ...NAV,
-        {
-          label: "Settings",
-          items: [{ href: "/admin", label: "Admin", icon: ShieldCheck }],
-        },
-      ]
-    : NAV;
 
   // Lock body scroll + Esc-to-close while the drawer is open; move focus into
   // the drawer on open and restore it to the trigger on close.
@@ -88,39 +79,58 @@ export function MobileNav({ isAdmin = false }: { isAdmin?: boolean }) {
             </div>
 
             <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-4">
-              {groups.map((group) => (
-                <div key={group.label}>
-                  <p className="px-2 pb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                    {group.label}
-                  </p>
-                  <ul className="space-y-0.5">
-                    {group.items.map((item) => {
-                      const active =
-                        pathname === item.href ||
-                        pathname.startsWith(item.href + "/");
-                      const Icon = item.icon;
-                      return (
-                        <li key={item.href}>
-                          <Link
-                            href={item.href}
-                            aria-current={active ? "page" : undefined}
-                            onClick={() => setOpen(false)}
-                            className={cn(
-                              "flex h-10 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors",
-                              active
-                                ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
-                                : "text-sidebar-foreground hover:bg-sidebar-accent/60",
-                            )}
-                          >
-                            <Icon className="h-[18px] w-[18px] shrink-0" />
-                            {item.label}
-                          </Link>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              ))}
+              {NAV.map((group) => {
+                const items = visibleItems(group.items, isAdmin);
+                if (items.length === 0) return null;
+                return (
+                  <div key={group.label}>
+                    <p className="px-2 pb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                      {group.label}
+                    </p>
+                    <ul className="space-y-0.5">
+                      {items.map((item) => {
+                        const Icon = item.icon;
+                        if (item.action === "signout") {
+                          return (
+                            <li key={item.label}>
+                              <form action={signOut}>
+                                <button
+                                  type="submit"
+                                  className="flex h-10 w-full items-center gap-2.5 rounded-md px-2.5 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent/60"
+                                >
+                                  <Icon className="h-[18px] w-[18px] shrink-0" />
+                                  {item.label}
+                                </button>
+                              </form>
+                            </li>
+                          );
+                        }
+                        const active =
+                          pathname === item.href ||
+                          pathname.startsWith(item.href + "/");
+                        return (
+                          <li key={item.href}>
+                            <Link
+                              href={item.href}
+                              aria-current={active ? "page" : undefined}
+                              onClick={() => setOpen(false)}
+                              className={cn(
+                                "flex h-10 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors",
+                                active
+                                  ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
+                                  : "text-sidebar-foreground hover:bg-sidebar-accent/60",
+                              )}
+                            >
+                              <Icon className="h-[18px] w-[18px] shrink-0" />
+                              {item.label}
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                );
+              })}
             </nav>
           </aside>
         </div>,

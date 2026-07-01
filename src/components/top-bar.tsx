@@ -2,7 +2,6 @@ import { Search } from "lucide-react";
 
 import { MobileNav } from "@/components/mobile-nav";
 import { NotificationsBell, type Note } from "@/components/notifications-bell";
-import { SignOutButton } from "@/components/sign-out-button";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 export function TopBar({
@@ -43,7 +42,6 @@ export function TopBar({
             {user.email}
           </span>
         ) : null}
-        <SignOutButton />
       </div>
     </header>
   );

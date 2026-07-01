@@ -17,6 +17,7 @@ import { DisposalDocuments, type DisposalDoc } from "@/components/disposal-docum
 import { DisposalAreas } from "@/components/disposal-areas";
 import { ListingShareActions } from "@/components/listing-share-actions";
 import { LocationMap } from "@/components/location-map";
+import { SendToTeam } from "@/components/send-to-team";
 import { getAgencyMembers } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
@@ -47,6 +48,9 @@ export default async function ListingDetailPage({
 }) {
   const { id } = await params;
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   const { data: d } = await supabase
     .from("disposals")
     .select("*")
@@ -136,7 +140,7 @@ export default async function ListingDetailPage({
             <p className="mt-1 text-sm text-muted-foreground">{location}</p>
           ) : null}
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
           <a
             href={`/listings/${d.id}/particulars`}
             className={cn(buttonVariants({ variant: "default", size: "sm" }))}
@@ -158,6 +162,12 @@ export default async function ListingDetailPage({
           <ListingShareActions
             title={d.title ?? "Listing"}
             summary={d.summary ?? undefined}
+          />
+          <SendToTeam
+            link={`/listings/${d.id}`}
+            subject={d.title ?? "this listing"}
+            agents={agents}
+            meId={user?.id}
           />
           <Link
             href={`/listings/${d.id}/edit`}

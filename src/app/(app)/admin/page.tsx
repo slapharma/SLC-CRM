@@ -54,6 +54,14 @@ export default async function AdminPage() {
     .in("id", ids);
   const profileOf = new Map((profiles ?? []).map((p) => [p.id, p]));
 
+  const { data: settings } = await supabase
+    .from("agency_settings")
+    .select("openrouter_api_key, openrouter_model")
+    .eq("agency_id", agencyId)
+    .maybeSingle();
+  const hasOpenRouterKey = Boolean(settings?.openrouter_api_key);
+  const openRouterModel = settings?.openrouter_model ?? "perplexity/sonar";
+
   const members: Member[] = (memberRows ?? [])
     .map((m) => {
       const p = profileOf.get(m.user_id);
@@ -84,7 +92,12 @@ export default async function AdminPage() {
         title="Admin"
         description="Add agents, manage roles and reset passwords."
       />
-      <AdminPanel members={members} currentUserId={user.id} />
+      <AdminPanel
+        members={members}
+        currentUserId={user.id}
+        hasOpenRouterKey={hasOpenRouterKey}
+        openRouterModel={openRouterModel}
+      />
 
       <Card className="mt-4">
         <CardHeader>

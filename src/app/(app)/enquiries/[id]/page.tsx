@@ -18,6 +18,7 @@ import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { scoreMatch } from "@/lib/matching/score";
 import { CreateDealButton } from "@/components/create-deal-button";
 import { MatchReasons } from "@/components/match-reasons";
+import { SendToTeam } from "@/components/send-to-team";
 import { getAgencyMembers } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
@@ -43,6 +44,9 @@ export default async function RequirementDetailPage({
 }) {
   const { id } = await params;
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   const { data: r } = await supabase
     .from("requirements")
@@ -105,7 +109,13 @@ export default async function RequirementDetailPage({
             </p>
           ) : null}
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          <SendToTeam
+            link={`/enquiries/${r.id}`}
+            subject={r.title}
+            agents={members}
+            meId={user?.id}
+          />
           <Link
             href={`/enquiries/${r.id}/edit`}
             className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}

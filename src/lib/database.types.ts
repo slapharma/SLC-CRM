@@ -14,72 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      kyc_reports: {
-        Row: {
-          agency_id: string
-          company_id: string
-          company_number: string | null
-          created_at: string
-          created_by: string | null
-          error: string | null
-          flags: string[]
-          id: string
-          payload: Json | null
-          risk_rating: Database["public"]["Enums"]["kyc_risk"]
-          sources: string[]
-          status: Database["public"]["Enums"]["kyc_report_status"]
-          summary: Json | null
-          updated_at: string
-        }
-        Insert: {
-          agency_id: string
-          company_id: string
-          company_number?: string | null
-          created_at?: string
-          created_by?: string | null
-          error?: string | null
-          flags?: string[]
-          id?: string
-          payload?: Json | null
-          risk_rating?: Database["public"]["Enums"]["kyc_risk"]
-          sources?: string[]
-          status?: Database["public"]["Enums"]["kyc_report_status"]
-          summary?: Json | null
-          updated_at?: string
-        }
-        Update: {
-          agency_id?: string
-          company_id?: string
-          company_number?: string | null
-          created_at?: string
-          created_by?: string | null
-          error?: string | null
-          flags?: string[]
-          id?: string
-          payload?: Json | null
-          risk_rating?: Database["public"]["Enums"]["kyc_risk"]
-          sources?: string[]
-          status?: Database["public"]["Enums"]["kyc_report_status"]
-          summary?: Json | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "kyc_reports_agency_id_fkey"
-            columns: ["agency_id"]
-            isOneToOne: false
-            referencedRelation: "agencies"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "kyc_reports_company_id_fkey"
-            columns: ["company_id"]
-            isOneToOne: false
-            referencedRelation: "companies"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       activities: {
         Row: {
           agency_id: string
@@ -172,6 +106,38 @@ export type Database = {
             foreignKeyName: "agency_members_agency_id_fkey"
             columns: ["agency_id"]
             isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agency_settings: {
+        Row: {
+          agency_id: string
+          integrations: Json
+          openrouter_api_key: string | null
+          openrouter_model: string
+          updated_at: string
+        }
+        Insert: {
+          agency_id: string
+          integrations?: Json
+          openrouter_api_key?: string | null
+          openrouter_model?: string
+          updated_at?: string
+        }
+        Update: {
+          agency_id?: string
+          integrations?: Json
+          openrouter_api_key?: string | null
+          openrouter_model?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agency_settings_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: true
             referencedRelation: "agencies"
             referencedColumns: ["id"]
           },
@@ -529,6 +495,63 @@ export type Database = {
           },
         ]
       }
+      deep_dive_reports: {
+        Row: {
+          agency_id: string
+          company_id: string
+          created_at: string
+          created_by: string | null
+          error: string | null
+          id: string
+          markdown: string | null
+          model: string | null
+          sources: string[]
+          status: Database["public"]["Enums"]["deep_dive_status"]
+          updated_at: string
+        }
+        Insert: {
+          agency_id: string
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          id?: string
+          markdown?: string | null
+          model?: string | null
+          sources?: string[]
+          status?: Database["public"]["Enums"]["deep_dive_status"]
+          updated_at?: string
+        }
+        Update: {
+          agency_id?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          id?: string
+          markdown?: string | null
+          model?: string | null
+          sources?: string[]
+          status?: Database["public"]["Enums"]["deep_dive_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deep_dive_reports_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deep_dive_reports_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       disposal_agents: {
         Row: {
           agency_id: string
@@ -870,6 +893,72 @@ export type Database = {
           },
         ]
       }
+      kyc_reports: {
+        Row: {
+          agency_id: string
+          company_id: string
+          company_number: string | null
+          created_at: string
+          created_by: string | null
+          error: string | null
+          flags: string[]
+          id: string
+          payload: Json | null
+          risk_rating: Database["public"]["Enums"]["kyc_risk"]
+          sources: string[]
+          status: Database["public"]["Enums"]["kyc_report_status"]
+          summary: Json | null
+          updated_at: string
+        }
+        Insert: {
+          agency_id: string
+          company_id: string
+          company_number?: string | null
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          flags?: string[]
+          id?: string
+          payload?: Json | null
+          risk_rating?: Database["public"]["Enums"]["kyc_risk"]
+          sources?: string[]
+          status?: Database["public"]["Enums"]["kyc_report_status"]
+          summary?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          agency_id?: string
+          company_id?: string
+          company_number?: string | null
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          flags?: string[]
+          id?: string
+          payload?: Json | null
+          risk_rating?: Database["public"]["Enums"]["kyc_risk"]
+          sources?: string[]
+          status?: Database["public"]["Enums"]["kyc_report_status"]
+          summary?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kyc_reports_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kyc_reports_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       matches: {
         Row: {
           agency_id: string
@@ -924,6 +1013,50 @@ export type Database = {
             columns: ["requirement_id"]
             isOneToOne: false
             referencedRelation: "requirements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          agency_id: string
+          body: string
+          created_at: string
+          id: string
+          link: string | null
+          read_at: string | null
+          recipient_id: string
+          sender_id: string
+          subject: string | null
+        }
+        Insert: {
+          agency_id: string
+          body: string
+          created_at?: string
+          id?: string
+          link?: string | null
+          read_at?: string | null
+          recipient_id: string
+          sender_id: string
+          subject?: string | null
+        }
+        Update: {
+          agency_id?: string
+          body?: string
+          created_at?: string
+          id?: string
+          link?: string | null
+          read_at?: string | null
+          recipient_id?: string
+          sender_id?: string
+          subject?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
             referencedColumns: ["id"]
           },
         ]
@@ -1177,6 +1310,13 @@ export type Database = {
         Returns: undefined
       }
       auth_agency_ids: { Args: never; Returns: string[] }
+      current_agency_openrouter: {
+        Args: never
+        Returns: {
+          api_key: string
+          model: string
+        }[]
+      }
       is_agency_admin: { Args: { p_agency_id: string }; Returns: boolean }
       seed_agency: {
         Args: { p_agency_id: string; p_user_id: string }
@@ -1201,6 +1341,7 @@ export type Database = {
         | "legal"
         | "completed"
         | "fell_through"
+      deep_dive_status: "pending" | "complete" | "failed"
       entity_type: "company" | "contact" | "listing" | "requirement" | "deal"
       kyc_report_status: "pending" | "complete" | "failed"
       kyc_risk: "low" | "medium" | "high" | "unknown"
@@ -1364,7 +1505,10 @@ export const Constants = {
         "completed",
         "fell_through",
       ],
+      deep_dive_status: ["pending", "complete", "failed"],
       entity_type: ["company", "contact", "listing", "requirement", "deal"],
+      kyc_report_status: ["pending", "complete", "failed"],
+      kyc_risk: ["low", "medium", "high", "unknown"],
       licence_status: ["held", "late", "none"],
       match_status: ["suggested", "shortlisted", "rejected", "converted"],
       member_role: ["admin", "agent", "manager"],

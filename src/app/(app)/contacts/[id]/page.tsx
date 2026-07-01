@@ -10,6 +10,7 @@ import { contactRoleBadge } from "@/lib/badges";
 import { deleteContact } from "@/lib/actions/contacts";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { LocationMap } from "@/components/location-map";
+import { SendToTeam } from "@/components/send-to-team";
 import { getAgencyMembers } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,9 @@ export default async function ContactDetailPage({
 }) {
   const { id } = await params;
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   const { data: contact } = await supabase
     .from("contacts")
@@ -66,7 +70,13 @@ export default async function ContactDetailPage({
           <h1 className="text-2xl font-semibold tracking-tight">{name}</h1>
           <Badge tone={r.tone}>{r.label}</Badge>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          <SendToTeam
+            link={`/contacts/${contact.id}`}
+            subject={name}
+            agents={members}
+            meId={user?.id}
+          />
           <Link
             href={`/contacts/${contact.id}/edit`}
             className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}

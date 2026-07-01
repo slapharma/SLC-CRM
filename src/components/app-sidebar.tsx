@@ -6,7 +6,9 @@ import {
   Building2,
   Handshake,
   LayoutDashboard,
+  LogOut,
   Map as MapIcon,
+  MessageSquare,
   ScrollText,
   ShieldCheck,
   Sparkles,
@@ -16,9 +18,16 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { signOut } from "@/lib/actions/auth";
 import { cn } from "@/lib/utils";
 
-export type NavItem = { href: string; label: string; icon: LucideIcon };
+export type NavItem = {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  adminOnly?: boolean;
+  action?: "signout";
+};
 export type NavGroup = { label: string; items: NavItem[] };
 
 export const NAV: NavGroup[] = [
@@ -26,39 +35,43 @@ export const NAV: NavGroup[] = [
     label: "Workspace",
     items: [
       { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-      { href: "/map", label: "Map", icon: MapIcon },
+      { href: "/messages", label: "My Messages", icon: MessageSquare },
     ],
   },
   {
-    label: "Records",
+    label: "CRM",
     items: [
       { href: "/companies", label: "Companies", icon: Building2 },
       { href: "/contacts", label: "Contacts", icon: Users },
       { href: "/listings", label: "Listings", icon: Store },
-      { href: "/enquiries", label: "Enquiries", icon: Target },
       { href: "/kyc", label: "KYC", icon: ScrollText },
+      { href: "/map", label: "Map", icon: MapIcon },
     ],
   },
   {
     label: "Dealflow",
     items: [
+      { href: "/enquiries", label: "Enquiries", icon: Target },
       { href: "/matches", label: "MatchMaker", icon: Sparkles },
       { href: "/deals", label: "PipeLine", icon: Handshake },
     ],
   },
+  {
+    label: "Settings",
+    items: [
+      { href: "/admin", label: "Admin", icon: ShieldCheck, adminOnly: true },
+      { href: "/login", label: "Log out", icon: LogOut, action: "signout" },
+    ],
+  },
 ];
+
+/** Filter a group's items by admin access (empty groups are dropped by the caller). */
+export function visibleItems(items: NavItem[], isAdmin: boolean): NavItem[] {
+  return items.filter((i) => !i.adminOnly || isAdmin);
+}
 
 export function AppSidebar({ isAdmin = false }: { isAdmin?: boolean }) {
   const pathname = usePathname();
-  const groups: NavGroup[] = isAdmin
-    ? [
-        ...NAV,
-        {
-          label: "Settings",
-          items: [{ href: "/admin", label: "Admin", icon: ShieldCheck }],
-        },
-      ]
-    : NAV;
 
   return (
     <aside className="hidden w-60 shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground md:flex">
@@ -70,37 +83,56 @@ export function AppSidebar({ isAdmin = false }: { isAdmin?: boolean }) {
       </div>
 
       <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-4">
-        {groups.map((group) => (
-          <div key={group.label}>
-            <p className="px-2 pb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-              {group.label}
-            </p>
-            <ul className="space-y-0.5">
-              {group.items.map((item) => {
-                const active =
-                  pathname === item.href || pathname.startsWith(item.href + "/");
-                const Icon = item.icon;
-                return (
-                  <li key={item.href}>
-                    <Link
-                      href={item.href}
-                      aria-current={active ? "page" : undefined}
-                      className={cn(
-                        "flex h-9 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors",
-                        active
-                          ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
-                          : "text-sidebar-foreground hover:bg-sidebar-accent/60",
-                      )}
-                    >
-                      <Icon className="h-[18px] w-[18px] shrink-0" />
-                      {item.label}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        ))}
+        {NAV.map((group) => {
+          const items = visibleItems(group.items, isAdmin);
+          if (items.length === 0) return null;
+          return (
+            <div key={group.label}>
+              <p className="px-2 pb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                {group.label}
+              </p>
+              <ul className="space-y-0.5">
+                {items.map((item) => {
+                  const Icon = item.icon;
+                  if (item.action === "signout") {
+                    return (
+                      <li key={item.label}>
+                        <form action={signOut}>
+                          <button
+                            type="submit"
+                            className="flex h-9 w-full items-center gap-2.5 rounded-md px-2.5 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent/60"
+                          >
+                            <Icon className="h-[18px] w-[18px] shrink-0" />
+                            {item.label}
+                          </button>
+                        </form>
+                      </li>
+                    );
+                  }
+                  const active =
+                    pathname === item.href || pathname.startsWith(item.href + "/");
+                  return (
+                    <li key={item.href}>
+                      <Link
+                        href={item.href}
+                        aria-current={active ? "page" : undefined}
+                        className={cn(
+                          "flex h-9 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors",
+                          active
+                            ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
+                            : "text-sidebar-foreground hover:bg-sidebar-accent/60",
+                        )}
+                      >
+                        <Icon className="h-[18px] w-[18px] shrink-0" />
+                        {item.label}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          );
+        })}
       </nav>
 
       <div className="border-t p-3 text-[11px] text-muted-foreground">

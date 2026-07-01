@@ -109,6 +109,38 @@ export async function updateAgentRole(formData: FormData): Promise<void> {
   revalidatePath("/admin");
 }
 
+/**
+ * Save the agency's AI settings (OpenRouter key + model). The RLS on
+ * agency_settings restricts writes to admins. A blank key keeps the existing one
+ * (so the masked field never has to echo the secret back).
+ */
+export async function saveAgencySettings(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const supabase = await createClient();
+  const agencyId = await currentAgencyId(supabase);
+  if (!agencyId) return { error: "No agency is linked to your account." };
+
+  const model = str(formData, "openrouter_model") || "perplexity/sonar";
+  const key = str(formData, "openrouter_api_key");
+
+  const payload: {
+    agency_id: string;
+    openrouter_model: string;
+    openrouter_api_key?: string;
+  } = { agency_id: agencyId, openrouter_model: model };
+  if (key) payload.openrouter_api_key = key;
+
+  const { error } = await supabase
+    .from("agency_settings")
+    .upsert(payload, { onConflict: "agency_id" });
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin");
+  return { message: "AI settings saved." };
+}
+
 /** Remove a member from the agency. RLS (members_delete) restricts this to admins. */
 export async function removeAgent(formData: FormData): Promise<void> {
   const supabase = await createClient();
