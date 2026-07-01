@@ -255,3 +255,27 @@ SVG/CSS heatmap visuals (no map/chart dep) rendered on each page, each with rele
 - [ ] Companies heatmap: density by **sector tag × company type** (or region). Filters: type, sector tag, lead agent.
 - [ ] Deals heatmap: **stage × value band** (or stage × month). Filters: stage, lead agent, value band, date range.
 - [ ] Build + lint
+
+---
+
+## Next session — requested backlog (cflack, 2026-06-30)
+
+1. [ ] **Listings on company record cards** — show a company's related listings on its
+       detail page (a "Listings" card alongside the existing Contacts/Activity cards).
+       Source: `disposals` linked to the company; clickable rows through to each listing.
+2. [ ] **Admin: edit contact role** — let an admin change a contact's role
+       (acquisitions / landlord / solicitor / etc.) from the Admin area, not just the
+       contact edit form. Mirror the existing Admin user/role editing pattern.
+3. [ ] **Stats bar on Companies & Listings pages** — add a KPI/stats bar like the one
+       already on Contacts (and MatchMaker's 17/81/760/64% bar). Counts/segments
+       relevant to each page (e.g. companies by type; listings by status/use class).
+4. [ ] **Contact on listings record** — add a contact (e.g. the landlord/agent contact)
+       to a listing's detail, with a clickable link through to the contact record.
+5. [ ] **External-source links in KYC report** — add links to Companies House (and other
+       data sources) on the relevant data points in the KYC report.
+6. [ ] **Deal record enrichment + named-deal creation flow**
+       - [ ] Add lead agent + additional agents to deal records (reuse the AgentFields
+             component already used on companies/contacts/listings/enquiries).
+       - [ ] Show the deal's listing company + contact details with clickable links.
+       - [ ] On "create deal", pop up a form to name the deal before creating
+             (replace/extend the current `createDealFromMatch` flow with a title prompt).

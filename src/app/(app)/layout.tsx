@@ -6,6 +6,13 @@ import type { Note } from "@/components/notifications-bell";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 
+// Every page in this group is auth-gated and reads the request's cookies via the
+// Supabase server client, so none of them can be statically prerendered. Forcing
+// dynamic rendering here (route segment config is inherited by all child segments)
+// keeps `next build` from evaluating these pages at build time — which otherwise
+// throws when NEXT_PUBLIC_SUPABASE_* env vars are absent (e.g. in CI).
+export const dynamic = "force-dynamic";
+
 export default async function AppLayout({
   children,
 }: {
