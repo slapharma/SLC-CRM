@@ -6,11 +6,7 @@ import { redirect } from "next/navigation";
 import { currentAgencyId } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
 import { geocodeForSave } from "@/lib/maps/geocode";
-import type { Database } from "@/lib/database.types";
 import type { FormState } from "@/lib/actions/types";
-
-type CompanyType = Database["public"]["Enums"]["company_type"];
-const TYPES: CompanyType[] = ["operator", "landlord", "agent", "vendor", "other"];
 
 const str = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim();
 const nullable = (fd: FormData, k: string) => str(fd, k) || null;
@@ -19,8 +15,8 @@ const tags = (fd: FormData, k: string) =>
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
-const asType = (v: string): CompanyType =>
-  (TYPES as string[]).includes(v) ? (v as CompanyType) : "operator";
+// Company types are now editable data, so any custom slug is allowed.
+const asType = (v: string): string => v.trim() || "other";
 
 /** Lead agent + additional agents (de-duped, lead excluded from extras). */
 const agents = (fd: FormData) => {

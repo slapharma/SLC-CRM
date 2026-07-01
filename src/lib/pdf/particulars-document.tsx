@@ -22,6 +22,7 @@ export type FloorRow = { name: string; sqft: number | null; sqm: number | null }
 export type DocSection = { title: string; content: string };
 
 export type ParticularsData = {
+  intel: boolean; // INTEL listing → unbranded PDF (no CDG logo / contact / disclaimer)
   statusTag: string; // "To Let" / "For Sale" / "To Let / For Sale"
   title: string;
   address: string;
@@ -54,10 +55,17 @@ export type ParticularsData = {
 const DISCLAIMER =
   "The particulars are set out as a general outline only for the guidance of intending purchasers or lessee and do not constitute nor constitute part of an offer or contract. They are issued without responsibility on the part of the Vendor, CDG Leisure Ltd or any of their respective employees or Agents. All descriptions dimensions references to condition and necessary permissions for use and occupation and other details are given in good faith and are believed to be correct but any intending purchasers or tenants should not rely on them as statements or representations of fact but must satisfy themselves by inspection independent advice or otherwise as to the correctness of each of them. No person in the employment of CDG Leisure Ltd or their Agents has any authority to make or give any representation or warranty whatever in relation to cdgleisure.com this property.";
 
+// Neutral (unbranded) disclaimer for INTEL listings — no CDG Leisure / cdgleisure.com.
+const DISCLAIMER_INTEL =
+  "These particulars are set out as a general outline only for guidance and do not constitute, nor form part of, an offer or contract. They are issued without responsibility on the part of the agent or any of their employees. All descriptions, dimensions, references to condition and necessary permissions for use and occupation, and other details are given in good faith and are believed to be correct, but any intending purchasers or tenants should not rely on them as statements or representations of fact and must satisfy themselves by inspection, independent advice or otherwise as to the correctness of each of them.";
+
 const CONFIDENTIALITY =
   "This sale is highly confidential and under no circumstances should a direct approach be made to staff as they are unaware of an impending sale.";
 const HOLDING_DEPOSIT =
   "A holding deposit will be required to secure the property; the deposit will buy a period of exclusivity and will be held in the CDG Leisure client account.";
+const HOLDING_DEPOSIT_INTEL =
+  "A holding deposit will be required to secure the property; the deposit will buy a period of exclusivity and will be held in the agent's client account.";
+const INTEL_MARKER = "Market intel — not for distribution";
 
 const fmtSqft = (n: number | null) =>
   n != null ? n.toLocaleString("en-GB") : "—";
@@ -83,6 +91,9 @@ const styles = StyleSheet.create({
   logoTagWrap: { marginLeft: 8, justifyContent: "center" },
   logoLeisure: { fontSize: 9, fontWeight: 700, color: TEAL },
   logoJourney: { fontSize: 8, color: "#cfd4d8" },
+  // Neutral header wordmark for INTEL (unbranded) particulars.
+  neutralMark: { fontSize: 13, fontWeight: 700, color: "#ffffff", letterSpacing: 1 },
+  intelFooterMark: { fontSize: 10, color: MUTED, fontWeight: 700, letterSpacing: 0.5 },
   statusTag: { fontSize: 20, fontWeight: 700, color: "#ffffff" },
   // ---- hero ----
   heroWrap: { position: "relative", width: "100%", height: 250 },
@@ -237,11 +248,18 @@ export function ParticularsDocument({ d }: { d: ParticularsData }) {
   const totalSqm = d.floors.reduce((s, f) => s + (f.sqm ?? 0), 0);
 
   return (
-    <Document title={`${d.title} — Particulars`} author="CDG Leisure">
+    <Document
+      title={`${d.title} — Particulars`}
+      author={d.intel ? "" : "CDG Leisure"}
+    >
       {/* ---------- PAGE 1 ---------- */}
       <Page size="A4" style={styles.page}>
         <View style={styles.header} fixed>
-          <Logo />
+          {d.intel ? (
+            <Text style={styles.neutralMark}>PROPERTY PARTICULARS</Text>
+          ) : (
+            <Logo />
+          )}
           <Text style={styles.statusTag}>{d.statusTag}</Text>
         </View>
 
@@ -288,8 +306,14 @@ export function ParticularsDocument({ d }: { d: ParticularsData }) {
         </View>
 
         <View style={styles.footer1} fixed>
-          <Text style={styles.footer1Text}>020 7100 5520</Text>
-          <Text style={styles.footer1Text}>cdgleisure.com</Text>
+          {d.intel ? (
+            <Text style={styles.intelFooterMark}>{INTEL_MARKER}</Text>
+          ) : (
+            <>
+              <Text style={styles.footer1Text}>020 7100 5520</Text>
+              <Text style={styles.footer1Text}>cdgleisure.com</Text>
+            </>
+          )}
         </View>
       </Page>
 
@@ -373,7 +397,9 @@ export function ParticularsDocument({ d }: { d: ParticularsData }) {
             ))}
 
             <Section title="Confidentiality">{CONFIDENTIALITY}</Section>
-            <Section title="Holding Deposit">{HOLDING_DEPOSIT}</Section>
+            <Section title="Holding Deposit">
+              {d.intel ? HOLDING_DEPOSIT_INTEL : HOLDING_DEPOSIT}
+            </Section>
           </View>
 
           <View style={styles.p2Side}>
@@ -405,7 +431,7 @@ export function ParticularsDocument({ d }: { d: ParticularsData }) {
               {d.agentEmail ? (
                 <Text style={styles.agentLine}>{d.agentEmail}</Text>
               ) : null}
-              {!d.agentName && !d.agentPhone && !d.agentEmail ? (
+              {!d.agentName && !d.agentPhone && !d.agentEmail && !d.intel ? (
                 <Text style={styles.agentLine}>
                   020 7100 5520 · cdgleisure.com
                 </Text>
@@ -414,7 +440,7 @@ export function ParticularsDocument({ d }: { d: ParticularsData }) {
 
             {d.agents.length > 0 ? (
               <View style={styles.section}>
-                <Text style={styles.sectionHead}>CDG Team</Text>
+                <Text style={styles.sectionHead}>{d.intel ? "Team" : "CDG Team"}</Text>
                 {d.agents.map((a, i) => (
                   <Text key={i} style={styles.agentLine}>
                     {a}
@@ -427,7 +453,8 @@ export function ParticularsDocument({ d }: { d: ParticularsData }) {
 
         <View style={styles.footer2}>
           <Text style={styles.disclaimer}>
-            {DISCLAIMER} Generated on {d.generatedOn}
+            {d.intel ? `${INTEL_MARKER}. ${DISCLAIMER_INTEL}` : DISCLAIMER} Generated
+            on {d.generatedOn}
           </Text>
         </View>
       </Page>

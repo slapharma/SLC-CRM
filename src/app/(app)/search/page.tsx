@@ -13,6 +13,7 @@ import {
   type BadgeSpec,
 } from "@/lib/badges";
 import { getContactRoles, roleLabel } from "@/lib/contact-roles";
+import { getCompanyTypes, typeLabel } from "@/lib/company-types";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Search" };
@@ -29,7 +30,7 @@ export default async function SearchPage({
       <div className="mx-auto max-w-4xl">
         <PageHeader title="Search" />
         <p className="text-sm text-muted-foreground">
-          Search companies, contacts, listings and enquiries from the bar above.
+          Search companies, contacts, listings and requirements from the bar above.
         </p>
       </div>
     );
@@ -81,6 +82,7 @@ export default async function SearchPage({
   }
 
   const contactRoles = await getContactRoles();
+  const companyTypes = await getCompanyTypes();
 
   const total =
     (companies.data?.length ?? 0) +
@@ -100,7 +102,7 @@ export default async function SearchPage({
             items={(companies.data ?? []).map((c) => ({
               href: `/companies/${c.id}`,
               label: c.name,
-              badge: companyTypeBadge(c.type),
+              badge: companyTypeBadge(c.type, typeLabel(companyTypes, c.type)),
             }))}
           />
           <Group
@@ -120,9 +122,9 @@ export default async function SearchPage({
             }))}
           />
           <Group
-            title="Enquiries"
+            title="Requirements"
             items={(requirements.data ?? []).map((r) => ({
-              href: `/enquiries/${r.id}`,
+              href: `/requirements/${r.id}`,
               label: r.title,
               badge: requirementStatusBadge(r.status),
             }))}

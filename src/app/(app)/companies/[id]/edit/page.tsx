@@ -4,6 +4,7 @@ import { CompanyForm } from "@/components/company-form";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { updateCompany } from "@/lib/actions/companies";
+import { getCompanyTypes } from "@/lib/company-types";
 import { getAgencyMembers } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
 
@@ -21,9 +22,10 @@ export default async function EditCompanyPage({
     .maybeSingle();
   if (!company) notFound();
 
-  const [agents, { data: agentRows }] = await Promise.all([
+  const [agents, { data: agentRows }, types] = await Promise.all([
     getAgencyMembers(supabase, company.agency_id),
     supabase.from("company_agents").select("user_id").eq("company_id", id),
+    getCompanyTypes(),
   ]);
   const additionalAgentIds = (agentRows ?? []).map((r) => r.user_id);
 
@@ -37,6 +39,7 @@ export default async function EditCompanyPage({
             company={company}
             agents={agents}
             additionalAgentIds={additionalAgentIds}
+            types={types}
           />
         </CardContent>
       </Card>

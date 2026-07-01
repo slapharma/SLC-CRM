@@ -2,17 +2,20 @@
 
 import * as React from "react";
 import { useActionState, useMemo, useState } from "react";
-import { ChevronDown, Plug, Plus, Trash2 } from "lucide-react";
+import {
+  CalendarDays,
+  ChevronDown,
+  ExternalLink,
+  Mail,
+  Plug,
+  Plus,
+  Trash2,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { CollapsibleCard } from "@/components/ui/collapsible-card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
@@ -29,6 +32,11 @@ import {
   deleteContactRole,
   renameContactRole,
 } from "@/lib/actions/contact-roles";
+import {
+  createCompanyType,
+  deleteCompanyType,
+  renameCompanyType,
+} from "@/lib/actions/company-types";
 import { createClient } from "@/lib/supabase/client";
 import type { FormState } from "@/lib/actions/types";
 import { cn } from "@/lib/utils";
@@ -52,6 +60,9 @@ export type ContactRoleItem = {
   is_system: boolean;
 };
 
+// Same shape as a contact role — the editable company-type lookup rows.
+export type CompanyTypeItem = ContactRoleItem;
+
 const displayName = (m: Member) => m.fullName ?? m.email ?? "Unknown agent";
 
 export function AdminPanel({
@@ -60,36 +71,94 @@ export function AdminPanel({
   hasOpenRouterKey,
   openRouterModel,
   contactRoles,
+  companyTypes,
 }: {
   members: Member[];
   currentUserId: string;
   hasOpenRouterKey: boolean;
   openRouterModel: string;
   contactRoles: ContactRoleItem[];
+  companyTypes: CompanyTypeItem[];
 }) {
   return (
     <div className="space-y-4">
-      <AddAgentCard />
+      <TeamPanel members={members} currentUserId={currentUserId} />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Team ({members.length})</CardTitle>
-          <CardDescription>
-            Click a member to edit details, reset their password, change role or
-            connect their accounts.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="divide-y">
-          {members.map((m) => (
-            <MemberRow key={m.id} member={m} isSelf={m.id === currentUserId} />
-          ))}
-        </CardContent>
-      </Card>
+      <EditContactRolesCard roles={contactRoles} />
 
-      <EditRolesCard roles={contactRoles} />
+      <EditCompanyTypesCard types={companyTypes} />
 
       <AgencySettingsCard hasKey={hasOpenRouterKey} model={openRouterModel} />
+
+      <ConnectorsCard />
     </div>
+  );
+}
+
+/** Team roster (collapsible) with an "Add agent" button in its top-right corner
+ * that reveals the create-agent form inline. */
+function TeamPanel({
+  members,
+  currentUserId,
+}: {
+  members: Member[];
+  currentUserId: string;
+}) {
+  const [open, setOpen] = useState(true);
+  const [showAdd, setShowAdd] = useState(false);
+
+  return (
+    <Card>
+      <div className="flex items-center gap-2 px-6 py-4">
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          className="flex flex-1 items-center gap-3 text-left focus-visible:outline-none"
+        >
+          <ChevronDown
+            className={cn(
+              "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+              open && "rotate-180",
+            )}
+          />
+          <div className="min-w-0">
+            <p className="font-semibold leading-none tracking-tight">
+              Team ({members.length})
+            </p>
+            <p className="mt-1.5 text-sm text-muted-foreground">
+              Click a member to edit details, reset their password, change role or
+              connect their accounts.
+            </p>
+          </div>
+        </button>
+        <Button
+          size="sm"
+          className="shrink-0"
+          onClick={() => {
+            setOpen(true);
+            setShowAdd((s) => !s);
+          }}
+        >
+          <Plus className="h-4 w-4" />
+          Add agent
+        </Button>
+      </div>
+      {open ? (
+        <CardContent className="pt-0">
+          {showAdd ? (
+            <div className="mb-4">
+              <AddAgentForm onDone={() => setShowAdd(false)} />
+            </div>
+          ) : null}
+          <div className="divide-y">
+            {members.map((m) => (
+              <MemberRow key={m.id} member={m} isSelf={m.id === currentUserId} />
+            ))}
+          </div>
+        </CardContent>
+      ) : null}
+    </Card>
   );
 }
 
@@ -133,52 +202,55 @@ function Avatar({ url, name, size = 40 }: { url: string | null; name: string; si
   );
 }
 
-function AddAgentCard() {
+function AddAgentForm({ onDone }: { onDone?: () => void }) {
   const [state, action, pending] = useActionState<FormState, FormData>(createAgent, {});
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Add agent</CardTitle>
-        <CardDescription>
-          Creates a login for your agency. They can sign in immediately.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form action={action} className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="full_name">Full name</Label>
-              <Input id="full_name" name="full_name" placeholder="Jane Doe" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">
-                Email<span className="text-destructive"> *</span>
-              </Label>
-              <Input id="email" name="email" type="email" required />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">
-                Password<span className="text-destructive"> *</span>
-              </Label>
-              <Input id="password" name="password" required />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="role">Role</Label>
-              <Select id="role" name="role" defaultValue="agent">
-                <option value="agent">Agent</option>
-                <option value="manager">Manager</option>
-                <option value="admin">Admin</option>
-              </Select>
-            </div>
-          </div>
-          <Notice state={state} />
-          <Button type="submit" disabled={pending}>
-            {pending ? "Adding…" : "Add agent"}
+    <form action={action} className="space-y-4 rounded-md border bg-muted/30 p-4">
+      <p className="text-sm font-medium">
+        Add agent
+        <span className="ml-2 text-xs font-normal text-muted-foreground">
+          Creates a login for your agency — they can sign in immediately.
+        </span>
+      </p>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="full_name">Full name</Label>
+          <Input id="full_name" name="full_name" placeholder="Jane Doe" />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="email">
+            Email<span className="text-destructive"> *</span>
+          </Label>
+          <Input id="email" name="email" type="email" required />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="password">
+            Password<span className="text-destructive"> *</span>
+          </Label>
+          <Input id="password" name="password" required />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="role">Role</Label>
+          <Select id="role" name="role" defaultValue="agent">
+            <option value="agent">Agent</option>
+            <option value="manager">Manager</option>
+            <option value="admin">Admin</option>
+          </Select>
+        </div>
+      </div>
+      <Notice state={state} />
+      <div className="flex items-center gap-2">
+        <Button type="submit" disabled={pending}>
+          {pending ? "Adding…" : "Add agent"}
+        </Button>
+        {onDone ? (
+          <Button type="button" variant="ghost" size="sm" onClick={onDone}>
+            Close
           </Button>
-        </form>
-      </CardContent>
-    </Card>
+        ) : null}
+      </div>
+    </form>
   );
 }
 
@@ -450,25 +522,168 @@ function MemberRow({ member, isSelf }: { member: Member; isSelf: boolean }) {
   );
 }
 
-function EditRolesCard({ roles }: { roles: ContactRoleItem[] }) {
+function EditContactRolesCard({ roles }: { roles: ContactRoleItem[] }) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Edit roles</CardTitle>
-        <CardDescription>
-          Rename the roles you can assign to contacts, or add new ones. Shared
-          across the whole team.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3">
+    <CollapsibleCard
+      title="Edit contact roles"
+      description="Rename the roles you can assign to contacts, or add new ones. Shared across the whole team."
+    >
+      <div className="space-y-3">
         <div className="divide-y">
           {roles.map((r) => (
             <RoleRow key={r.id} role={r} />
           ))}
         </div>
         <AddRoleForm />
-      </CardContent>
-    </Card>
+      </div>
+    </CollapsibleCard>
+  );
+}
+
+function EditCompanyTypesCard({ types }: { types: CompanyTypeItem[] }) {
+  return (
+    <CollapsibleCard
+      title="Edit company types"
+      description="Rename the types you can assign to companies (operator, landlord, …), or add new ones. Shared across the whole team."
+    >
+      <div className="space-y-3">
+        <div className="divide-y">
+          {types.map((t) => (
+            <TypeRow key={t.id} type={t} />
+          ))}
+        </div>
+        <AddTypeForm />
+      </div>
+    </CollapsibleCard>
+  );
+}
+
+function TypeRow({ type }: { type: CompanyTypeItem }) {
+  const [renameState, renameAction, renamePending] = useActionState<
+    FormState,
+    FormData
+  >(renameCompanyType, {});
+  const [deleteState, deleteAction, deletePending] = useActionState<
+    FormState,
+    FormData
+  >(deleteCompanyType, {});
+
+  return (
+    <div className="space-y-2 py-2 first:pt-0 last:pb-0">
+      <div className="flex items-center gap-2">
+        <form action={renameAction} className="flex flex-1 items-center gap-2">
+          <input type="hidden" name="id" value={type.id} />
+          <Input
+            name="label"
+            defaultValue={type.label}
+            aria-label={`Rename ${type.label}`}
+            className="h-8"
+          />
+          <Button
+            type="submit"
+            variant="secondary"
+            size="sm"
+            disabled={renamePending}
+          >
+            {renamePending ? "Saving…" : "Save"}
+          </Button>
+        </form>
+        {type.is_system ? (
+          <span className="px-1 text-xs text-muted-foreground">Default</span>
+        ) : (
+          <form action={deleteAction}>
+            <input type="hidden" name="id" value={type.id} />
+            <Button
+              type="submit"
+              variant="ghost"
+              size="sm"
+              className="text-destructive hover:bg-destructive/10"
+              disabled={deletePending}
+              title={`Delete ${type.label}`}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </form>
+        )}
+      </div>
+      <Notice state={renameState} />
+      <Notice state={deleteState} />
+    </div>
+  );
+}
+
+function AddTypeForm() {
+  const [state, action, pending] = useActionState<FormState, FormData>(
+    createCompanyType,
+    {},
+  );
+
+  return (
+    <form action={action} className="space-y-2 rounded-md border bg-muted/30 p-3">
+      <div className="flex items-end gap-2">
+        <div className="flex-1 space-y-1">
+          <Label htmlFor="new-type-label" className="text-xs text-muted-foreground">
+            Add a company type
+          </Label>
+          <Input
+            id="new-type-label"
+            name="label"
+            placeholder="e.g. Developer"
+            className="h-8"
+          />
+        </div>
+        <Button type="submit" size="sm" disabled={pending}>
+          <Plus className="h-4 w-4" />
+          {pending ? "Adding…" : "Add"}
+        </Button>
+      </div>
+      <Notice state={state} />
+    </form>
+  );
+}
+
+// External data-source connectors — open the provider to set up. Outlook OAuth
+// sync is a follow-up (placeholder button).
+const EXTERNAL_CONNECTORS: { label: string; href: string }[] = [
+  { label: "Didit — Free KYC", href: "https://didit.me/products/free-kyc/" },
+  { label: "Proplist", href: "https://www.proplist.com/" },
+  { label: "LoopNet", href: "https://www.loopnet.co.uk/" },
+];
+
+function ConnectorsCard() {
+  return (
+    <CollapsibleCard
+      title="Connectors"
+      description="Connect your team's email, calendar and data sources."
+    >
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          disabled
+          title="Coming soon"
+          className="inline-flex cursor-not-allowed items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm text-muted-foreground opacity-80"
+        >
+          <Mail className="h-4 w-4" />
+          <CalendarDays className="h-4 w-4" />
+          Connect Microsoft Outlook (email &amp; calendar)
+        </button>
+        {EXTERNAL_CONNECTORS.map((c) => (
+          <a
+            key={c.href}
+            href={c.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(buttonVariants({ variant: "secondary" }), "gap-2")}
+          >
+            <ExternalLink className="h-4 w-4" />
+            Connect {c.label}
+          </a>
+        ))}
+      </div>
+      <p className="mt-2 text-xs text-muted-foreground">
+        Outlook sync is coming soon; the others open the provider in a new tab to set up.
+      </p>
+    </CollapsibleCard>
   );
 }
 
@@ -563,16 +778,11 @@ function AgencySettingsCard({ hasKey, model }: { hasKey: boolean; model: string 
   );
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>AI — Company Deep Dive</CardTitle>
-        <CardDescription>
-          Add an OpenRouter API key to enable AI company research reports. Get a
-          key at openrouter.ai/keys.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form action={action} className="space-y-4">
+    <CollapsibleCard
+      title="AI — Company Deep Dive"
+      description="Add an OpenRouter API key to enable AI company research reports. Get a key at openrouter.ai/keys."
+    >
+      <form action={action} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="openrouter_api_key">OpenRouter API key</Label>
@@ -608,8 +818,7 @@ function AgencySettingsCard({ hasKey, model }: { hasKey: boolean; model: string 
           <Button type="submit" disabled={pending}>
             {pending ? "Saving…" : "Save AI settings"}
           </Button>
-        </form>
-      </CardContent>
-    </Card>
+      </form>
+    </CollapsibleCard>
   );
 }

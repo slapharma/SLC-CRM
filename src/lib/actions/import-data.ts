@@ -8,11 +8,11 @@ import { Constants } from "@/lib/database.types";
 import { parseCsv, type ImportEntity } from "@/lib/csv";
 import type { FormState } from "@/lib/actions/types";
 
-const ENTITIES: ImportEntity[] = ["companies", "contacts", "enquiries", "listings"];
+const ENTITIES: ImportEntity[] = ["companies", "contacts", "requirements", "listings"];
 const TABLE: Record<ImportEntity, string> = {
   companies: "companies",
   contacts: "contacts",
-  enquiries: "requirements",
+  requirements: "requirements",
   listings: "disposals",
 };
 
@@ -26,7 +26,7 @@ const boolOf = (v: string) => /^(true|yes|y|1)$/i.test(v.trim());
 const oneOf = (v: string, allowed: readonly string[], fb: string) =>
   allowed.includes(v) ? v : fb;
 
-/** Bulk-import CSV rows into companies / contacts / enquiries / listings (#8). */
+/** Bulk-import CSV rows into companies / contacts / requirements / listings (#8). */
 export async function importEntityCsv(
   _prev: FormState,
   formData: FormData,
@@ -52,10 +52,23 @@ export async function importEntityCsv(
   const header = rows[0].map((h) => h.trim().toLowerCase());
   const colIdx = (name: string) => header.indexOf(name);
 
-  // Contact roles are editable data now — validate imported roles against the
-  // live slug list (fallback "other") rather than a fixed enum.
+  // Contact roles + company types are editable data now — validate imported
+  // values against the live slug lists (fallbacks "other") rather than a fixed enum.
   const { data: roleRows } = await supabase.from("contact_roles").select("slug");
   const roleSlugs = (roleRows ?? []).map((r) => r.slug);
+  const { data: typeRows } = await supabase.from("company_types").select("slug");
+  const typeSlugs = (typeRows ?? []).map((t) => t.slug);
+
+  // Every listing and requirement MUST have a contact (mirrors the UI actions).
+  // CSV rows carry a `contact_email` that we resolve to an agency contact; rows
+  // whose contact_email is missing or unknown are reported and skipped.
+  const { data: contactRows } = await supabase.from("contacts").select("id, email");
+  const contactByEmail = new Map<string, string>();
+  for (const c of contactRows ?? []) {
+    if (c.email) contactByEmail.set(c.email.trim().toLowerCase(), c.id);
+  }
+  const resolveContact = (email: string) =>
+    email ? contactByEmail.get(email.trim().toLowerCase()) : undefined;
 
   const base = { agency_id: agencyId, created_by: user.id };
   const records: Record<string, unknown>[] = [];
@@ -72,7 +85,7 @@ export async function importEntityCsv(
         records.push({
           ...base,
           name: get("name"),
-          type: oneOf(get("type"), Constants.public.Enums.company_type, "operator"),
+          type: oneOf(get("type"), typeSlugs, "other"),
           sector_tags: list(get("sector_tags")),
           website: get("website") || null,
           phone: get("phone") || null,
@@ -90,11 +103,15 @@ export async function importEntityCsv(
           marketing_opt_in: boolOf(get("marketing_opt_in")),
           notes: get("notes") || null,
         });
-      } else if (entity === "enquiries") {
+      } else if (entity === "requirements") {
         if (!get("title")) throw new Error("title is required");
+        const contactId = resolveContact(get("contact_email"));
+        if (!contactId)
+          throw new Error("contact_email is required and must match an existing contact");
         records.push({
           ...base,
           title: get("title"),
+          contact_id: contactId,
           status: oneOf(get("status"), Constants.public.Enums.requirement_status, "active"),
           target_towns: list(get("target_towns")),
           target_regions: list(get("target_regions")),
@@ -103,11 +120,15 @@ export async function importEntityCsv(
         });
       } else {
         if (!get("title")) throw new Error("title is required");
+        const contactId = resolveContact(get("contact_email"));
+        if (!contactId)
+          throw new Error("contact_email is required and must match an existing contact");
         const dt = get("disposal_type");
         records.push({
           ...base,
           source: "import",
           title: get("title"),
+          contact_id: contactId,
           status: get("status") || null,
           disposal_type: ["freehold", "new_lease", "lease_assignment", "sublease", "unknown"].includes(dt)
             ? dt
@@ -135,7 +156,7 @@ export async function importEntityCsv(
     inserted = records.length;
   }
 
-  const path = entity === "enquiries" ? "/enquiries" : `/${entity}`;
+  const path = `/${entity}`;
   revalidatePath(path);
 
   const skipped = errors.length

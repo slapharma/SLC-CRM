@@ -249,13 +249,13 @@ export default async function DealDetailPage({
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Target className="h-4 w-4 text-muted-foreground" />
-              Enquiry
+              Requirement
             </CardTitle>
           </CardHeader>
           <CardContent className="text-sm">
             {requirement ? (
               <Link
-                href={`/enquiries/${requirement.id}`}
+                href={`/requirements/${requirement.id}`}
                 className="font-medium text-foreground hover:text-info hover:underline"
               >
                 {requirement.title}

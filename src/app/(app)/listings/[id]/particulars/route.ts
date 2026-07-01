@@ -104,6 +104,7 @@ function buildData(
   );
 
   return {
+    intel: g<string | null>("listing_type") === "intel",
     statusTag,
     title: g<string | null>("title") ?? "Property",
     address,

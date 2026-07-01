@@ -42,6 +42,7 @@ function payload(fd: FormData) {
   return {
     title: str(fd, "title"),
     company_id: nullableStr(fd, "company_id"),
+    contact_id: nullableStr(fd, "contact_id"),
     status: (
       (Constants.public.Enums.requirement_status as readonly string[]).includes(status)
         ? status
@@ -76,7 +77,7 @@ const agents = (fd: FormData) => {
   return { lead, extra };
 };
 
-/** Replace an enquiry's additional-agent rows. */
+/** Replace a requirement's additional-agent rows. */
 async function syncRequirementAgents(
   supabase: Supabase,
   requirementId: string,
@@ -114,6 +115,8 @@ export async function createRequirement(
 
   const data = payload(formData);
   if (!data.title) return { error: "A requirement title is required." };
+  if (!data.contact_id)
+    return { error: "A contact is required for every requirement." };
 
   const { data: row, error } = await supabase
     .from("requirements")
@@ -124,8 +127,8 @@ export async function createRequirement(
 
   await syncRequirementAgents(supabase, row.id, agencyId, agents(formData).extra);
 
-  revalidatePath("/enquiries");
-  redirect(`/enquiries/${row.id}`);
+  revalidatePath("/requirements");
+  redirect(`/requirements/${row.id}`);
 }
 
 export async function updateRequirement(
@@ -141,6 +144,8 @@ export async function updateRequirement(
 
   const data = payload(formData);
   if (!data.title) return { error: "A requirement title is required." };
+  if (!data.contact_id)
+    return { error: "A contact is required for every requirement." };
 
   const { error } = await supabase
     .from("requirements")
@@ -151,9 +156,9 @@ export async function updateRequirement(
 
   await syncRequirementAgents(supabase, id, agencyId, agents(formData).extra);
 
-  revalidatePath("/enquiries");
-  revalidatePath(`/enquiries/${id}`);
-  redirect(`/enquiries/${id}`);
+  revalidatePath("/requirements");
+  revalidatePath(`/requirements/${id}`);
+  redirect(`/requirements/${id}`);
 }
 
 export async function deleteRequirement(formData: FormData): Promise<void> {
@@ -166,7 +171,7 @@ export async function deleteRequirement(formData: FormData): Promise<void> {
       .delete()
       .eq("id", id)
       .eq("agency_id", agencyId);
-    revalidatePath("/enquiries");
+    revalidatePath("/requirements");
   }
-  redirect("/enquiries");
+  redirect("/requirements");
 }

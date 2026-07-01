@@ -24,13 +24,13 @@ const FEATURES = [
   },
   {
     icon: Target,
-    title: "Operator enquiries",
+    title: "Operator requirements",
     body: "Capture exactly what each operator wants — towns, size, covers, budget and tenure.",
   },
   {
     icon: Sparkles,
     title: "Supply ↔ demand matching",
-    body: "Score listings against enquiries on location, size, use class and budget — with reasons.",
+    body: "Score listings against requirements on location, size, use class and budget — with reasons.",
   },
 ];
 

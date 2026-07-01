@@ -3,14 +3,10 @@ import type { Metadata } from "next";
 import { AdminPanel, type Member } from "@/components/admin-panel";
 import { DataImport } from "@/components/data-import";
 import { getContactRoles } from "@/lib/contact-roles";
+import { getCompanyTypes } from "@/lib/company-types";
 import { PageHeader } from "@/components/page-header";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { CollapsibleCard } from "@/components/ui/collapsible-card";
 import { currentAgencyId } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
 
@@ -64,6 +60,7 @@ export default async function AdminPage() {
   const openRouterModel = settings?.openrouter_model ?? "perplexity/sonar";
 
   const contactRoles = await getContactRoles();
+  const companyTypes = await getCompanyTypes();
 
   const members: Member[] = (memberRows ?? [])
     .map((m) => {
@@ -101,19 +98,17 @@ export default async function AdminPage() {
         hasOpenRouterKey={hasOpenRouterKey}
         openRouterModel={openRouterModel}
         contactRoles={contactRoles}
+        companyTypes={companyTypes}
       />
 
-      <Card className="mt-4">
-        <CardHeader>
-          <CardTitle>Import data</CardTitle>
-          <CardDescription>
-            Bulk-import Companies, Contacts, Enquiries and Listings from CSV.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+      <div className="mt-4">
+        <CollapsibleCard
+          title="Import data"
+          description="Bulk-import Companies, Contacts, Requirements and Listings from CSV."
+        >
           <DataImport />
-        </CardContent>
-      </Card>
+        </CollapsibleCard>
+      </div>
     </div>
   );
 }

@@ -24,7 +24,7 @@ export function TopBar({
           name="q"
           type="search"
           aria-label="Search"
-          placeholder="Search companies, listings, enquiries…"
+          placeholder="Search companies, listings, requirements…"
           className="h-9 w-full rounded-md border border-input bg-background pl-8 pr-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
       </form>

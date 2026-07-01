@@ -11,6 +11,7 @@ import {
   contactRoleBadge,
   dealStageBadge,
   listingStatusBadge,
+  listingTypeBadge,
   matchScoreBadge,
 } from "@/lib/badges";
 import { deleteDisposal } from "@/lib/actions/disposals";
@@ -24,6 +25,7 @@ import { DisposalAreas } from "@/components/disposal-areas";
 import { ListingShareActions } from "@/components/listing-share-actions";
 import { LocationMap } from "@/components/location-map";
 import { SendToTeam } from "@/components/send-to-team";
+import { getCompanyTypes, typeLabel } from "@/lib/company-types";
 import { getAgencyMembers } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
@@ -65,6 +67,7 @@ export default async function ListingDetailPage({
   if (!d) notFound();
 
   const s = listingStatusBadge(d.status);
+  const lt = listingTypeBadge(d.listing_type);
   const images = (Array.isArray(d.images) ? d.images : []) as ImageItem[];
   const sections = (Array.isArray(d.sections) ? d.sections : []) as SectionItem[];
   const location = [d.address_line, d.city, d.postcode].filter(Boolean).join(", ");
@@ -132,6 +135,7 @@ export default async function ListingDetailPage({
     leadAgent = data;
   }
 
+  const companyTypes = await getCompanyTypes();
   // #4: linked company + point-of-contact for this listing.
   const [{ data: linkedCompany }, { data: linkedContact }] = await Promise.all([
     d.company_id
@@ -159,6 +163,7 @@ export default async function ListingDetailPage({
               {d.title ?? "Untitled listing"}
             </h1>
             <Badge tone={s.tone}>{s.label}</Badge>
+            <Badge tone={lt.tone}>{lt.label}</Badge>
           </div>
           {location ? (
             <p className="mt-1 text-sm text-muted-foreground">{location}</p>
@@ -327,7 +332,7 @@ export default async function ListingDetailPage({
         <CardContent>
           {matches.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No operator enquiries match this listing yet.
+              No operator requirements match this listing yet.
             </p>
           ) : (
             <ul className="space-y-3">
@@ -337,7 +342,7 @@ export default async function ListingDetailPage({
                   <li key={rq.id} className="rounded-md border p-3">
                     <div className="flex items-center justify-between gap-2">
                       <Link
-                        href={`/enquiries/${rq.id}`}
+                        href={`/requirements/${rq.id}`}
                         className="font-medium text-foreground hover:text-info hover:underline"
                       >
                         {rq.title}
@@ -412,7 +417,10 @@ export default async function ListingDetailPage({
                     {linkedCompany.name}
                   </Link>
                   {(() => {
-                    const b = companyTypeBadge(linkedCompany.type);
+                    const b = companyTypeBadge(
+                      linkedCompany.type,
+                      typeLabel(companyTypes, linkedCompany.type),
+                    );
                     return <Badge tone={b.tone}>{b.label}</Badge>;
                   })()}
                 </p>

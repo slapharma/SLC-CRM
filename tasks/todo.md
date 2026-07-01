@@ -279,3 +279,71 @@ SVG/CSS heatmap visuals (no map/chart dep) rendered on each page, each with rele
        - [ ] Show the deal's listing company + contact details with clickable links.
        - [ ] On "create deal", pop up a form to name the deal before creating
              (replace/extend the current `createDealFromMatch` flow with a title prompt).
+
+---
+
+# BATCH — Enquiries→Requirements rename, portfolio+map, links, listing type (cflack, 2026-07-01)
+
+Decisions (from user this session):
+- Enquiries page: **omit** geographic map (demand records aren't geographic) → portfolio-spread crosstab only.
+- INTEL listing PDF: **neutral/unbranded + "Market intel — not for distribution"** marker.
+- Route: **revert `/enquiries` → `/requirements`** (+ redirect the old path).
+- Reuse the app's existing design system (Card · `Heatmap` crosstab · `ConcentrationMap` · Tailwind tokens) — no new design language.
+
+Repo facts found during exploration (reduce the work):
+- DB table is already `requirements` (only UI was renamed to "Enquiries" last batch — this reverses that).
+- `disposals` + `requirements` already have `company_id` + `contact_id` columns.
+- Listing form already has Company + Contact pickers; requirement form has Company but **not** Contact.
+- "Portfolio Spread" == the `Heatmap` crosstab (`src/components/heatmap.tsx`); already on Listings + Companies.
+
+## B1 — Enquiries → Requirements (site + route revert)
+- [ ] `git mv src/app/(app)/enquiries` → `src/app/(app)/requirements` (4 pages).
+- [ ] `next.config.ts` redirect flip: `/enquiries(/*)` → `/requirements(/*)`.
+- [ ] Relabel all user-facing "Enquir…"/"enquiry" → "Requirement(s)" (sidebar, list/new/edit/detail, `requirement-form`, dashboard, `/matches`, deals, company detail, `/search`, top-bar, landing, admin, data-import).
+- [ ] Update `/enquiries` → `/requirements` in actions (`requirements.ts`, `deals.ts`, `activities.ts` PATH, `import-data.ts`).
+- [ ] CSV/import entity key `enquiries` → `requirements` (`csv.ts`, `import-data.ts`, `data-import.tsx`) — DB table mapping stays `requirements`.
+
+## B2/B3 — Portfolio spread + geo map, compact 2-column
+- [ ] `ConcentrationMap`: add optional `defaultActive?: MapKind` → initial active layer = page's category (toggles still work).
+- [ ] `Heatmap`: compact variant (smaller cells) for side-by-side.
+- [ ] Contacts page: 2-col — spread (role × company type) left, map (default contacts) right.
+- [ ] Companies page: existing spread → 2-col + map (default companies).
+- [ ] Listings page: existing spread → 2-col + map (default listings).
+- [ ] Requirements page: add spread (target town × status), single column (map omitted).
+
+## B4 — Contact + company fields on requirements + listings
+- [ ] Listings: already wired — verify save + detail display.
+- [ ] Requirements: add Contact picker to `requirement-form.tsx`; thread `contact_id` through `createRequirement`/`updateRequirement`; show company + contact on requirement detail.
+
+## B5 — Listing primary type: CDG | INTEL
+- [ ] Migration `0024_listing_type.sql`: `disposals.listing_type` text/enum `('cdg','intel')` default `'cdg'`; regen `database.types.ts`.
+- [ ] "Type" selector in `disposal-form.tsx`; wire through disposal create/update action.
+- [ ] CDG/INTEL badge on listing list + detail.
+- [ ] Particulars PDF: thread `listing_type`; when `intel` → drop logo/phone/URL/CDG disclaimer, neutral header, add "Market intel — not for distribution".
+
+## Verification
+- [x] tsc + eslint + `next build` clean (twice — before and after review fixes).
+- [x] Preview: /enquiries → /requirements redirect verified; /requirements + /dashboard render; Admin accordion + Add-agent toggle + Edit-company-types expand verified; CDG import panel gone from /listings.
+- [ ] Full data verification of listings/company-types BLOCKED until migrations 0024+0025 applied to live DB (see below).
+
+## Follow-on requests (same session)
+- [x] Dashboard: 5 uniform quick-action buttons incl. "Add requirement"; recent-activity → listings location map; "Pipeline value" KPI (sum deal values).
+- [x] Admin: Add-agent moved into Team panel header (inline form); "Edit roles" → "Edit contact roles"; new "Edit company types" panel (editable, migration 0025); all panels collapsible (CollapsibleCard); MS Outlook (email+calendar) connector placeholder.
+- [x] Mandatory contact on every listing + requirement (form `required` + server validation + CSV import contact_email resolution); company optional on listings.
+- [x] Removed "Import from CDG Leisure" panel from Listings page.
+
+## Adversarial review (workflow, 6 dimensions × verify) — 4 real bugs found + FIXED
+- [x] CSV import created listings/requirements with null contact_id → now resolves required `contact_email`.
+- [x] seed `dummy_data.sql` referenced dropped `company_type` enum → changed to `text[]`.
+- [x] CSV company `type` validated against stale enum → now against live `company_types` slugs.
+- [x] `companyTypeBadge` shown stale labels for renamed types → threaded `typeLabel()` on companies list/detail, search, listing detail (+ tiles/heatmap derive from live types).
+- Known limits (accepted): mandatory-contact enforced at app+CSV layer, NOT a DB NOT NULL (existing rows/CDG scraper have null contact_id); INTEL PDF keeps the teal accent (CDG wordmark/contact/disclaimer removed).
+
+## ⚠️ ACTION REQUIRED — apply migrations to live DB (slc-crm / akxortffkrknoxysgeei)
+Both were blocked by the production-safety gate; app is degraded until applied:
+- `0024_listing_type.sql` — adds `disposals.listing_type` (additive, safe).
+- `0025_company_types.sql` — converts `companies.type` enum→text, adds `company_types` table, DROPS `company_type` enum, seeds 5 defaults.
+After applying: regenerate `database.types.ts` (hand-edits already match), and re-run `dummy_data.sql` only if resetting demo data.
+
+## Review
+Shipped Enquiries→Requirements rename, portfolio-spread+geo-map across list pages, contact/company links, listing CDG/INTEL type + unbranded INTEL PDF, dashboard refresh, Admin accordion redesign + editable company types, and mandatory-contact enforcement. All gated behind two DB migrations awaiting authorization.
