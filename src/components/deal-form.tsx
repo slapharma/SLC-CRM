@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 
+import { AgentFields } from "@/components/agent-fields";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,6 +10,7 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { updateDeal } from "@/lib/actions/deals";
 import type { FormState } from "@/lib/actions/types";
+import type { AgentOption } from "@/lib/supabase/agency";
 
 const STAGES: { value: string; label: string }[] = [
   { value: "lead", label: "Lead" },
@@ -27,9 +29,18 @@ type Deal = {
   value: number | null;
   hot_terms: string | null;
   notes: string | null;
+  lead_agent_id: string | null;
 };
 
-export function DealForm({ deal }: { deal: Deal }) {
+export function DealForm({
+  deal,
+  agents = [],
+  additionalAgentIds,
+}: {
+  deal: Deal;
+  agents?: AgentOption[];
+  additionalAgentIds?: string[];
+}) {
   const [state, formAction, pending] = useActionState<FormState, FormData>(
     updateDeal,
     {},
@@ -83,6 +94,14 @@ export function DealForm({ deal }: { deal: Deal }) {
           <Label htmlFor="notes">Notes</Label>
           <Textarea id="notes" name="notes" defaultValue={deal.notes ?? ""} />
         </div>
+      </div>
+
+      <div className="border-t pt-4">
+        <AgentFields
+          agents={agents}
+          leadAgentId={deal.lead_agent_id}
+          additionalAgentIds={additionalAgentIds}
+        />
       </div>
 
       <div className="flex items-center gap-3">

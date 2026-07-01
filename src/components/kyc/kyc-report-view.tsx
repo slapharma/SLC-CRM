@@ -1,4 +1,5 @@
 import * as React from "react";
+import { ExternalLink } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +13,36 @@ const SOURCE_LABELS: Record<string, string> = {
   vat: "VAT (HMRC)",
   didit: "Didit KYB/AML",
 };
+
+const CH_BASE = "https://find-and-update.company-information.service.gov.uk";
+
+/** Build a Companies House public-register URL for a company (optionally a sub-page). */
+function chUrl(crn: string, sub?: string): string {
+  return `${CH_BASE}/company/${encodeURIComponent(crn)}${sub ? `/${sub}` : ""}`;
+}
+
+/** A small "source" link out to the Companies House public register. */
+function ChLink({
+  crn,
+  sub,
+  label = "Companies House",
+}: {
+  crn: string;
+  sub?: string;
+  label?: string;
+}) {
+  return (
+    <a
+      href={chUrl(crn, sub)}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-1 text-xs font-medium text-info hover:underline"
+    >
+      {label}
+      <ExternalLink className="h-3 w-3" />
+    </a>
+  );
+}
 
 function fmtDate(d: string | null | undefined): string {
   if (!d) return "—";
@@ -35,6 +66,7 @@ export function KycReportView({
   const profile = data?.profile ?? null;
   const flags = report.flags ?? [];
   const notices = data?.notices ?? [];
+  const crn = report.company_number ?? profile?.companyNumber ?? null;
 
   return (
     <div className="space-y-4">
@@ -45,7 +77,18 @@ export function KycReportView({
             <CardTitle>{data?.summary.companyName ?? "KYC report"}</CardTitle>
             <p className="mt-1 text-sm text-muted-foreground">
               Run {fmtDate(report.created_at)}
-              {report.company_number ? ` · CRN ${report.company_number}` : ""}
+              {crn ? " · CRN " : ""}
+              {crn ? (
+                <a
+                  href={chUrl(crn)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 font-medium text-info hover:underline"
+                >
+                  {crn}
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              ) : null}
             </p>
           </div>
           <Badge tone={risk.tone}>{risk.label}</Badge>
@@ -85,8 +128,14 @@ export function KycReportView({
       {/* Company profile */}
       {profile ? (
         <Card>
-          <CardHeader>
+          <CardHeader className="flex-row items-center justify-between space-y-0">
             <CardTitle>Company</CardTitle>
+            {crn ? (
+              <div className="flex flex-wrap items-center gap-3">
+                <ChLink crn={crn} label="Register" />
+                <ChLink crn={crn} sub="filing-history" label="Filing history" />
+              </div>
+            ) : null}
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
             <Row label="Status">{profile.status ?? "—"}</Row>
@@ -161,8 +210,9 @@ export function KycReportView({
       {/* Officers + PSCs */}
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
-          <CardHeader>
+          <CardHeader className="flex-row items-center justify-between space-y-0">
             <CardTitle>Officers</CardTitle>
+            {crn ? <ChLink crn={crn} sub="officers" label="View" /> : null}
           </CardHeader>
           <CardContent className="text-sm">
             {data && data.officers.length > 0 ? (
@@ -188,8 +238,11 @@ export function KycReportView({
         </Card>
 
         <Card>
-          <CardHeader>
+          <CardHeader className="flex-row items-center justify-between space-y-0">
             <CardTitle>Significant control (PSC)</CardTitle>
+            {crn ? (
+              <ChLink crn={crn} sub="persons-with-significant-control" label="View" />
+            ) : null}
           </CardHeader>
           <CardContent className="text-sm">
             {data && data.pscs.length > 0 ? (
@@ -218,8 +271,9 @@ export function KycReportView({
       {/* Charges / insolvency / VAT */}
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
-          <CardHeader>
+          <CardHeader className="flex-row items-center justify-between space-y-0">
             <CardTitle>Charges &amp; insolvency</CardTitle>
+            {crn ? <ChLink crn={crn} sub="charges" label="View" /> : null}
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
             <Row label="Outstanding charges">

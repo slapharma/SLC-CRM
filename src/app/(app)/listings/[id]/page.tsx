@@ -6,7 +6,13 @@ import { ExternalLink, FileDown, Pencil } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { dealStageBadge, listingStatusBadge, matchScoreBadge } from "@/lib/badges";
+import {
+  companyTypeBadge,
+  contactRoleBadge,
+  dealStageBadge,
+  listingStatusBadge,
+  matchScoreBadge,
+} from "@/lib/badges";
 import { deleteDisposal } from "@/lib/actions/disposals";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { scoreMatch } from "@/lib/matching/score";
@@ -125,6 +131,24 @@ export default async function ListingDetailPage({
       .maybeSingle();
     leadAgent = data;
   }
+
+  // #4: linked company + point-of-contact for this listing.
+  const [{ data: linkedCompany }, { data: linkedContact }] = await Promise.all([
+    d.company_id
+      ? supabase
+          .from("companies")
+          .select("id, name, type")
+          .eq("id", d.company_id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+    d.contact_id
+      ? supabase
+          .from("contacts")
+          .select("id, first_name, last_name, role, email, phone")
+          .eq("id", d.contact_id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -365,6 +389,69 @@ export default async function ListingDetailPage({
                 );
               })}
             </ul>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {linkedCompany || linkedContact ? (
+        <Card className="mt-4">
+          <CardHeader>
+            <CardTitle>Company &amp; contact</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4 text-sm sm:grid-cols-2">
+            {linkedCompany ? (
+              <div className="space-y-1">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Company
+                </p>
+                <p className="flex items-center gap-2">
+                  <Link
+                    href={`/companies/${linkedCompany.id}`}
+                    className="font-medium text-foreground hover:text-info hover:underline"
+                  >
+                    {linkedCompany.name}
+                  </Link>
+                  {(() => {
+                    const b = companyTypeBadge(linkedCompany.type);
+                    return <Badge tone={b.tone}>{b.label}</Badge>;
+                  })()}
+                </p>
+              </div>
+            ) : null}
+            {linkedContact ? (
+              <div className="space-y-1">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Contact
+                </p>
+                <p className="flex items-center gap-2">
+                  <Link
+                    href={`/contacts/${linkedContact.id}`}
+                    className="font-medium text-foreground hover:text-info hover:underline"
+                  >
+                    {[linkedContact.first_name, linkedContact.last_name]
+                      .filter(Boolean)
+                      .join(" ") || "Unnamed contact"}
+                  </Link>
+                  {(() => {
+                    const b = contactRoleBadge(linkedContact.role);
+                    return <Badge tone={b.tone}>{b.label}</Badge>;
+                  })()}
+                </p>
+                {linkedContact.email ? (
+                  <p>
+                    <a
+                      href={`mailto:${linkedContact.email}`}
+                      className="text-info hover:underline"
+                    >
+                      {linkedContact.email}
+                    </a>
+                  </p>
+                ) : null}
+                {linkedContact.phone ? (
+                  <p className="text-muted-foreground">{linkedContact.phone}</p>
+                ) : null}
+              </div>
+            ) : null}
           </CardContent>
         </Card>
       ) : null}

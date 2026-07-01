@@ -4,6 +4,7 @@ import { Pencil, Plus, Store } from "lucide-react";
 
 import { EmptyState } from "@/components/empty-state";
 import { FilterBar, FilterSelect } from "@/components/filter-bar";
+import { FilterTiles } from "@/components/filter-tiles";
 import { Heatmap } from "@/components/heatmap";
 import { ImportDisposalForm } from "@/components/import-disposal-form";
 import { PageHeader } from "@/components/page-header";
@@ -77,6 +78,22 @@ export default async function ListingsPage({
   );
 
   const params = { q, sort, dir, status, disposal_type, town };
+
+  // Stats bar: counts per status (whole q + type filtered set), click to facet.
+  const STATUS_TILES = [
+    { value: "Available", label: "Available" },
+    { value: "Under Offer", label: "Under Offer" },
+    { value: "Let", label: "Let" },
+    { value: "Sold", label: "Sold" },
+    { value: "Withdrawn", label: "Withdrawn" },
+  ];
+  const statusTiles = [
+    { value: "", label: "All", count: rows.length },
+    ...STATUS_TILES.map((t) => ({
+      ...t,
+      count: rows.filter((r) => (r.status ?? "") === t.value).length,
+    })),
+  ];
 
   // Heatmap: town × status — click a cell/label to filter the table below.
   const townCounts = new Map<string, number>();
@@ -159,6 +176,14 @@ export default async function ListingsPage({
           ]}
         />
       </FilterBar>
+
+      {rows.length > 0 ? (
+        <FilterTiles
+          tiles={statusTiles}
+          activeValue={status ?? ""}
+          hrefFor={(v) => filterHref(params, { status: v === status ? null : v || null })}
+        />
+      ) : null}
 
       {rows.length > 0 ? (
         <Card className="mb-5">

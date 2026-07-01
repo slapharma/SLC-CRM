@@ -24,6 +24,29 @@ const asStage = (v: string): DealStage =>
     ? (v as DealStage)
     : "lead";
 
+/** Replace a deal's additional-agent collaborators (lead is dropped from the set). */
+async function syncDealAgents(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  agencyId: string,
+  dealId: string,
+  lead: string | null,
+  fd: FormData,
+) {
+  const extra = Array.from(
+    new Set(fd.getAll("additional_agents").map((v) => String(v)).filter(Boolean)),
+  ).filter((u) => u !== lead);
+  await supabase
+    .from("deal_agents")
+    .delete()
+    .eq("deal_id", dealId)
+    .eq("agency_id", agencyId);
+  if (extra.length > 0) {
+    await supabase.from("deal_agents").insert(
+      extra.map((user_id) => ({ agency_id: agencyId, deal_id: dealId, user_id })),
+    );
+  }
+}
+
 /**
  * Close the loop: when a deal reaches `completed`, mark its linked requirement
  * `satisfied` so it stops generating matches and leaves the active brief list.
@@ -87,22 +110,64 @@ export async function createDealFromMatch(formData: FormData): Promise<void> {
     listing?.title ?? (listing?.city ? `Listing · ${listing.city}` : "Listing");
   const reqName = req?.title ?? "Requirement";
   const value = listing?.guide_price ?? listing?.premium ?? listing?.rent_pa ?? null;
+  // Use the name typed in the "name the deal" popup, else derive one.
+  const title = str(formData, "title") || `${listingName} ↔ ${reqName}`;
+  const lead = str(formData, "lead_agent_id") || null;
 
   const { data: row, error } = await supabase
     .from("deals")
     .insert({
       agency_id: agencyId,
       created_by: user.id,
-      title: `${listingName} ↔ ${reqName}`,
+      title,
       stage: "lead",
       requirement_id: requirementId || null,
       listing_id: listingId || null,
       company_id: req?.company_id ?? null,
       value,
+      lead_agent_id: lead,
     })
     .select("id")
     .single();
   if (error) redirect("/deals");
+
+  await syncDealAgents(supabase, agencyId, row.id, lead, formData);
+
+  revalidatePath("/deals");
+  redirect(`/deals/${row.id}`);
+}
+
+/**
+ * Create a blank, named deal from the pipeline page's "New deal" popup. No
+ * required links — the user names it and can wire up the listing/enquiry later.
+ */
+export async function createDeal(formData: FormData): Promise<void> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const agencyId = await currentAgencyId(supabase);
+  if (!agencyId) redirect("/deals");
+
+  const title = str(formData, "title") || "Untitled deal";
+  const lead = str(formData, "lead_agent_id") || null;
+
+  const { data: row, error } = await supabase
+    .from("deals")
+    .insert({
+      agency_id: agencyId,
+      created_by: user.id,
+      title,
+      stage: "lead",
+      lead_agent_id: lead,
+    })
+    .select("id")
+    .single();
+  if (error) redirect("/deals");
+
+  await syncDealAgents(supabase, agencyId, row.id, lead, formData);
 
   revalidatePath("/deals");
   redirect(`/deals/${row.id}`);
@@ -147,6 +212,7 @@ export async function updateDeal(
   const supabase = await createClient();
   const agencyId = await currentAgencyId(supabase);
   if (!agencyId) return { error: "No agency is linked to your account." };
+  const lead = nullableStr(formData, "lead_agent_id");
   const { data: row, error } = await supabase
     .from("deals")
     .update({
@@ -155,6 +221,7 @@ export async function updateDeal(
       value: num(formData, "value"),
       hot_terms: nullableStr(formData, "hot_terms"),
       notes: nullableStr(formData, "notes"),
+      lead_agent_id: lead,
     })
     .eq("id", id)
     .eq("agency_id", agencyId)
@@ -162,6 +229,7 @@ export async function updateDeal(
     .maybeSingle();
   if (error) return { error: error.message };
 
+  await syncDealAgents(supabase, agencyId, id, lead, formData);
   await satisfyRequirementOnClose(supabase, row?.requirement_id ?? null, stage, agencyId);
   revalidatePath("/deals");
   revalidatePath(`/deals/${id}`);

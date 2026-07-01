@@ -4,6 +4,7 @@ import { Building2, Plus } from "lucide-react";
 
 import { EmptyState } from "@/components/empty-state";
 import { FilterBar, FilterSelect } from "@/components/filter-bar";
+import { FilterTiles } from "@/components/filter-tiles";
 import { Heatmap } from "@/components/heatmap";
 import { PageHeader } from "@/components/page-header";
 import { SortHeader } from "@/components/sort-header";
@@ -62,6 +63,22 @@ export default async function CompaniesPage({
 
   const params = { q, sort, dir, type, tag };
 
+  // Stats bar: counts per company type (whole q-filtered set), click to facet.
+  const TYPE_TILES = [
+    { value: "operator", label: "Operators" },
+    { value: "landlord", label: "Landlords" },
+    { value: "agent", label: "Agents" },
+    { value: "vendor", label: "Vendors" },
+    { value: "other", label: "Other" },
+  ];
+  const typeTiles = [
+    { value: "", label: "All", count: rows.length },
+    ...TYPE_TILES.map((t) => ({
+      ...t,
+      count: rows.filter((c) => c.type === t.value).length,
+    })),
+  ];
+
   // Heatmap: sector tag × company type — click a cell/label to filter below.
   const tagCounts = new Map<string, number>();
   for (const c of rows) for (const t of c.sector_tags) tagCounts.set(t, (tagCounts.get(t) ?? 0) + 1);
@@ -116,6 +133,14 @@ export default async function CompaniesPage({
           ]}
         />
       </FilterBar>
+
+      {rows.length > 0 ? (
+        <FilterTiles
+          tiles={typeTiles}
+          activeValue={type ?? ""}
+          hrefFor={(v) => filterHref(params, { type: v === type ? null : v || null })}
+        />
+      ) : null}
 
       {rows.length > 0 && heatTags.length > 0 ? (
         <Card className="mb-5">

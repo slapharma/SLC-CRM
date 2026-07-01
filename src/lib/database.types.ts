@@ -370,6 +370,42 @@ export type Database = {
           },
         ]
       }
+      deal_agents: {
+        Row: {
+          agency_id: string
+          created_at: string
+          deal_id: string
+          user_id: string
+        }
+        Insert: {
+          agency_id: string
+          created_at?: string
+          deal_id: string
+          user_id: string
+        }
+        Update: {
+          agency_id?: string
+          created_at?: string
+          deal_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_agents_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_agents_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deal_reminders: {
         Row: {
           agency_id: string
@@ -426,6 +462,7 @@ export type Database = {
           created_by: string | null
           hot_terms: string | null
           id: string
+          lead_agent_id: string | null
           listing_id: string | null
           notes: string | null
           requirement_id: string | null
@@ -441,6 +478,7 @@ export type Database = {
           created_by?: string | null
           hot_terms?: string | null
           id?: string
+          lead_agent_id?: string | null
           listing_id?: string | null
           notes?: string | null
           requirement_id?: string | null
@@ -456,6 +494,7 @@ export type Database = {
           created_by?: string | null
           hot_terms?: string | null
           id?: string
+          lead_agent_id?: string | null
           listing_id?: string | null
           notes?: string | null
           requirement_id?: string | null
@@ -705,6 +744,8 @@ export type Database = {
           brochure_url: string | null
           business_rates: number | null
           city: string | null
+          company_id: string | null
+          contact_id: string | null
           covers_external: number | null
           covers_internal: number | null
           created_at: string
@@ -768,6 +809,8 @@ export type Database = {
           brochure_url?: string | null
           business_rates?: number | null
           city?: string | null
+          company_id?: string | null
+          contact_id?: string | null
           covers_external?: number | null
           covers_internal?: number | null
           created_at?: string
@@ -831,6 +874,8 @@ export type Database = {
           brochure_url?: string | null
           business_rates?: number | null
           city?: string | null
+          company_id?: string | null
+          contact_id?: string | null
           covers_external?: number | null
           covers_internal?: number | null
           created_at?: string
@@ -889,6 +934,20 @@ export type Database = {
             columns: ["agency_id"]
             isOneToOne: false
             referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disposals_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disposals_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
             referencedColumns: ["id"]
           },
         ]

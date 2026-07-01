@@ -16,6 +16,7 @@ import {
   companyTypeBadge,
   contactRoleBadge,
   kycRiskBadge,
+  listingStatusBadge,
   requirementStatusBadge,
 } from "@/lib/badges";
 import { deleteCompany } from "@/lib/actions/companies";
@@ -58,6 +59,13 @@ export default async function CompanyDetailPage({
     .select("id, title, status")
     .eq("company_id", id)
     .order("title");
+
+  // #1: listings linked to this company (as landlord / vendor / marketing co.).
+  const { data: listings } = await supabase
+    .from("disposals")
+    .select("id, title, city, status")
+    .eq("company_id", id)
+    .order("updated_at", { ascending: false });
 
   const { data: activities } = await supabase
     .from("activities")
@@ -331,6 +339,47 @@ export default async function CompanyDetailPage({
                       {rq.title}
                     </Link>
                     <Badge tone={rs.tone}>{rs.label}</Badge>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="mt-4">
+        <CardHeader className="flex-row items-center justify-between space-y-0">
+          <CardTitle>Listings</CardTitle>
+          <Link
+            href={`/listings/new?company=${company.id}`}
+            className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}
+          >
+            <Plus />
+            Add listing
+          </Link>
+        </CardHeader>
+        <CardContent>
+          {(listings ?? []).length === 0 ? (
+            <p className="text-sm text-muted-foreground">No listings linked yet.</p>
+          ) : (
+            <ul className="divide-y">
+              {listings!.map((l) => {
+                const ls = listingStatusBadge(l.status);
+                return (
+                  <li
+                    key={l.id}
+                    className="flex items-center justify-between gap-2 py-2 text-sm"
+                  >
+                    <Link
+                      href={`/listings/${l.id}`}
+                      className="font-medium text-foreground hover:text-info hover:underline"
+                    >
+                      {l.title ?? "Untitled listing"}
+                      {l.city ? (
+                        <span className="text-muted-foreground"> · {l.city}</span>
+                      ) : null}
+                    </Link>
+                    <Badge tone={ls.tone}>{ls.label}</Badge>
                   </li>
                 );
               })}

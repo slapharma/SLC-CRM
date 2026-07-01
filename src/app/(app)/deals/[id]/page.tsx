@@ -42,7 +42,7 @@ export default async function DealDetailPage({
       deal.listing_id
         ? supabase
             .from("disposals")
-            .select("id, title, city")
+            .select("id, title, city, company_id, contact_id")
             .eq("id", deal.listing_id)
             .maybeSingle()
         : Promise.resolve({ data: null }),
@@ -61,6 +61,32 @@ export default async function DealDetailPage({
             .maybeSingle()
         : Promise.resolve({ data: null }),
     ]);
+
+  // #6: pull the listing's own linked company + point-of-contact so the deal
+  // shows every party's details with links.
+  const [{ data: listingCompany }, { data: listingContact }] = await Promise.all([
+    listing?.company_id
+      ? supabase
+          .from("companies")
+          .select("id, name")
+          .eq("id", listing.company_id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+    listing?.contact_id
+      ? supabase
+          .from("contacts")
+          .select("id, first_name, last_name, email, phone")
+          .eq("id", listing.contact_id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
+
+  // Deal lead + additional agents (for the assignment fields + summary).
+  const { data: dealAgentRows } = await supabase
+    .from("deal_agents")
+    .select("user_id")
+    .eq("deal_id", id);
+  const additionalAgentIds = (dealAgentRows ?? []).map((r) => r.user_id);
 
   const sb = dealStageBadge(deal.stage);
 
@@ -180,6 +206,42 @@ export default async function DealDetailPage({
                 </Link>
               </p>
             ) : null}
+            {listingCompany ? (
+              <p className="mt-1 text-muted-foreground">
+                Listing company:{" "}
+                <Link
+                  href={`/companies/${listingCompany.id}`}
+                  className="text-info hover:underline"
+                >
+                  {listingCompany.name}
+                </Link>
+              </p>
+            ) : null}
+            {listingContact ? (
+              <p className="mt-1 text-muted-foreground">
+                Contact:{" "}
+                <Link
+                  href={`/contacts/${listingContact.id}`}
+                  className="text-info hover:underline"
+                >
+                  {[listingContact.first_name, listingContact.last_name]
+                    .filter(Boolean)
+                    .join(" ") || "Unnamed contact"}
+                </Link>
+                {listingContact.email ? (
+                  <>
+                    {" · "}
+                    <a
+                      href={`mailto:${listingContact.email}`}
+                      className="text-info hover:underline"
+                    >
+                      {listingContact.email}
+                    </a>
+                  </>
+                ) : null}
+                {listingContact.phone ? ` · ${listingContact.phone}` : ""}
+              </p>
+            ) : null}
           </CardContent>
         </Card>
 
@@ -218,7 +280,10 @@ export default async function DealDetailPage({
               value: deal.value,
               hot_terms: deal.hot_terms,
               notes: deal.notes,
+              lead_agent_id: deal.lead_agent_id,
             }}
+            agents={members}
+            additionalAgentIds={additionalAgentIds}
           />
         </CardContent>
       </Card>
