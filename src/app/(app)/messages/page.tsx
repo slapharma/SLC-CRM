@@ -2,10 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Bell, Clock, Inbox } from "lucide-react";
 
+import { ComposeMessage } from "@/components/compose-message";
 import { EmptyState } from "@/components/empty-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { markMessageRead, markNotificationRead } from "@/lib/actions/messages";
+import { currentAgencyId, getAgencyMembers } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
@@ -56,13 +58,19 @@ export default async function MessagesPage() {
 
   const unreadInbox = messages.filter((m) => !m.read_at).length;
 
+  const agencyId = await currentAgencyId(supabase);
+  const teammates = agencyId ? await getAgencyMembers(supabase, agencyId) : [];
+
   return (
     <div className="mx-auto max-w-3xl space-y-4">
-      <div className="mb-2">
-        <h1 className="text-2xl font-semibold tracking-tight">My Messages</h1>
-        <p className="text-sm text-muted-foreground">
-          Team messages, notifications and reminders in one place.
-        </p>
+      <div className="mb-2 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">My Messages</h1>
+          <p className="text-sm text-muted-foreground">
+            Team messages, notifications and reminders in one place.
+          </p>
+        </div>
+        <ComposeMessage agents={teammates} meId={user?.id} />
       </div>
 
       {/* ── Inbox ─────────────────────────────────────────────── */}
@@ -81,7 +89,8 @@ export default async function MessagesPage() {
         <CardContent>
           {messages.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No messages yet. Use “Send to team” on any record to message a colleague.
+              No messages yet. Hit “New message” above, or use “Send to team” on any
+              record to message a colleague.
             </p>
           ) : (
             <ul className="divide-y">

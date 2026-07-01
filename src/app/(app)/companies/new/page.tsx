@@ -32,7 +32,7 @@ export default async function NewCompanyPage() {
         description="Add an operator, landlord, agent or vendor."
       />
       <Card>
-        <CardContent className="pt-6">
+        <CardContent className="pt-4 sm:pt-6">
           <CompanyForm
             action={createCompany}
             agents={agents}

@@ -34,7 +34,7 @@ export default async function EditContactPage({
     <div className="mx-auto max-w-3xl">
       <PageHeader title="Edit contact" description={name} />
       <Card>
-        <CardContent className="pt-6">
+        <CardContent className="pt-4 sm:pt-6">
           <ContactForm
             action={updateContact}
             contact={contact}

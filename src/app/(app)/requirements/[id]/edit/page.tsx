@@ -34,7 +34,7 @@ export default async function EditRequirementPage({
     <div className="mx-auto max-w-3xl">
       <PageHeader title="Edit requirement" description={requirement.title} />
       <Card>
-        <CardContent className="pt-6">
+        <CardContent className="pt-4 sm:pt-6">
           <RequirementForm
             action={updateRequirement}
             requirement={requirement}

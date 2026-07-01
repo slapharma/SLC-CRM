@@ -28,7 +28,7 @@ export default async function NewContactPage({
     <div className="mx-auto max-w-3xl">
       <PageHeader title="New contact" description="Add a person and link them to a company." />
       <Card>
-        <CardContent className="pt-6">
+        <CardContent className="pt-4 sm:pt-6">
           <ContactForm
             action={createContact}
             companies={companies ?? []}

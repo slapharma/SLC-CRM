@@ -1,16 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Plus, Target } from "lucide-react";
+import { Building2, CalendarPlus, Layers, Plus, Target } from "lucide-react";
 
 import { EmptyState } from "@/components/empty-state";
 import { FilterBar, FilterSelect } from "@/components/filter-bar";
 import { FilterTiles } from "@/components/filter-tiles";
-import { Heatmap } from "@/components/heatmap";
 import { PageHeader } from "@/components/page-header";
 import { SortHeader } from "@/components/sort-header";
+import { StatsBar } from "@/components/stats-bar";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -19,7 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { requirementStatusBadge } from "@/lib/badges";
+import { propertyUseBadge, requirementStatusBadge } from "@/lib/badges";
 import { filterHref, resolveSort } from "@/lib/sort";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
@@ -43,7 +42,9 @@ export default async function RequirementsPage({
 
   let query = supabase
     .from("requirements")
-    .select("id, title, status, target_towns, max_rent, company_id")
+    .select(
+      "id, title, status, target_towns, max_rent, company_id, created_at, property_types, use_classes",
+    )
     .order(column, { ascending });
   if (q) query = query.ilike("title", `%${q}%`);
   const { data } = await query;
@@ -65,29 +66,39 @@ export default async function RequirementsPage({
     count: rows.filter((r) => r.status === s.value).length,
   }));
 
-  // Portfolio Spread — target town × status (map omitted: requirements are demand,
-  // not a geographic record). Clicking a column/cell filters the table by status.
-  const STATUS_SLUGS = ["active", "on_hold", "satisfied", "withdrawn"];
-  const STATUS_LABELS = ["Active", "On hold", "Satisfied", "Withdrawn"];
-  const townsOf = (r: (typeof rows)[number]) =>
-    r.target_towns.length ? r.target_towns : ["—"];
-  const townCounts = new Map<string, number>();
-  for (const r of rows) {
-    for (const t of townsOf(r)) townCounts.set(t, (townCounts.get(t) ?? 0) + 1);
-  }
-  const heatTowns = [...townCounts.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 8)
-    .map((e) => e[0]);
-  const heatMatrix = heatTowns.map((t) =>
-    STATUS_SLUGS.map(
-      (sl) => rows.filter((r) => townsOf(r).includes(t) && r.status === sl).length,
-    ),
-  );
-  const selectedStatusLabel =
-    status && STATUS_SLUGS.includes(status)
-      ? STATUS_LABELS[STATUS_SLUGS.indexOf(status)]
-      : undefined;
+  // Key stats bar — a quick read on the requirement book.
+  const startOfMonth = new Date();
+  startOfMonth.setDate(1);
+  startOfMonth.setHours(0, 0, 0, 0);
+  const newThisMonth = rows.filter(
+    (r) => new Date(r.created_at) >= startOfMonth,
+  ).length;
+
+  const countDistinct = (values: string[]) => {
+    const counts = new Map<string, number>();
+    for (const v of values) counts.set(v, (counts.get(v) ?? 0) + 1);
+    const top = [...counts.entries()].sort((a, b) => b[1] - a[1])[0];
+    return { distinct: counts.size, top: top?.[0] };
+  };
+  const propStats = countDistinct(rows.flatMap((r) => r.property_types ?? []));
+  const useStats = countDistinct(rows.flatMap((r) => r.use_classes ?? []));
+
+  const stats = [
+    { label: "New this month", value: newThisMonth, icon: CalendarPlus },
+    { label: "Total", value: rows.length, icon: Target },
+    {
+      label: "Property types",
+      value: propStats.distinct,
+      icon: Building2,
+      hint: propStats.top ?? "—",
+    },
+    {
+      label: "Use classes",
+      value: useStats.distinct,
+      icon: Layers,
+      hint: useStats.top ? propertyUseBadge(useStats.top).label : "—",
+    },
+  ];
 
   const ids = [
     ...new Set(rows.map((r) => r.company_id).filter((v): v is string => Boolean(v))),
@@ -143,32 +154,7 @@ export default async function RequirementsPage({
         />
       ) : null}
 
-      {rows.length > 0 ? (
-        <Card className="mb-5">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm">Portfolio Spread — town × status</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Heatmap
-              compact
-              rowLabels={heatTowns}
-              colLabels={STATUS_LABELS}
-              matrix={heatMatrix}
-              selectedCol={selectedStatusLabel}
-              cellHref={(_t, _c, _ri, ci) =>
-                filterHref(params, {
-                  status: STATUS_SLUGS[ci] === status ? null : STATUS_SLUGS[ci],
-                })
-              }
-              colHref={(_c, ci) =>
-                filterHref(params, {
-                  status: STATUS_SLUGS[ci] === status ? null : STATUS_SLUGS[ci],
-                })
-              }
-            />
-          </CardContent>
-        </Card>
-      ) : null}
+      {rows.length > 0 ? <StatsBar stats={stats} className="mb-5" /> : null}
 
       {listRows.length === 0 ? (
         <EmptyState

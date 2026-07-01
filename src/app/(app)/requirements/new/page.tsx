@@ -32,7 +32,7 @@ export default async function NewRequirementPage({
         description="The operator requirement used to match against disposals."
       />
       <Card>
-        <CardContent className="pt-6">
+        <CardContent className="pt-4 sm:pt-6">
           <RequirementForm
             action={createRequirement}
             companies={companies ?? []}

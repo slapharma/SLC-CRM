@@ -38,7 +38,7 @@ export default async function EditListingPage({
     <div className="mx-auto max-w-3xl">
       <PageHeader title="Edit listing" description={disposal.title ?? "Untitled listing"} />
       <Card>
-        <CardContent className="pt-6">
+        <CardContent className="pt-4 sm:pt-6">
           <DisposalForm
             action={updateDisposal}
             disposal={disposal}

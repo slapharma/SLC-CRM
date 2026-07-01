@@ -33,7 +33,7 @@ export default async function EditCompanyPage({
     <div className="mx-auto max-w-3xl">
       <PageHeader title="Edit company" description={company.name} />
       <Card>
-        <CardContent className="pt-6">
+        <CardContent className="pt-4 sm:pt-6">
           <CompanyForm
             action={updateCompany}
             company={company}

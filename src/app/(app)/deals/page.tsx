@@ -1,17 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Handshake } from "lucide-react";
+import { CheckCircle2, Handshake, Layers, PoundSterling } from "lucide-react";
 
 import { EmptyState } from "@/components/empty-state";
-import { Heatmap } from "@/components/heatmap";
 import { PageHeader } from "@/components/page-header";
+import { StatsBar } from "@/components/stats-bar";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DealStageSelect } from "@/components/deal-stage-select";
 import { NewDealButton } from "@/components/new-deal-button";
 import { dealStageBadge } from "@/lib/badges";
-import { filterHref } from "@/lib/sort";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
@@ -48,9 +46,9 @@ type DealRow = {
 export default async function DealsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ agent?: string; stage?: string; band?: string }>;
+  searchParams: Promise<{ agent?: string }>;
 }) {
-  const { agent, stage, band } = await searchParams;
+  const { agent } = await searchParams;
   const supabase = await createClient();
   const { data } = await supabase
     .from("deals")
@@ -96,30 +94,26 @@ export default async function DealsPage({
     label: agentName.get(id) ?? "Agent",
   }));
 
-  // Heatmap: pipeline stage × deal value band.
-  const BANDS: { label: string; test: (v: number | null) => boolean }[] = [
-    { label: "< £50k", test: (v) => v != null && v < 50000 },
-    { label: "£50–100k", test: (v) => v != null && v >= 50000 && v < 100000 },
-    { label: "£100–250k", test: (v) => v != null && v >= 100000 && v < 250000 },
-    { label: "£250k+", test: (v) => v != null && v >= 250000 },
-    { label: "No value", test: (v) => v == null },
-  ];
-
-  // The heatmap reflects the agent filter only (the facets it controls —
-  // stage/band — are applied to the kanban below so the grid stays re-sliceable).
-  const agentDeals = agent
+  const deals = agent
     ? allDeals.filter((d) => d.created_by === agent)
     : allDeals;
-  const bandTest = band ? BANDS.find((b) => b.label === band)?.test : undefined;
-  const deals = agentDeals.filter(
-    (d) => (!stage || d.stage === stage) && (!bandTest || bandTest(d.value)),
-  );
 
-  const params = { agent, stage, band };
-  const stageLabels = STAGE_ORDER.map((s) => dealStageBadge(s).label);
-  const heatMatrix = STAGE_ORDER.map((s) =>
-    BANDS.map((b) => agentDeals.filter((d) => d.stage === s && b.test(d.value)).length),
-  );
+  // Key pipeline stats (respect the agent filter).
+  const CLOSED = new Set(["completed", "fell_through"]);
+  const openDeals = deals.filter((d) => !CLOSED.has(d.stage));
+  const pipelineValue = openDeals.reduce((sum, d) => sum + (d.value ?? 0), 0);
+  const wonCount = deals.filter((d) => d.stage === "completed").length;
+  const stats = [
+    { label: "Total deals", value: deals.length, icon: Handshake },
+    { label: "Open", value: openDeals.length, icon: Layers },
+    {
+      label: "Pipeline value",
+      value: money(pipelineValue) ?? "£0",
+      icon: PoundSterling,
+      hint: "open deals",
+    },
+    { label: "Won", value: wonCount, icon: CheckCircle2 },
+  ];
 
   const byStage = new Map<string, DealRow[]>();
   for (const s of STAGE_ORDER) byStage.set(s, []);
@@ -167,122 +161,81 @@ export default async function DealsPage({
         </form>
       ) : null}
 
-      <Card className="mb-5">
-        <CardHeader>
-          <CardTitle>Portfolio Spread — stage × deal value</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Heatmap
-            rowLabels={stageLabels}
-            colLabels={BANDS.map((b) => b.label)}
-            matrix={heatMatrix}
-            selectedRow={stage ? dealStageBadge(stage).label : undefined}
-            selectedCol={band}
-            cellHref={(_rl, _cl, ri, ci) =>
-              filterHref(params, { stage: STAGE_ORDER[ri], band: BANDS[ci].label })
-            }
-            rowHref={(_rl, ri) => {
-              const st = STAGE_ORDER[ri];
-              return filterHref(params, { stage: st === stage ? null : st });
-            }}
-            colHref={(cl) => filterHref(params, { band: cl === band ? null : cl })}
-          />
-        </CardContent>
-      </Card>
+      <StatsBar stats={stats} className="mb-6" />
 
-      {stage || band ? (
-        <div className="mb-3 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-          <span>
-            Showing {stage ? dealStageBadge(stage).label : "all stages"}
-            {band ? ` · ${band}` : ""} ({deals.length})
-          </span>
-          <Link
-            href={filterHref(params, { stage: null, band: null })}
-            className="text-foreground hover:underline"
-          >
-            Clear grid filter
-          </Link>
-        </div>
-      ) : null}
-
-      <div className="-mx-2 overflow-x-auto pb-4">
-        <div className="flex min-w-max gap-3 px-2">
+      {deals.length === 0 ? (
+        <p className="rounded-lg border border-dashed bg-muted/30 px-4 py-10 text-center text-sm text-muted-foreground">
+          No deals for this agent.
+        </p>
+      ) : (
+        <div className="space-y-6">
           {STAGE_ORDER.map((stage) => {
             const col = byStage.get(stage) ?? [];
+            if (col.length === 0) return null;
             const sb = dealStageBadge(stage);
             return (
-              <section
-                key={stage}
-                className="flex w-72 shrink-0 flex-col rounded-lg border bg-muted/30"
-                aria-label={`${sb.label} column`}
-              >
-                <div className="flex items-center justify-between gap-2 border-b px-3 py-2.5">
+              <section key={stage} aria-label={`${sb.label} stage`}>
+                <div className="mb-2.5 flex items-center gap-2">
                   <Badge tone={sb.tone}>{sb.label}</Badge>
                   <span className="font-mono text-xs tabular-nums text-muted-foreground">
                     {col.length}
                   </span>
                 </div>
-                <div className="flex flex-col gap-2 p-2">
-                  {col.length === 0 ? (
-                    <p className="px-1 py-6 text-center text-xs text-muted-foreground">
-                      No deals
-                    </p>
-                  ) : (
-                    col.map((d) => (
-                      <article
-                        key={d.id}
-                        className="rounded-md border bg-card p-3 transition-colors hover:border-primary/40"
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {col.map((d) => (
+                    <article
+                      key={d.id}
+                      className="flex flex-col rounded-lg border bg-card p-3 transition-colors hover:border-primary/40"
+                    >
+                      <Link
+                        href={`/deals/${d.id}`}
+                        className="text-sm font-medium leading-snug text-foreground hover:text-info hover:underline"
                       >
+                        {d.title}
+                      </Link>
+                      <dl className="mt-2 space-y-1 text-xs text-muted-foreground">
+                        {d.company?.name ? (
+                          <div className="truncate">{d.company.name}</div>
+                        ) : null}
+                        {money(d.value) ? (
+                          <div className="font-mono tabular-nums text-foreground">
+                            {money(d.value)}
+                          </div>
+                        ) : null}
+                      </dl>
+                      <div className="mt-2 flex items-center justify-between gap-2">
+                        <span className="truncate text-[11px] text-muted-foreground">
+                          {new Date(d.created_at).toLocaleDateString("en-GB")}
+                          {d.created_by && agentName.get(d.created_by)
+                            ? ` · ${agentName.get(d.created_by)}`
+                            : ""}
+                        </span>
                         <Link
                           href={`/deals/${d.id}`}
-                          className="text-sm font-medium leading-snug text-foreground hover:text-info hover:underline"
+                          className={cn(
+                            buttonVariants({ variant: "secondary", size: "sm" }),
+                            "h-7 shrink-0 px-2 text-xs",
+                          )}
                         >
-                          {d.title}
+                          View deal
                         </Link>
-                        <dl className="mt-2 space-y-1 text-xs text-muted-foreground">
-                          {d.company?.name ? (
-                            <div className="truncate">{d.company.name}</div>
-                          ) : null}
-                          {money(d.value) ? (
-                            <div className="font-mono tabular-nums text-foreground">
-                              {money(d.value)}
-                            </div>
-                          ) : null}
-                        </dl>
-                        <div className="mt-2 flex items-center justify-between gap-2">
-                          <span className="truncate text-[11px] text-muted-foreground">
-                            {new Date(d.created_at).toLocaleDateString("en-GB")}
-                            {d.created_by && agentName.get(d.created_by)
-                              ? ` · ${agentName.get(d.created_by)}`
-                              : ""}
-                          </span>
-                          <Link
-                            href={`/deals/${d.id}`}
-                            className={cn(
-                              buttonVariants({ variant: "secondary", size: "sm" }),
-                              "h-7 shrink-0 px-2 text-xs",
-                            )}
-                          >
-                            View deal
-                          </Link>
-                        </div>
-                        <div className="mt-2.5">
-                          <DealStageSelect
-                            id={d.id}
-                            stage={d.stage}
-                            className="h-8 text-xs"
-                            aria-label={`Move “${d.title}” to another stage`}
-                          />
-                        </div>
-                      </article>
-                    ))
-                  )}
+                      </div>
+                      <div className="mt-2.5">
+                        <DealStageSelect
+                          id={d.id}
+                          stage={d.stage}
+                          className="h-8 text-xs"
+                          aria-label={`Move “${d.title}” to another stage`}
+                        />
+                      </div>
+                    </article>
+                  ))}
                 </div>
               </section>
             );
           })}
         </div>
-      </div>
+      )}
     </div>
   );
 }

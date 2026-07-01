@@ -33,7 +33,7 @@ export default async function NewListingPage({
         description="Add a leisure premises to your supply book."
       />
       <Card>
-        <CardContent className="pt-6">
+        <CardContent className="pt-4 sm:pt-6">
           <DisposalForm
             action={createDisposal}
             agents={agents}
