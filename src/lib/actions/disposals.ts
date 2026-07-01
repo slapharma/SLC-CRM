@@ -59,6 +59,9 @@ function disposalFieldsFromForm(fd: FormData): Omit<TablesInsert<"disposals">, "
     key_features: features,
     description: textOrNull(fd, "description"),
     lead_agent_id: textOrNull(fd, "lead_agent_id"),
+    // #1/#4: optional links to a Company (landlord/vendor) and a point-of-contact.
+    company_id: textOrNull(fd, "company_id"),
+    contact_id: textOrNull(fd, "contact_id"),
   };
 }
 

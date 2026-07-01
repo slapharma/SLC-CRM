@@ -8,10 +8,22 @@ import type { Database } from "@/lib/database.types";
 import type { FormState } from "@/lib/actions/types";
 
 type MemberRole = Database["public"]["Enums"]["member_role"];
+type ContactRole = Database["public"]["Enums"]["contact_role"];
+
+const CONTACT_ROLES: readonly ContactRole[] = [
+  "acquisitions",
+  "landlord",
+  "solicitor",
+  "agent",
+  "finance",
+  "other",
+];
 
 const str = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim();
 const asRole = (v: string): MemberRole =>
   v === "admin" ? "admin" : v === "manager" ? "manager" : "agent";
+const asContactRole = (v: string): ContactRole =>
+  (CONTACT_ROLES as readonly string[]).includes(v) ? (v as ContactRole) : "other";
 
 /** Create a new agent in the caller's agency (admin only — enforced in the RPC). */
 export async function createAgent(
@@ -107,6 +119,26 @@ export async function updateAgentRole(formData: FormData): Promise<void> {
     .eq("agency_id", agencyId)
     .eq("user_id", userId);
   revalidatePath("/admin");
+}
+
+/**
+ * Change a contact's role (#2 — admin contact-role editor). Agency-scoped; the
+ * contacts RLS already restricts writes to the caller's agency and the admin
+ * page is admin-gated in the UI.
+ */
+export async function updateContactRole(formData: FormData): Promise<void> {
+  const supabase = await createClient();
+  const agencyId = await currentAgencyId(supabase);
+  const contactId = str(formData, "contact_id");
+  if (!agencyId || !contactId) return;
+  await supabase
+    .from("contacts")
+    .update({ role: asContactRole(str(formData, "role")) })
+    .eq("agency_id", agencyId)
+    .eq("id", contactId);
+  revalidatePath("/admin");
+  revalidatePath(`/contacts/${contactId}`);
+  revalidatePath("/contacts");
 }
 
 /**

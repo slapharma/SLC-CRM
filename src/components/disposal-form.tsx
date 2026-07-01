@@ -38,16 +38,26 @@ const FIT_OUTS: Option[] = [
   ["shell", "Shell"],
 ];
 
+type PickOption = { id: string; name: string };
+
 export function DisposalForm({
   action,
   disposal,
   agents,
   additionalAgentIds,
+  companies = [],
+  contacts = [],
+  defaultCompanyId,
+  defaultContactId,
 }: {
   action: (state: FormState, formData: FormData) => Promise<FormState>;
   disposal?: Tables<"disposals">;
   agents: AgentOption[];
   additionalAgentIds?: string[];
+  companies?: PickOption[];
+  contacts?: PickOption[];
+  defaultCompanyId?: string;
+  defaultContactId?: string;
 }) {
   const [state, formAction, pending] = useActionState<FormState, FormData>(action, {});
   const d = disposal;
@@ -192,6 +202,31 @@ export function DisposalForm({
         <Field label="Description" htmlFor="description">
           <Textarea id="description" name="description" defaultValue={d?.description ?? ""} />
         </Field>
+      </Section>
+
+      <Section title="Links">
+        <div className="grid gap-5 sm:grid-cols-2">
+          <Field label="Company" htmlFor="company_id" hint="Landlord / vendor / marketing company">
+            <Select id="company_id" name="company_id" defaultValue={d?.company_id ?? defaultCompanyId ?? ""}>
+              <option value="">— None —</option>
+              {companies.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Contact" htmlFor="contact_id" hint="Point of contact for this listing">
+            <Select id="contact_id" name="contact_id" defaultValue={d?.contact_id ?? defaultContactId ?? ""}>
+              <option value="">— None —</option>
+              {contacts.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
       </Section>
 
       <Section title="Assignment">

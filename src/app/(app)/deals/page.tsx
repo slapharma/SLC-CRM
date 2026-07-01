@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DealStageSelect } from "@/components/deal-stage-select";
+import { NewDealButton } from "@/components/new-deal-button";
 import { dealStageBadge } from "@/lib/badges";
 import { filterHref } from "@/lib/sort";
 import { createClient } from "@/lib/supabase/server";
@@ -129,6 +130,7 @@ export default async function DealsPage({
       <PageHeader
         title="Deals"
         description={`${deals.length} deal${deals.length === 1 ? "" : "s"} across the pipeline — move a card with its stage selector.`}
+        action={<NewDealButton />}
       />
 
       {agentOptions.length > 0 ? (
