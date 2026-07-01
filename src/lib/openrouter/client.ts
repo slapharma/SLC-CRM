@@ -22,8 +22,9 @@ export async function openRouterChat({
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
       // Optional attribution headers recommended by OpenRouter.
+      // NB: header values must be Latin-1 (ASCII here) — no em dashes etc.
       "HTTP-Referer": "https://cdgleisure.com",
-      "X-Title": "CDG CRM — Deep Dive",
+      "X-Title": "CDG CRM Deep Dive",
     },
     body: JSON.stringify({
       model,
