@@ -67,7 +67,7 @@ export default async function MatchesPage({
   const shown = pairs.slice(0, 50);
 
   const stats = [
-    { label: "Active enquiries", value: requirements.length, icon: Target },
+    { label: "Active requirements", value: requirements.length, icon: Target },
     { label: "Live listings", value: supply.length, icon: Store },
     { label: "Opportunities", value: pairs.length, icon: Sparkles },
     { label: "Avg score", value: `${avgScore}%`, icon: Gauge },
@@ -77,7 +77,7 @@ export default async function MatchesPage({
     <div className="mx-auto max-w-5xl">
       <PageHeader
         title="MatchMaker Opportunities"
-        description={`Active enquiry ↔ listing pairs scoring ${minScore}%+ across your agency.`}
+        description={`Active requirement ↔ listing pairs scoring ${minScore}%+ across your agency.`}
       />
 
       <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -132,7 +132,7 @@ export default async function MatchesPage({
         <EmptyState
           icon={Sparkles}
           title="No strong opportunities yet"
-          description="Adjust the filters above, or add active enquiries and listings — pairs surface here automatically."
+          description="Adjust the filters above, or add active requirements and listings — pairs surface here automatically."
         />
       ) : (
         <div className="space-y-3">
@@ -144,7 +144,7 @@ export default async function MatchesPage({
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="text-sm">
                       <Link
-                        href={`/enquiries/${rq.id}`}
+                        href={`/requirements/${rq.id}`}
                         className="font-medium text-foreground hover:text-info hover:underline"
                       >
                         {rq.title}

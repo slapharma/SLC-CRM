@@ -2,7 +2,7 @@
 // cells (tags, towns) use ";" inside the cell so they don't clash with the
 // "," column delimiter.
 
-export type ImportEntity = "companies" | "contacts" | "enquiries" | "listings";
+export type ImportEntity = "companies" | "contacts" | "requirements" | "listings";
 
 /** Parse CSV text into rows of string cells (handles quotes, escaped quotes, CRLF). */
 export function parseCsv(text: string): string[][] {
@@ -110,11 +110,14 @@ export const IMPORT_TEMPLATES: Record<
       "Met at expo",
     ],
   },
-  enquiries: {
-    label: "Enquiries",
-    headers: ["title", "status", "target_towns", "target_regions", "max_rent", "notes"],
+  requirements: {
+    label: "Requirements",
+    // contact_email is REQUIRED — must match an existing contact (every requirement
+    // must have a contact). Import contacts first, then reference them by email.
+    headers: ["title", "contact_email", "status", "target_towns", "target_regions", "max_rent", "notes"],
     example: [
       "Wet-led bar, Central London",
+      "james@example.co.uk",
       "active",
       "London;Manchester",
       "Greater London",
@@ -124,8 +127,11 @@ export const IMPORT_TEMPLATES: Record<
   },
   listings: {
     label: "Listings",
+    // contact_email is REQUIRED — must match an existing contact (every listing
+    // must have a contact). Company is optional and not set via CSV.
     headers: [
       "title",
+      "contact_email",
       "status",
       "disposal_type",
       "city",
@@ -138,6 +144,7 @@ export const IMPORT_TEMPLATES: Record<
     ],
     example: [
       "Corner bar, Soho",
+      "james@example.co.uk",
       "Available",
       "new_lease",
       "London",

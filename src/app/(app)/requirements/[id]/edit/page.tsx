@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { updateRequirement } from "@/lib/actions/requirements";
 import { getAgencyMembers } from "@/lib/supabase/agency";
+import { getContactOptions } from "@/lib/supabase/pickers";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function EditRequirementPage({
@@ -20,6 +21,8 @@ export default async function EditRequirementPage({
   ]);
   if (!requirement) notFound();
 
+  const contacts = await getContactOptions(supabase, requirement.agency_id);
+
   const { data: agentRows } = await supabase
     .from("requirement_agents")
     .select("user_id")
@@ -29,13 +32,14 @@ export default async function EditRequirementPage({
 
   return (
     <div className="mx-auto max-w-3xl">
-      <PageHeader title="Edit enquiry" description={requirement.title} />
+      <PageHeader title="Edit requirement" description={requirement.title} />
       <Card>
         <CardContent className="pt-6">
           <RequirementForm
             action={updateRequirement}
             requirement={requirement}
             companies={companies ?? []}
+            contacts={contacts}
             agents={agents}
             additionalAgentIds={additionalAgentIds}
           />

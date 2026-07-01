@@ -5,7 +5,10 @@ import { useActionState } from "react";
 import Link from "next/link";
 
 import { AgentFields } from "@/components/agent-fields";
-import { CompanyCreatableSelect } from "@/components/creatable-select";
+import {
+  CompanyCreatableSelect,
+  ContactCreatableSelect,
+} from "@/components/creatable-select";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -50,6 +53,7 @@ export function RequirementForm({
   action,
   requirement,
   companies,
+  contacts = [],
   defaultCompanyId,
   agents = [],
   additionalAgentIds,
@@ -57,6 +61,7 @@ export function RequirementForm({
   action: (state: FormState, formData: FormData) => Promise<FormState>;
   requirement?: Tables<"requirements">;
   companies: { id: string; name: string }[];
+  contacts?: { id: string; name: string }[];
   defaultCompanyId?: string;
   agents?: AgentOption[];
   additionalAgentIds?: string[];
@@ -97,6 +102,15 @@ export function RequirementForm({
             </Select>
           </Field>
         </div>
+        <ContactCreatableSelect
+          name="contact_id"
+          label="Contact"
+          required
+          placeholder="Select a contact…"
+          options={contacts}
+          defaultValue={r?.contact_id ?? ""}
+          hint="Point of contact for this operator — required"
+        />
       </Section>
 
       <Section title="Location → matches disposal town / area / postcode">
@@ -217,10 +231,10 @@ export function RequirementForm({
 
       <div className="flex items-center gap-2">
         <Button type="submit" disabled={pending}>
-          {pending ? "Saving…" : r ? "Save changes" : "Create enquiry"}
+          {pending ? "Saving…" : r ? "Save changes" : "Create requirement"}
         </Button>
         <Link
-          href={r ? `/enquiries/${r.id}` : "/enquiries"}
+          href={r ? `/requirements/${r.id}` : "/requirements"}
           className={cn(buttonVariants({ variant: "secondary" }))}
         >
           Cancel

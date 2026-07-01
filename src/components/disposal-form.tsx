@@ -5,6 +5,10 @@ import { useActionState } from "react";
 import Link from "next/link";
 
 import { AgentFields } from "@/components/agent-fields";
+import {
+  CompanyCreatableSelect,
+  ContactCreatableSelect,
+} from "@/components/creatable-select";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,6 +40,10 @@ const FIT_OUTS: Option[] = [
   ["fully_fitted", "Fully fitted"],
   ["part_fitted", "Part fitted"],
   ["shell", "Shell"],
+];
+const LISTING_TYPES: Option[] = [
+  ["cdg", "CDG — our instruction"],
+  ["intel", "INTEL — market intelligence"],
 ];
 
 type PickOption = { id: string; name: string };
@@ -75,6 +83,23 @@ export function DisposalForm({
             placeholder="e.g. Corner bar, Soho"
             required
           />
+        </Field>
+        <Field
+          label="Type"
+          htmlFor="listing_type"
+          hint="INTEL listings produce an unbranded PDF (no CDG branding)."
+        >
+          <Select
+            id="listing_type"
+            name="listing_type"
+            defaultValue={d?.listing_type ?? "cdg"}
+          >
+            {LISTING_TYPES.map(([v, l]) => (
+              <option key={v} value={v}>
+                {l}
+              </option>
+            ))}
+          </Select>
         </Field>
         <div className="grid gap-5 sm:grid-cols-2">
           <Field label="Status" htmlFor="status">
@@ -206,26 +231,20 @@ export function DisposalForm({
 
       <Section title="Links">
         <div className="grid gap-5 sm:grid-cols-2">
-          <Field label="Company" htmlFor="company_id" hint="Landlord / vendor / marketing company">
-            <Select id="company_id" name="company_id" defaultValue={d?.company_id ?? defaultCompanyId ?? ""}>
-              <option value="">— None —</option>
-              {companies.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Contact" htmlFor="contact_id" hint="Point of contact for this listing">
-            <Select id="contact_id" name="contact_id" defaultValue={d?.contact_id ?? defaultContactId ?? ""}>
-              <option value="">— None —</option>
-              {contacts.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </Select>
-          </Field>
+          <CompanyCreatableSelect
+            options={companies}
+            defaultValue={d?.company_id ?? defaultCompanyId ?? ""}
+            hint="Landlord / vendor / marketing company — optional"
+          />
+          <ContactCreatableSelect
+            name="contact_id"
+            label="Contact"
+            required
+            placeholder="Select a contact…"
+            options={contacts}
+            defaultValue={d?.contact_id ?? defaultContactId ?? ""}
+            hint="Point of contact for this listing — required"
+          />
         </div>
       </Section>
 

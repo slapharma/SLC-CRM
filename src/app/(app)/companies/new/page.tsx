@@ -4,6 +4,7 @@ import { CompanyForm } from "@/components/company-form";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { createCompany } from "@/lib/actions/companies";
+import { getCompanyTypes } from "@/lib/company-types";
 import { currentAgencyId, getAgencyMembers } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
 
@@ -13,6 +14,7 @@ export default async function NewCompanyPage() {
   const supabase = await createClient();
   const agencyId = await currentAgencyId(supabase);
   const agents = agencyId ? await getAgencyMembers(supabase, agencyId) : [];
+  const types = await getCompanyTypes();
 
   const { data: contactRows } = await supabase
     .from("contacts")
@@ -31,7 +33,12 @@ export default async function NewCompanyPage() {
       />
       <Card>
         <CardContent className="pt-6">
-          <CompanyForm action={createCompany} agents={agents} contacts={contacts} />
+          <CompanyForm
+            action={createCompany}
+            agents={agents}
+            contacts={contacts}
+            types={types}
+          />
         </CardContent>
       </Card>
     </div>

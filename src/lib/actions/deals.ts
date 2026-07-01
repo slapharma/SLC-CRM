@@ -139,7 +139,7 @@ export async function createDealFromMatch(formData: FormData): Promise<void> {
 
 /**
  * Create a blank, named deal from the pipeline page's "New deal" popup. No
- * required links — the user names it and can wire up the listing/enquiry later.
+ * required links — the user names it and can wire up the listing/requirement later.
  */
 export async function createDeal(formData: FormData): Promise<void> {
   const supabase = await createClient();
@@ -193,7 +193,7 @@ export async function updateDealStage(formData: FormData): Promise<void> {
     await satisfyRequirementOnClose(supabase, row?.requirement_id ?? null, stage, agencyId);
     revalidatePath("/deals");
     revalidatePath(`/deals/${id}`);
-    if (stage === "completed") revalidatePath("/enquiries");
+    if (stage === "completed") revalidatePath("/requirements");
   }
 }
 
@@ -233,7 +233,7 @@ export async function updateDeal(
   await satisfyRequirementOnClose(supabase, row?.requirement_id ?? null, stage, agencyId);
   revalidatePath("/deals");
   revalidatePath(`/deals/${id}`);
-  if (stage === "completed") revalidatePath("/enquiries");
+  if (stage === "completed") revalidatePath("/requirements");
   return { message: "Saved." };
 }
 

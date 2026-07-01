@@ -27,6 +27,7 @@ import { LogActivityForm } from "@/components/log-activity-form";
 import { SendToTeam } from "@/components/send-to-team";
 import { DeepDiveView } from "@/components/deep-dive-view";
 import { getContactRoles, roleLabel } from "@/lib/contact-roles";
+import { getCompanyTypes, typeLabel } from "@/lib/company-types";
 import { getAgencyMembers } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
@@ -108,7 +109,8 @@ export default async function CompanyDetailPage({
     .limit(1)
     .maybeSingle();
 
-  const t = companyTypeBadge(company.type);
+  const companyTypes = await getCompanyTypes();
+  const t = companyTypeBadge(company.type, typeLabel(companyTypes, company.type));
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -311,19 +313,19 @@ export default async function CompanyDetailPage({
 
       <Card className="mt-4">
         <CardHeader className="flex-row items-center justify-between space-y-0">
-          <CardTitle>Enquiries</CardTitle>
+          <CardTitle>Requirements</CardTitle>
           <Link
-            href={`/enquiries/new?company=${company.id}`}
+            href={`/requirements/new?company=${company.id}`}
             className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}
           >
             <Plus />
-            Add enquiry
+            Add requirement
           </Link>
         </CardHeader>
         <CardContent>
           {(requirements ?? []).length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No enquiries yet.
+              No requirements yet.
             </p>
           ) : (
             <ul className="divide-y">
@@ -335,7 +337,7 @@ export default async function CompanyDetailPage({
                     className="flex items-center justify-between gap-2 py-2 text-sm"
                   >
                     <Link
-                      href={`/enquiries/${rq.id}`}
+                      href={`/requirements/${rq.id}`}
                       className="font-medium text-foreground hover:text-info hover:underline"
                     >
                       {rq.title}

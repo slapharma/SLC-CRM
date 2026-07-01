@@ -15,21 +15,33 @@ export type BadgeTone =
 
 export type BadgeSpec = { tone: BadgeTone; label: string };
 
-// disposals.status is free text (CDG values like "Available", "Under Offer", or a
-// seed/manual value), so normalise rather than switch on a fixed enum.
-export function companyTypeBadge(type: string): BadgeSpec {
-  switch (type) {
-    case "operator":
-      return { tone: "teal", label: "Operator" };
-    case "landlord":
-      return { tone: "sky", label: "Landlord" };
-    case "agent":
-      return { tone: "violet", label: "Agent" };
-    case "vendor":
-      return { tone: "amber", label: "Vendor" };
-    default:
-      return { tone: "slate", label: type };
-  }
+// Company types are now editable data (Admin → "Edit company types"), so the label
+// comes from the DB — pass it in. Tone is keyed off the historical slugs; custom
+// types fall back to slate. The label fallbacks only apply when a slug outlives its
+// row (then we title-case the slug as a last resort).
+const COMPANY_TYPE_TONES: Record<string, BadgeTone> = {
+  operator: "teal",
+  landlord: "sky",
+  agent: "violet",
+  vendor: "amber",
+};
+const COMPANY_TYPE_FALLBACK_LABELS: Record<string, string> = {
+  operator: "Operator",
+  landlord: "Landlord",
+  agent: "Agent",
+  vendor: "Vendor",
+  other: "Other",
+};
+export function companyTypeBadge(slug: string, label?: string): BadgeSpec {
+  return {
+    tone: COMPANY_TYPE_TONES[slug] ?? "slate",
+    label:
+      label ??
+      COMPANY_TYPE_FALLBACK_LABELS[slug] ??
+      (slug
+        ? slug.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+        : "—"),
+  };
 }
 
 // Contact roles are now editable data (Admin → "Edit roles"), so the label comes
@@ -90,6 +102,14 @@ export function requirementStatusBadge(status: string): BadgeSpec {
     default:
       return { tone: "slate", label: status };
   }
+}
+
+// Every listing is either CDG's own instruction or INTEL (market intelligence).
+// INTEL listings produce an unbranded PDF (no CDG branding).
+export function listingTypeBadge(type: string | null | undefined): BadgeSpec {
+  return type === "intel"
+    ? { tone: "orange", label: "INTEL" }
+    : { tone: "teal", label: "CDG" };
 }
 
 export function listingStatusBadge(status: string | null | undefined): BadgeSpec {

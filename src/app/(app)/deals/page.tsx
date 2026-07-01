@@ -80,12 +80,12 @@ export default async function DealsPage({
       <div className="mx-auto max-w-6xl">
         <PageHeader
           title="Deals"
-          description="Listings + enquiries + parties, through the pipeline to Heads of Terms."
+          description="Listings + requirements + parties, through the pipeline to Heads of Terms."
         />
         <EmptyState
           icon={Handshake}
           title="No deals yet"
-          description="Open a match on the MatchMaker page (or an enquiry/listing) and click “Create deal” to start the pipeline."
+          description="Open a match on the MatchMaker page (or a requirement/listing) and click “Create deal” to start the pipeline."
         />
       </div>
     );

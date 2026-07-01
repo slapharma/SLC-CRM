@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 
 /**
  * A row of clickable count "blocks" used as filters on pages without a 2-D
- * heatmap (enquiries, contacts). Each tile links to the same page with the
+ * heatmap (requirements, contacts). Each tile links to the same page with the
  * filter applied; the active tile is highlighted. `hrefFor` should toggle the
  * value off when it's already active (handled by the caller).
  */

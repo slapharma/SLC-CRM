@@ -97,7 +97,7 @@ export function DataImport() {
       <div className="grid gap-3 sm:grid-cols-2">
         <EntityImporter entity="companies" />
         <EntityImporter entity="contacts" />
-        <EntityImporter entity="enquiries" />
+        <EntityImporter entity="requirements" />
         <EntityImporter entity="listings" />
       </div>
     </div>

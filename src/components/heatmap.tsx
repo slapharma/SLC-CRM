@@ -21,6 +21,7 @@ export function Heatmap({
   colHref,
   selectedRow,
   selectedCol,
+  compact = false,
 }: {
   rowLabels: string[];
   colLabels: string[];
@@ -36,18 +37,23 @@ export function Heatmap({
   colHref?: (colLabel: string, colIndex: number) => string;
   selectedRow?: string;
   selectedCol?: string;
+  // Smaller cells + narrower label gutter, for the side-by-side portfolio layout.
+  compact?: boolean;
 }) {
   if (rowLabels.length === 0 || colLabels.length === 0) {
     return <p className="text-sm text-muted-foreground">{empty}</p>;
   }
   const max = Math.max(1, ...matrix.flat());
+  const rowGutter = compact ? "5.5rem" : "7rem";
+  const colMin = compact ? "2.5rem" : "3.5rem";
+  const cellHeight = compact ? "h-7" : "h-9";
 
   return (
     <div className="overflow-x-auto">
       <div
         className="inline-grid gap-1"
         style={{
-          gridTemplateColumns: `minmax(7rem, auto) repeat(${colLabels.length}, minmax(3.5rem, 1fr))`,
+          gridTemplateColumns: `minmax(${rowGutter}, auto) repeat(${colLabels.length}, minmax(${colMin}, 1fr))`,
         }}
       >
         <div />
@@ -119,8 +125,10 @@ export function Heatmap({
                     : "transparent",
                   color: intensity > 0.55 ? "#06312f" : "inherit",
                 };
-                const base =
-                  "flex h-9 items-center justify-center rounded border text-xs font-medium tabular-nums";
+                const base = cn(
+                  "flex items-center justify-center rounded border text-xs font-medium tabular-nums",
+                  cellHeight,
+                );
                 const cls = cn(
                   base,
                   isSelected

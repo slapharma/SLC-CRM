@@ -3,13 +3,14 @@ import Link from "next/link";
 import {
   Building2,
   Handshake,
+  PoundSterling,
   Sparkles,
   Store,
   Target,
   UserPlus,
 } from "lucide-react";
 
-import { ActivityTimeline } from "@/components/activity-timeline";
+import { ConcentrationMap } from "@/components/concentration-map";
 import { buttonVariants } from "@/components/ui/button";
 import {
   Card,
@@ -19,32 +20,41 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
+import { getMapLayers } from "@/lib/supabase/map-points";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
-const QUICK_ADD = [
+// All quick actions share one style (uniform secondary buttons in a grid).
+const QUICK_ACTIONS = [
   { href: "/companies/new", label: "Add company", icon: Building2 },
   { href: "/contacts/new", label: "Add contact", icon: UserPlus },
-  { href: "/listings", label: "Add listing", icon: Store },
+  { href: "/listings/new", label: "Add listing", icon: Store },
+  { href: "/requirements/new", label: "Add requirement", icon: Target },
+  { href: "/matches", label: "Matchmake now", icon: Sparkles },
 ];
+
+const fmtMoney = (v: number) => `£${Math.round(v).toLocaleString("en-GB")}`;
 
 export default async function DashboardPage() {
   const supabase = await createClient();
-  const [companies, listings, requirements, deals, activities] = await Promise.all([
-    supabase.from("companies").select("*", { count: "exact", head: true }),
-    supabase.from("disposals").select("*", { count: "exact", head: true }),
-    supabase
-      .from("requirements")
-      .select("*", { count: "exact", head: true })
-      .eq("status", "active"),
-    supabase.from("deals").select("*", { count: "exact", head: true }),
-    supabase
-      .from("activities")
-      .select("id, type, subject, body, occurred_at")
-      .order("occurred_at", { ascending: false })
-      .limit(8),
-  ]);
+  const [companies, listings, requirements, deals, dealValues, mapLayers] =
+    await Promise.all([
+      supabase.from("companies").select("*", { count: "exact", head: true }),
+      supabase.from("disposals").select("*", { count: "exact", head: true }),
+      supabase
+        .from("requirements")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "active"),
+      supabase.from("deals").select("*", { count: "exact", head: true }),
+      supabase.from("deals").select("value"),
+      getMapLayers(supabase),
+    ]);
+
+  const pipelineValue = (dealValues.data ?? []).reduce(
+    (sum, d) => sum + (d.value ?? 0),
+    0,
+  );
 
   const { data: membership } = await supabase
     .from("agency_members")
@@ -57,8 +67,14 @@ export default async function DashboardPage() {
   const kpis = [
     { label: "Companies", value: companies.count ?? 0, icon: Building2, href: "/companies" },
     { label: "Active listings", value: listings.count ?? 0, icon: Store, href: "/listings" },
-    { label: "Live enquiries", value: requirements.count ?? 0, icon: Target, href: "/enquiries" },
+    { label: "Live requirements", value: requirements.count ?? 0, icon: Target, href: "/requirements" },
     { label: "Open deals", value: deals.count ?? 0, icon: Handshake, href: "/deals" },
+    {
+      label: "Pipeline value",
+      value: fmtMoney(pipelineValue),
+      icon: PoundSterling,
+      href: "/deals",
+    },
   ];
 
   return (
@@ -79,7 +95,7 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {kpis.map((kpi) => {
           const Icon = kpi.icon;
           return (
@@ -95,7 +111,9 @@ export default async function DashboardPage() {
                       {kpi.label}
                     </p>
                     <p className="mt-1 font-mono text-2xl font-semibold tabular-nums">
-                      {kpi.value.toLocaleString("en-GB")}
+                      {typeof kpi.value === "number"
+                        ? kpi.value.toLocaleString("en-GB")
+                        : kpi.value}
                     </p>
                   </div>
                   <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary">
@@ -108,48 +126,44 @@ export default async function DashboardPage() {
         })}
       </div>
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-2">
-        <Card>
+      <div className="mt-6 grid gap-4 lg:grid-cols-5">
+        <Card className="flex flex-col lg:col-span-2">
           <CardHeader>
             <CardTitle>Quick actions</CardTitle>
             <CardDescription>Add records, then find matches.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="grid gap-2 sm:grid-cols-3">
-              {QUICK_ADD.map((action) => {
-                const Icon = action.icon;
-                return (
-                  <Link
-                    key={action.href}
-                    href={action.href}
-                    className={cn(buttonVariants({ variant: "secondary" }))}
-                  >
-                    <Icon />
-                    {action.label}
-                  </Link>
-                );
-              })}
-            </div>
-            <Link
-              href="/matches"
-              className={cn(
-                buttonVariants({ variant: "default" }),
-                "h-14 w-full text-base font-semibold uppercase tracking-wide",
-              )}
-            >
-              <Sparkles className="!size-5" />
-              Matchmake now
-            </Link>
+          <CardContent className="flex flex-1 flex-col gap-3">
+            {QUICK_ACTIONS.map((action) => {
+              const Icon = action.icon;
+              return (
+                <Link
+                  key={action.href}
+                  href={action.href}
+                  className={cn(
+                    buttonVariants({ variant: "secondary" }),
+                    "h-auto min-h-14 flex-1 justify-start gap-3 text-base",
+                  )}
+                >
+                  <Icon className="!size-5" />
+                  {action.label}
+                </Link>
+              );
+            })}
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="lg:col-span-3">
           <CardHeader>
-            <CardTitle>Recent activity</CardTitle>
-            <CardDescription>Latest calls, viewings and notes.</CardDescription>
+            <CardTitle>Listings map</CardTitle>
+            <CardDescription>Where your listings are across the UK.</CardDescription>
           </CardHeader>
           <CardContent>
-            <ActivityTimeline activities={activities.data ?? []} />
+            <ConcentrationMap
+              layers={{ listings: mapLayers.listings, companies: [], contacts: [] }}
+              defaultActive="listing"
+              compact
+              hideToggles
+            />
           </CardContent>
         </Card>
       </div>

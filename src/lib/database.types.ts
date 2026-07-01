@@ -160,7 +160,7 @@ export type Database = {
           phone: string | null
           postcode: string | null
           sector_tags: string[]
-          type: Database["public"]["Enums"]["company_type"]
+          type: string
           updated_at: string
           vat_number: string | null
           website: string | null
@@ -181,7 +181,7 @@ export type Database = {
           phone?: string | null
           postcode?: string | null
           sector_tags?: string[]
-          type?: Database["public"]["Enums"]["company_type"]
+          type?: string
           updated_at?: string
           vat_number?: string | null
           website?: string | null
@@ -202,7 +202,7 @@ export type Database = {
           phone?: string | null
           postcode?: string | null
           sector_tags?: string[]
-          type?: Database["public"]["Enums"]["company_type"]
+          type?: string
           updated_at?: string
           vat_number?: string | null
           website?: string | null
@@ -252,6 +252,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      company_types: {
+        Row: {
+          created_at: string
+          id: string
+          is_system: boolean
+          label: string
+          slug: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_system?: boolean
+          label: string
+          slug: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_system?: boolean
+          label?: string
+          slug?: string
+          sort_order?: number
+        }
+        Relationships: []
       }
       contact_agents: {
         Row: {
@@ -794,6 +821,7 @@ export type Database = {
           lease_expiry: string | null
           lease_term_years: number | null
           licensing_notes: string | null
+          listing_type: string
           lng: number | null
           location_description: string | null
           next_rent_review: number | null
@@ -859,6 +887,7 @@ export type Database = {
           lease_expiry?: string | null
           lease_term_years?: number | null
           licensing_notes?: string | null
+          listing_type?: string
           lng?: number | null
           location_description?: string | null
           next_rent_review?: number | null
@@ -924,6 +953,7 @@ export type Database = {
           lease_expiry?: string | null
           lease_term_years?: number | null
           licensing_notes?: string | null
+          listing_type?: string
           lng?: number | null
           location_description?: string | null
           next_rent_review?: number | null
@@ -1396,6 +1426,7 @@ export type Database = {
         Returns: undefined
       }
       auth_agency_ids: { Args: never; Returns: string[] }
+      company_type_in_use: { Args: { p_slug: string }; Returns: number }
       contact_role_in_use: { Args: { p_slug: string }; Returns: number }
       current_agency_openrouter: {
         Args: never
@@ -1413,7 +1444,6 @@ export type Database = {
     }
     Enums: {
       activity_type: "call" | "email" | "viewing" | "note" | "meeting" | "task"
-      company_type: "operator" | "landlord" | "agent" | "vendor" | "other"
       deal_stage:
         | "lead"
         | "viewing"
@@ -1568,7 +1598,6 @@ export const Constants = {
   public: {
     Enums: {
       activity_type: ["call", "email", "viewing", "note", "meeting", "task"],
-      company_type: ["operator", "landlord", "agent", "vendor", "other"],
       deal_stage: [
         "lead",
         "viewing",

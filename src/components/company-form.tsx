@@ -16,26 +16,20 @@ import type { Tables } from "@/lib/database.types";
 import type { AgentOption } from "@/lib/supabase/agency";
 import { cn } from "@/lib/utils";
 
-const TYPES = [
-  ["operator", "Operator"],
-  ["landlord", "Landlord"],
-  ["agent", "Agent"],
-  ["vendor", "Vendor"],
-  ["other", "Other"],
-] as const;
-
 export function CompanyForm({
   action,
   company,
   agents,
   additionalAgentIds,
   contacts = [],
+  types = [],
 }: {
   action: (state: FormState, formData: FormData) => Promise<FormState>;
   company?: Tables<"companies">;
   agents: AgentOption[];
   additionalAgentIds?: string[];
   contacts?: EntityOption[];
+  types?: { slug: string; label: string }[];
 }) {
   const [state, formAction, pending] = useActionState<FormState, FormData>(
     action,
@@ -52,9 +46,9 @@ export function CompanyForm({
 
       <Field label="Type" htmlFor="type">
         <Select id="type" name="type" defaultValue={company?.type ?? "operator"}>
-          {TYPES.map(([v, l]) => (
-            <option key={v} value={v}>
-              {l}
+          {types.map((t) => (
+            <option key={t.slug} value={t.slug}>
+              {t.label}
             </option>
           ))}
         </Select>

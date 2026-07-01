@@ -5,10 +5,12 @@ import { Plus, Target } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { FilterBar, FilterSelect } from "@/components/filter-bar";
 import { FilterTiles } from "@/components/filter-tiles";
+import { Heatmap } from "@/components/heatmap";
 import { PageHeader } from "@/components/page-header";
 import { SortHeader } from "@/components/sort-header";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -22,7 +24,7 @@ import { filterHref, resolveSort } from "@/lib/sort";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
-export const metadata: Metadata = { title: "Enquiries" };
+export const metadata: Metadata = { title: "Requirements" };
 
 export default async function RequirementsPage({
   searchParams,
@@ -63,6 +65,30 @@ export default async function RequirementsPage({
     count: rows.filter((r) => r.status === s.value).length,
   }));
 
+  // Portfolio Spread — target town × status (map omitted: requirements are demand,
+  // not a geographic record). Clicking a column/cell filters the table by status.
+  const STATUS_SLUGS = ["active", "on_hold", "satisfied", "withdrawn"];
+  const STATUS_LABELS = ["Active", "On hold", "Satisfied", "Withdrawn"];
+  const townsOf = (r: (typeof rows)[number]) =>
+    r.target_towns.length ? r.target_towns : ["—"];
+  const townCounts = new Map<string, number>();
+  for (const r of rows) {
+    for (const t of townsOf(r)) townCounts.set(t, (townCounts.get(t) ?? 0) + 1);
+  }
+  const heatTowns = [...townCounts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
+    .map((e) => e[0]);
+  const heatMatrix = heatTowns.map((t) =>
+    STATUS_SLUGS.map(
+      (sl) => rows.filter((r) => townsOf(r).includes(t) && r.status === sl).length,
+    ),
+  );
+  const selectedStatusLabel =
+    status && STATUS_SLUGS.includes(status)
+      ? STATUS_LABELS[STATUS_SLUGS.indexOf(status)]
+      : undefined;
+
   const ids = [
     ...new Set(rows.map((r) => r.company_id).filter((v): v is string => Boolean(v))),
   ];
@@ -78,12 +104,12 @@ export default async function RequirementsPage({
   return (
     <div className="mx-auto max-w-6xl">
       <PageHeader
-        title="Enquiries"
-        description="Operator enquiries — the criteria matched against disposals."
+        title="Requirements"
+        description="Operator requirements — the criteria matched against disposals."
         action={
-          <Link href="/enquiries/new" className={cn(buttonVariants({ size: "sm" }))}>
+          <Link href="/requirements/new" className={cn(buttonVariants({ size: "sm" }))}>
             <Plus />
-            New enquiry
+            New requirement
           </Link>
         }
       />
@@ -92,8 +118,8 @@ export default async function RequirementsPage({
         q={q}
         sort={sort}
         dir={dir}
-        placeholder="Search enquiries…"
-        basePath="/enquiries"
+        placeholder="Search requirements…"
+        basePath="/requirements"
         hasActiveFilters={Boolean(status)}
       >
         <FilterSelect
@@ -117,22 +143,49 @@ export default async function RequirementsPage({
         />
       ) : null}
 
+      {rows.length > 0 ? (
+        <Card className="mb-5">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm">Portfolio Spread — town × status</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Heatmap
+              compact
+              rowLabels={heatTowns}
+              colLabels={STATUS_LABELS}
+              matrix={heatMatrix}
+              selectedCol={selectedStatusLabel}
+              cellHref={(_t, _c, _ri, ci) =>
+                filterHref(params, {
+                  status: STATUS_SLUGS[ci] === status ? null : STATUS_SLUGS[ci],
+                })
+              }
+              colHref={(_c, ci) =>
+                filterHref(params, {
+                  status: STATUS_SLUGS[ci] === status ? null : STATUS_SLUGS[ci],
+                })
+              }
+            />
+          </CardContent>
+        </Card>
+      ) : null}
+
       {listRows.length === 0 ? (
         <EmptyState
           icon={Target}
-          title={q || status ? "No matches" : "No enquiries yet"}
+          title={q || status ? "No matches" : "No requirements yet"}
           description={
             q || status
               ? "Try a different search or filter."
-              : "Capture an operator's enquiry to match against disposals."
+              : "Capture an operator's requirement to match against disposals."
           }
           action={
             q || status ? undefined : (
               <Link
-                href="/enquiries/new"
+                href="/requirements/new"
                 className={cn(buttonVariants({ size: "sm" }))}
               >
-                New enquiry
+                New requirement
               </Link>
             )
           }
@@ -155,7 +208,7 @@ export default async function RequirementsPage({
                 <TableRow key={r.id}>
                   <TableCell>
                     <Link
-                      href={`/enquiries/${r.id}`}
+                      href={`/requirements/${r.id}`}
                       className="font-medium text-foreground hover:text-info hover:underline"
                     >
                       {r.title}

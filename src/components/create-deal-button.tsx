@@ -63,7 +63,7 @@ export function CreateDealButton({
               autoFocus
             />
             <p className="text-xs text-muted-foreground">
-              Leave blank to auto-name it from the listing and enquiry.
+              Leave blank to auto-name it from the listing and requirement.
             </p>
           </div>
           <div className="flex items-center justify-end gap-2">

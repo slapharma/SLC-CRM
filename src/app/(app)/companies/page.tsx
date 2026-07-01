@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Building2, Plus } from "lucide-react";
 
+import { ConcentrationMap } from "@/components/concentration-map";
 import { EmptyState } from "@/components/empty-state";
 import { FilterBar, FilterSelect } from "@/components/filter-bar";
 import { FilterTiles } from "@/components/filter-tiles";
@@ -11,6 +12,7 @@ import { SortHeader } from "@/components/sort-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
+import { getMapLayers } from "@/lib/supabase/map-points";
 import {
   Table,
   TableBody,
@@ -20,6 +22,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { companyTypeBadge } from "@/lib/badges";
+import { getCompanyTypes, typeLabel } from "@/lib/company-types";
 import { filterHref, resolveSort } from "@/lib/sort";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
@@ -53,6 +56,8 @@ export default async function CompaniesPage({
     .order(column, { ascending });
   if (q) query = query.ilike("name", `%${q}%`);
   const { data } = await query;
+  const mapLayers = await getMapLayers(supabase);
+  const companyTypes = await getCompanyTypes();
   // `rows` is the heatmap base (q filtered). The tag/type facets that the
   // heatmap controls are applied to the table in memory so the grid keeps the
   // full distribution.
@@ -64,18 +69,13 @@ export default async function CompaniesPage({
   const params = { q, sort, dir, type, tag };
 
   // Stats bar: counts per company type (whole q-filtered set), click to facet.
-  const TYPE_TILES = [
-    { value: "operator", label: "Operators" },
-    { value: "landlord", label: "Landlords" },
-    { value: "agent", label: "Agents" },
-    { value: "vendor", label: "Vendors" },
-    { value: "other", label: "Other" },
-  ];
+  // Types are editable data, so derive tiles from the live list (admin-chosen labels).
   const typeTiles = [
     { value: "", label: "All", count: rows.length },
-    ...TYPE_TILES.map((t) => ({
-      ...t,
-      count: rows.filter((c) => c.type === t.value).length,
+    ...companyTypes.map((ct) => ({
+      value: ct.slug,
+      label: ct.label,
+      count: rows.filter((c) => c.type === ct.slug).length,
     })),
   ];
 
@@ -86,13 +86,7 @@ export default async function CompaniesPage({
     .sort((a, b) => b[1] - a[1])
     .slice(0, 8)
     .map((e) => e[0]);
-  const heatTypes = [
-    { value: "operator", label: "Operator" },
-    { value: "landlord", label: "Landlord" },
-    { value: "agent", label: "Agent" },
-    { value: "vendor", label: "Vendor" },
-    { value: "other", label: "Other" },
-  ];
+  const heatTypes = companyTypes.map((ct) => ({ value: ct.slug, label: ct.label }));
   const heatMatrix = heatTags.map((tag) =>
     heatTypes.map(
       (ty) => rows.filter((c) => c.type === ty.value && c.sector_tags.includes(tag)).length,
@@ -124,13 +118,7 @@ export default async function CompaniesPage({
           name="type"
           label="Type"
           value={type}
-          options={[
-            { value: "operator", label: "Operator" },
-            { value: "landlord", label: "Landlord" },
-            { value: "agent", label: "Agent" },
-            { value: "vendor", label: "Vendor" },
-            { value: "other", label: "Other" },
-          ]}
+          options={companyTypes.map((t) => ({ value: t.slug, label: t.label }))}
         />
       </FilterBar>
 
@@ -143,30 +131,41 @@ export default async function CompaniesPage({
       ) : null}
 
       {rows.length > 0 && heatTags.length > 0 ? (
-        <Card className="mb-5">
-          <CardHeader>
-            <CardTitle>Portfolio Spread — sector × type</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Heatmap
-              rowLabels={heatTags}
-              colLabels={heatTypes.map((t) => t.label)}
-              matrix={heatMatrix}
-              selectedRow={tag}
-              selectedCol={heatTypes.find((t) => t.value === type)?.label}
-              cellHref={(rowTag, _label, _ri, ci) =>
-                filterHref(params, { tag: rowTag, type: heatTypes[ci].value })
-              }
-              rowHref={(rowTag) =>
-                filterHref(params, { tag: rowTag === tag ? null : rowTag })
-              }
-              colHref={(_label, ci) => {
-                const val = heatTypes[ci].value;
-                return filterHref(params, { type: val === type ? null : val });
-              }}
-            />
-          </CardContent>
-        </Card>
+        <div className="mb-5 grid gap-4 lg:grid-cols-2">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm">Portfolio Spread — sector × type</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Heatmap
+                compact
+                rowLabels={heatTags}
+                colLabels={heatTypes.map((t) => t.label)}
+                matrix={heatMatrix}
+                selectedRow={tag}
+                selectedCol={heatTypes.find((t) => t.value === type)?.label}
+                cellHref={(rowTag, _label, _ri, ci) =>
+                  filterHref(params, { tag: rowTag, type: heatTypes[ci].value })
+                }
+                rowHref={(rowTag) =>
+                  filterHref(params, { tag: rowTag === tag ? null : rowTag })
+                }
+                colHref={(_label, ci) => {
+                  const val = heatTypes[ci].value;
+                  return filterHref(params, { type: val === type ? null : val });
+                }}
+              />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm">Location heat-map</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ConcentrationMap layers={mapLayers} defaultActive="company" compact />
+            </CardContent>
+          </Card>
+        </div>
       ) : null}
 
       {listRows.length === 0 ? (
@@ -201,7 +200,7 @@ export default async function CompaniesPage({
           </TableHeader>
           <TableBody>
             {listRows.map((c) => {
-              const t = companyTypeBadge(c.type);
+              const t = companyTypeBadge(c.type, typeLabel(companyTypes, c.type));
               return (
                 <TableRow key={c.id}>
                   <TableCell>

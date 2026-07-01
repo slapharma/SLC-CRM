@@ -18,7 +18,7 @@ const PATH: Record<string, string> = {
   company: "companies",
   contact: "contacts",
   listing: "listings",
-  requirement: "enquiries",
+  requirement: "requirements",
   deal: "deals",
 };
 

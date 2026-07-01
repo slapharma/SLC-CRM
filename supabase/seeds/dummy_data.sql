@@ -49,7 +49,8 @@ declare
                             'https://www.linkedin.com/in/sophiavalenzuela/']::text[];
   pw        text := 'Demo!2026';
 
-  ctypes  public.company_type[] := array['operator','landlord','agent','vendor','other']::public.company_type[];
+  -- companies.type is plain text now (types are editable data — see 0025); these are the seeded default slugs.
+  ctypes  text[] := array['operator','landlord','agent','vendor','other'];
   -- contacts.role is plain text now (roles are editable data — see 0021); these are the seeded default slugs.
   croles  text[] := array['acquisitions','landlord','solicitor','agent','finance','other'];
   places  text[] := array['Riverside','Camden','Soho','Shoreditch','Mayfair','Brixton','Clapham',

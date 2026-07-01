@@ -21,17 +21,20 @@ const textOrNull = (fd: FormData, k: string) => str(fd, k) || null;
 
 const DISPOSAL_TYPES = ["freehold", "new_lease", "lease_assignment", "sublease", "unknown"];
 const FIT_OUT_STATES = ["fully_fitted", "part_fitted", "shell"];
+const LISTING_TYPES = ["cdg", "intel"];
 
 /** Map the disposal form fields onto an insert/update payload (shared by create + edit). */
 function disposalFieldsFromForm(fd: FormData): Omit<TablesInsert<"disposals">, "agency_id"> {
   const disposalType = str(fd, "disposal_type");
   const fitOut = str(fd, "fit_out_state");
+  const listingType = str(fd, "listing_type");
   const features = str(fd, "key_features")
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
   return {
     title: str(fd, "title") || "Untitled listing",
+    listing_type: LISTING_TYPES.includes(listingType) ? listingType : "cdg",
     status: textOrNull(fd, "status"),
     disposal_type: DISPOSAL_TYPES.includes(disposalType)
       ? (disposalType as TablesInsert<"disposals">["disposal_type"])
@@ -103,6 +106,8 @@ export async function createDisposal(
   if (!agencyId) return { error: "No agency is linked to your account." };
 
   if (!str(formData, "title")) return { error: "Title is required." };
+  if (!str(formData, "contact_id"))
+    return { error: "A contact is required for every listing." };
 
   const fields = disposalFieldsFromForm(formData);
   // Geocode the address → lat/lng (no-op when no address or no server key).
@@ -143,6 +148,8 @@ export async function updateDisposal(
   const id = str(formData, "id");
   if (!id) return { error: "Missing listing id." };
   if (!str(formData, "title")) return { error: "Title is required." };
+  if (!str(formData, "contact_id"))
+    return { error: "A contact is required for every listing." };
 
   const fields = disposalFieldsFromForm(formData);
   // Re-geocode only when the address changed or coords are missing.

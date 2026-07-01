@@ -28,6 +28,7 @@ export function CreatableSelect({
   options: initial,
   defaultValue = "",
   required,
+  hint,
   action,
   modalTitle,
   createLabel,
@@ -39,6 +40,7 @@ export function CreatableSelect({
   options: EntityOption[];
   defaultValue?: string;
   required?: boolean;
+  hint?: string;
   action: (state: FormState, fd: FormData) => Promise<FormState>;
   modalTitle: string;
   createLabel: string;
@@ -99,6 +101,7 @@ export function CreatableSelect({
           New
         </Button>
       </div>
+      {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
 
       <Modal open={open} onClose={() => setOpen(false)} title={modalTitle}>
         <form action={formAction} className="space-y-4">
@@ -129,12 +132,16 @@ export function CompanyCreatableSelect({
   options,
   defaultValue,
   required,
+  hint,
+  placeholder,
 }: {
   name?: string;
   label?: string;
   options: EntityOption[];
   defaultValue?: string;
   required?: boolean;
+  hint?: string;
+  placeholder?: string;
 }) {
   return (
     <CreatableSelect
@@ -143,6 +150,8 @@ export function CompanyCreatableSelect({
       options={options}
       defaultValue={defaultValue}
       required={required}
+      hint={hint}
+      placeholder={placeholder}
       action={quickCreateCompany}
       modalTitle="New company"
       createLabel="Create company"
@@ -173,11 +182,17 @@ export function ContactCreatableSelect({
   label = "Contact",
   options,
   defaultValue,
+  required,
+  hint,
+  placeholder,
 }: {
   name?: string;
   label?: string;
   options: EntityOption[];
   defaultValue?: string;
+  required?: boolean;
+  hint?: string;
+  placeholder?: string;
 }) {
   return (
     <CreatableSelect
@@ -185,6 +200,9 @@ export function ContactCreatableSelect({
       label={label}
       options={options}
       defaultValue={defaultValue}
+      required={required}
+      hint={hint}
+      placeholder={placeholder}
       action={quickCreateContact}
       modalTitle="New contact"
       createLabel="Create contact"

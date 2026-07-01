@@ -65,6 +65,18 @@ export default async function RequirementDetailPage({
     companyName = c?.name ?? null;
   }
 
+  let contactName: string | null = null;
+  if (r.contact_id) {
+    const { data: c } = await supabase
+      .from("contacts")
+      .select("first_name, last_name")
+      .eq("id", r.contact_id)
+      .maybeSingle();
+    contactName = c
+      ? [c.first_name, c.last_name].filter(Boolean).join(" ") || "View contact"
+      : null;
+  }
+
   const s = requirementStatusBadge(r.status);
 
   const { data: agentRows } = await supabase
@@ -108,16 +120,27 @@ export default async function RequirementDetailPage({
               </Link>
             </p>
           ) : null}
+          {r.contact_id ? (
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Contact:{" "}
+              <Link
+                href={`/contacts/${r.contact_id}`}
+                className="text-info hover:underline"
+              >
+                {contactName ?? "View contact"}
+              </Link>
+            </p>
+          ) : null}
         </div>
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
           <SendToTeam
-            link={`/enquiries/${r.id}`}
+            link={`/requirements/${r.id}`}
             subject={r.title}
             agents={members}
             meId={user?.id}
           />
           <Link
-            href={`/enquiries/${r.id}/edit`}
+            href={`/requirements/${r.id}/edit`}
             className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}
           >
             <Pencil />
@@ -126,7 +149,7 @@ export default async function RequirementDetailPage({
           <form action={deleteRequirement}>
             <input type="hidden" name="id" value={r.id} />
             <ConfirmSubmitButton
-              confirmMessage="Delete this enquiry? Its matches and agent links will be removed and this can't be undone."
+              confirmMessage="Delete this requirement? Its matches and agent links will be removed and this can't be undone."
               variant="ghost"
               size="sm"
               className="text-destructive hover:bg-destructive/10"

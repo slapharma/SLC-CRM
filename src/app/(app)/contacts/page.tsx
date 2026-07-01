@@ -2,13 +2,17 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Plus, Users } from "lucide-react";
 
+import { ConcentrationMap } from "@/components/concentration-map";
 import { EmptyState } from "@/components/empty-state";
 import { FilterBar, FilterSelect } from "@/components/filter-bar";
 import { FilterTiles } from "@/components/filter-tiles";
+import { Heatmap } from "@/components/heatmap";
 import { PageHeader } from "@/components/page-header";
 import { SortHeader } from "@/components/sort-header";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
+import { getMapLayers } from "@/lib/supabase/map-points";
 import {
   Table,
   TableBody,
@@ -42,10 +46,11 @@ export default async function ContactsPage({
 
   let query = supabase
     .from("contacts")
-    .select("id, first_name, last_name, role, email, phone, company_id")
+    .select("id, first_name, last_name, role, email, phone, company_id, city")
     .order(column, { ascending });
   if (q) query = query.or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%`);
   const { data } = await query;
+  const mapLayers = await getMapLayers(supabase);
   // `rows` is the tile base (q filtered). The role facet is applied to the table
   // in memory so the tile counts always show the full distribution.
   const rows = data ?? [];
@@ -59,6 +64,34 @@ export default async function ContactsPage({
     ...r,
     count: rows.filter((c) => c.role === r.value).length,
   }));
+
+  // Heatmap: town × role — rows are the top 8 towns, columns the roles present.
+  // The contacts page filters by `role` only (no town param), so role columns
+  // are clickable to facet while town rows stay static counts.
+  const townCounts = new Map<string, number>();
+  for (const c of rows) {
+    const t = c.city ?? "—";
+    townCounts.set(t, (townCounts.get(t) ?? 0) + 1);
+  }
+  const heatTowns = [...townCounts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
+    .map((e) => e[0]);
+  const roleCounts = new Map<string, number>();
+  for (const c of rows) {
+    const rSlug = c.role ?? "—";
+    roleCounts.set(rSlug, (roleCounts.get(rSlug) ?? 0) + 1);
+  }
+  const heatRoles = [...roleCounts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6)
+    .map((e) => e[0]);
+  const heatMatrix = heatTowns.map((t) =>
+    heatRoles.map(
+      (rSlug) =>
+        rows.filter((c) => (c.city ?? "—") === t && (c.role ?? "—") === rSlug).length,
+    ),
+  );
 
   const ids = [
     ...new Set(rows.map((r) => r.company_id).filter((v): v is string => Boolean(v))),
@@ -102,6 +135,37 @@ export default async function ContactsPage({
           activeValue={role}
           hrefFor={(v) => filterHref(params, { role: v === role ? null : v })}
         />
+      ) : null}
+
+      {rows.length > 0 ? (
+        <div className="mb-5 grid gap-4 lg:grid-cols-2">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm">Portfolio Spread — town × role</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Heatmap
+                compact
+                rowLabels={heatTowns}
+                colLabels={heatRoles.map((slug) => roleLabel(roles, slug))}
+                matrix={heatMatrix}
+                selectedCol={role ? roleLabel(roles, role) : undefined}
+                colHref={(_label, ci) => {
+                  const slug = heatRoles[ci];
+                  return filterHref(params, { role: slug === role ? null : slug });
+                }}
+              />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm">Location heat-map</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ConcentrationMap layers={mapLayers} defaultActive="contact" compact />
+            </CardContent>
+          </Card>
+        </div>
       ) : null}
 
       {listRows.length === 0 ? (

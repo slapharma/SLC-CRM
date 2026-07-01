@@ -53,17 +53,32 @@ const pinSvg = (color: string, stroke: string) =>
       "</svg>",
   );
 
-export function ConcentrationMap({ layers }: { layers: MapLayers }) {
+export function ConcentrationMap({
+  layers,
+  defaultActive,
+  compact = false,
+  hideToggles = false,
+}: {
+  layers: MapLayers;
+  // When set, only this layer starts visible (the page's own category); the
+  // other layers can still be toggled on. Defaults to all layers visible.
+  defaultActive?: MapKind;
+  // Shorter map + no helper caption, for the side-by-side portfolio layout.
+  compact?: boolean;
+  // Hide the layer-toggle buttons entirely (e.g. a single-category dashboard map).
+  hideToggles?: boolean;
+}) {
   const ref = React.useRef<HTMLDivElement>(null);
   const mapRef = React.useRef<any>(null);
   const markerObjs = React.useRef<Partial<Record<LayerKey, any[]>>>({});
   const [failed, setFailed] = React.useState(false);
   const [selected, setSelected] = React.useState<MapPoint | null>(null);
   const [active, setActive] = React.useState<Record<LayerKey, boolean>>({
-    listings: true,
-    companies: true,
-    contacts: true,
+    listings: defaultActive ? defaultActive === "listing" : true,
+    companies: defaultActive ? defaultActive === "company" : true,
+    contacts: defaultActive ? defaultActive === "contact" : true,
   });
+  const heightClass = compact ? "h-[22rem]" : "h-[32rem]";
 
   const counts: Record<LayerKey, number> = {
     listings: layers.listings.length,
@@ -141,7 +156,12 @@ export function ConcentrationMap({ layers }: { layers: MapLayers }) {
 
   if (!GOOGLE_MAPS_BROWSER_KEY || failed || total === 0) {
     return (
-      <div className="flex h-[32rem] w-full flex-col items-center justify-center gap-2 rounded-md border border-dashed bg-muted/30 text-center">
+      <div
+        className={cn(
+          "flex w-full flex-col items-center justify-center gap-2 rounded-md border border-dashed bg-muted/30 text-center",
+          heightClass,
+        )}
+      >
         <MapPin className="h-7 w-7 text-muted-foreground" />
         <p className="px-6 text-sm text-muted-foreground">
           {!GOOGLE_MAPS_BROWSER_KEY
@@ -156,40 +176,44 @@ export function ConcentrationMap({ layers }: { layers: MapLayers }) {
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
-        {LAYER_META.map(({ key, label, color }) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => setActive((a) => ({ ...a, [key]: !a[key] }))}
-            aria-pressed={active[key]}
-            className={cn(
-              "flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-              active[key]
-                ? "bg-muted/60 text-foreground"
-                : "text-muted-foreground opacity-60 hover:bg-muted/40",
-            )}
-          >
-            <span
-              className="h-2.5 w-2.5 rounded-full"
-              style={{ backgroundColor: color }}
-            />
-            {label}
-            <span className="font-mono text-xs tabular-nums text-muted-foreground">
-              {counts[key]}
-            </span>
-          </button>
-        ))}
-      </div>
+      {hideToggles ? null : (
+        <div className="flex flex-wrap items-center gap-2">
+          {LAYER_META.map(({ key, label, color }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setActive((a) => ({ ...a, [key]: !a[key] }))}
+              aria-pressed={active[key]}
+              className={cn(
+                "flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                active[key]
+                  ? "bg-muted/60 text-foreground"
+                  : "text-muted-foreground opacity-60 hover:bg-muted/40",
+              )}
+            >
+              <span
+                className="h-2.5 w-2.5 rounded-full"
+                style={{ backgroundColor: color }}
+              />
+              {label}
+              <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                {counts[key]}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
       <div
         ref={ref}
         role="application"
         aria-label="Map of listings, companies and contacts across the UK"
-        className="h-[32rem] w-full overflow-hidden rounded-md border"
+        className={cn("w-full overflow-hidden rounded-md border", heightClass)}
       />
-      <p className="text-xs text-muted-foreground">
-        Click a pin to open its card. Toggle a layer with the buttons above.
-      </p>
+      {compact ? null : (
+        <p className="text-xs text-muted-foreground">
+          Click a pin to open its card. Toggle a layer with the buttons above.
+        </p>
+      )}
       <PinDetailModal point={selected} onClose={() => setSelected(null)} />
     </div>
   );
