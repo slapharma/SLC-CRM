@@ -7,13 +7,34 @@ import { EmptyState } from "@/components/empty-state";
 import { FilterBar, FilterSelect } from "@/components/filter-bar";
 import { MatchReasons } from "@/components/match-reasons";
 import { PageHeader } from "@/components/page-header";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { isListingMatchable, matchScoreBadge } from "@/lib/badges";
 import { scoreMatch } from "@/lib/matching/score";
 import { createClient } from "@/lib/supabase/server";
+import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "MatchMaker Opportunities" };
+
+// Score-tier accent (left border + chip fill), keyed off the same tones
+// matchScoreBadge already uses — no new colours, just a bolder application.
+const SCORE_ACCENT: Record<string, { border: string; chip: string }> = {
+  emerald: {
+    border: "border-l-emerald-500 dark:border-l-emerald-600",
+    chip: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
+  },
+  teal: {
+    border: "border-l-teal-500 dark:border-l-teal-600",
+    chip: "bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300",
+  },
+  amber: {
+    border: "border-l-amber-500 dark:border-l-amber-600",
+    chip: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
+  },
+  slate: {
+    border: "border-l-slate-300 dark:border-l-slate-700",
+    chip: "bg-slate-100 text-slate-600 dark:bg-slate-900 dark:text-slate-400",
+  },
+};
 
 const USE_CLASS_OPTIONS = [
   { value: "E", label: "Class E" },
@@ -147,33 +168,55 @@ export default async function MatchesPage({
         <div className="space-y-3">
           {shown.map(({ rq, d, score, reasons }) => {
             const ms = matchScoreBadge(score);
+            const accent = SCORE_ACCENT[ms.tone] ?? SCORE_ACCENT.slate;
             return (
-              <Card key={`${rq.id}-${d.id}`}>
-                <CardContent className="p-4 sm:p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="text-sm">
-                      <Link
-                        href={`/requirements/${rq.id}`}
-                        className="font-medium text-foreground hover:text-info hover:underline"
-                      >
-                        {rq.title}
-                      </Link>
-                      <span className="text-muted-foreground"> ↔ </span>
-                      <Link
-                        href={`/listings/${d.id}`}
-                        className="font-medium text-foreground hover:text-info hover:underline"
-                      >
-                        {d.title ?? "Untitled listing"}
-                        {d.city ? ` · ${d.city}` : ""}
-                      </Link>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge tone={ms.tone}>{ms.label}</Badge>
+              <Card
+                key={`${rq.id}-${d.id}`}
+                className={cn("overflow-hidden border-l-4", accent.border)}
+              >
+                <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:p-4">
+                  <div
+                    className={cn(
+                      "flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-lg",
+                      accent.chip,
+                    )}
+                  >
+                    <span className="font-mono text-lg font-bold leading-none tabular-nums">
+                      {score}%
+                    </span>
+                    <span className="mt-0.5 text-[10px] font-medium uppercase tracking-wide opacity-80">
+                      match
+                    </span>
+                  </div>
+
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div className="space-y-1 text-sm">
+                        <p className="flex items-center gap-1.5">
+                          <Target className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                          <Link
+                            href={`/requirements/${rq.id}`}
+                            className="font-medium text-foreground hover:text-info hover:underline"
+                          >
+                            {rq.title}
+                          </Link>
+                        </p>
+                        <p className="flex items-center gap-1.5">
+                          <Store className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                          <Link
+                            href={`/listings/${d.id}`}
+                            className="font-medium text-foreground hover:text-info hover:underline"
+                          >
+                            {d.title ?? "Untitled listing"}
+                            {d.city ? ` · ${d.city}` : ""}
+                          </Link>
+                        </p>
+                      </div>
                       <CreateDealButton requirementId={rq.id} listingId={d.id} />
                     </div>
-                  </div>
-                  <div className="mt-2">
-                    <MatchReasons reasons={reasons} />
+                    <div className="border-t pt-2">
+                      <MatchReasons reasons={reasons} />
+                    </div>
                   </div>
                 </CardContent>
               </Card>

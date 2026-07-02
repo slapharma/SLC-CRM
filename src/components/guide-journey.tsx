@@ -325,12 +325,12 @@ const STEPS: Step[] = [
   },
   {
     key: "deals",
-    label: "PipeLine",
-    title: "Work deals in the PipeLine",
+    label: "Pipeline",
+    title: "Work deals in the Pipeline",
     tagline: "From introduction to completion",
     icon: Handshake,
     accent: "success",
-    what: "PipeLine tracks every live deal through its stages, with values, reminders and a running history — so nothing stalls and forecasting is one glance away.",
+    what: "Pipeline tracks every live deal through its stages, with values, reminders and a running history — so nothing stalls and forecasting is one glance away.",
     how: [
       "Create a deal from a match or straight from a company.",
       "Move it through the stages as it progresses and set reminders.",
@@ -349,7 +349,7 @@ const STEPS: Step[] = [
       },
     ],
     href: "/deals",
-    cta: "Open PipeLine",
+    cta: "Open Pipeline",
   },
   {
     key: "messages",

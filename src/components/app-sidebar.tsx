@@ -53,7 +53,7 @@ export const NAV: NavGroup[] = [
     items: [
       { href: "/requirements", label: "Requirements", icon: Target },
       { href: "/matches", label: "MatchMaker", icon: Sparkles },
-      { href: "/deals", label: "PipeLine", icon: Handshake },
+      { href: "/deals", label: "Pipeline", icon: Handshake },
     ],
   },
   {

@@ -32,9 +32,15 @@ export const metadata: Metadata = { title: "Contacts" };
 export default async function ContactsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; sort?: string; dir?: string; role?: string }>;
+  searchParams: Promise<{
+    q?: string;
+    sort?: string;
+    dir?: string;
+    role?: string;
+    town?: string;
+  }>;
 }) {
-  const { q, sort, dir, role } = await searchParams;
+  const { q, sort, dir, role, town } = await searchParams;
   const supabase = await createClient();
 
   const { column, ascending } = resolveSort(
@@ -51,12 +57,15 @@ export default async function ContactsPage({
   if (q) query = query.or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%`);
   const { data } = await query;
   const mapLayers = await getMapLayers(supabase, { include: ["contact"] });
-  // `rows` is the tile base (q filtered). The role facet is applied to the table
-  // in memory so the tile counts always show the full distribution.
+  // `rows` is the tile base (q filtered). The role/town facets are applied to
+  // the table in memory so the tile counts always show the full distribution.
   const rows = data ?? [];
-  const listRows = role ? rows.filter((c) => c.role === role) : rows;
+  const listRows = rows.filter(
+    (c) =>
+      (!role || c.role === role) && (!town || (c.city ?? "—") === town),
+  );
 
-  const params = { q, sort, dir, role };
+  const params = { q, sort, dir, role, town };
 
   const roles = await getContactRoles();
   const roleOptions = roles.map((r) => ({ value: r.slug, label: r.label }));
@@ -66,8 +75,7 @@ export default async function ContactsPage({
   }));
 
   // Heatmap: town × role — rows are the top 8 towns, columns the roles present.
-  // The contacts page filters by `role` only (no town param), so role columns
-  // are clickable to facet while town rows stay static counts.
+  // Both dimensions are clickable filters, matching the listings page's pattern.
   const townCounts = new Map<string, number>();
   for (const c of rows) {
     const t = c.city ?? "—";
@@ -151,7 +159,18 @@ export default async function ContactsPage({
                 rowLabels={heatTowns}
                 colLabels={heatRoles.map((slug) => roleLabel(roles, slug))}
                 matrix={heatMatrix}
+                selectedRow={town}
                 selectedCol={role ? roleLabel(roles, role) : undefined}
+                cellHref={(t, _label, _ri, ci) => {
+                  const slug = heatRoles[ci];
+                  return filterHref(params, {
+                    town: t === town ? null : t,
+                    role: slug === role ? null : slug,
+                  });
+                }}
+                rowHref={(t) =>
+                  filterHref(params, { town: t === town ? null : t })
+                }
                 colHref={(_label, ci) => {
                   const slug = heatRoles[ci];
                   return filterHref(params, { role: slug === role ? null : slug });

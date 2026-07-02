@@ -38,7 +38,7 @@ export function StatsBar({ stats, className }: { stats: Stat[]; className?: stri
               s.href && "transition-all hover:border-primary/40 hover:shadow-md",
             )}
           >
-            <CardContent className="flex items-center justify-between gap-3 p-4">
+            <CardContent className="flex items-center justify-between gap-3 p-4 sm:p-4">
               <div className="min-w-0">
                 <p className="truncate text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   {s.label}

@@ -5,6 +5,7 @@ import { ExternalLink, FileDown, Pencil } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
+import { EditableDealTitle } from "@/components/editable-deal-title";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   companyTypeBadge,
@@ -385,12 +386,12 @@ export default async function ListingDetailPage({
                 return (
                   <li key={deal.id} className="rounded-md border p-3">
                     <div className="flex items-center justify-between gap-2">
-                      <Link
+                      <EditableDealTitle
+                        dealId={deal.id}
+                        title={deal.title}
                         href={`/deals/${deal.id}`}
                         className="font-medium text-foreground hover:text-info hover:underline"
-                      >
-                        {deal.title}
-                      </Link>
+                      />
                       <div className="flex items-center gap-2">
                         {deal.value != null ? (
                           <span className="font-mono text-sm tabular-nums text-muted-foreground">

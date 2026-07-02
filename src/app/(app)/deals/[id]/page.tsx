@@ -4,6 +4,7 @@ import { ArrowLeft, Building2, Target } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
+import { EditableDealTitle } from "@/components/editable-deal-title";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DealForm } from "@/components/deal-form";
 import { DealReminders } from "@/components/deal-reminders";
@@ -131,7 +132,9 @@ export default async function DealDetailPage({
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl font-semibold tracking-tight">{deal.title}</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">
+              <EditableDealTitle dealId={deal.id} title={deal.title} />
+            </h1>
             <Badge tone={sb.tone}>{sb.label}</Badge>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">

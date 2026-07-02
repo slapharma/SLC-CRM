@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CheckCircle2, Handshake, Layers, PoundSterling } from "lucide-react";
 
+import { EditableDealTitle } from "@/components/editable-deal-title";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { StatsBar } from "@/components/stats-bar";
@@ -13,7 +14,7 @@ import { dealStageBadge } from "@/lib/badges";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
-export const metadata: Metadata = { title: "Deals" };
+export const metadata: Metadata = { title: "Pipeline" };
 
 const STAGE_ORDER = [
   "lead",
@@ -77,7 +78,7 @@ export default async function DealsPage({
     return (
       <div className="mx-auto max-w-6xl">
         <PageHeader
-          title="Deals"
+          title="Pipeline"
           description="Listings + requirements + parties, through the pipeline to Heads of Terms."
         />
         <EmptyState
@@ -122,7 +123,7 @@ export default async function DealsPage({
   return (
     <div className="mx-auto max-w-[100rem]">
       <PageHeader
-        title="Deals"
+        title="Pipeline"
         description={`${deals.length} deal${deals.length === 1 ? "" : "s"} across the pipeline — move a card with its stage selector.`}
         action={<NewDealButton />}
       />
@@ -187,12 +188,12 @@ export default async function DealsPage({
                       key={d.id}
                       className="flex flex-col rounded-lg border bg-card p-3 transition-colors hover:border-primary/40"
                     >
-                      <Link
+                      <EditableDealTitle
+                        dealId={d.id}
+                        title={d.title}
                         href={`/deals/${d.id}`}
                         className="text-sm font-medium leading-snug text-foreground hover:text-info hover:underline"
-                      >
-                        {d.title}
-                      </Link>
+                      />
                       <dl className="mt-2 space-y-1 text-xs text-muted-foreground">
                         {d.company?.name ? (
                           <div className="truncate">{d.company.name}</div>

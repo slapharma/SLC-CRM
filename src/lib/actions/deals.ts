@@ -197,6 +197,34 @@ export async function updateDealStage(formData: FormData): Promise<void> {
   }
 }
 
+/** Rename a deal — the inline pencil-icon editor used wherever a deal's title
+ * is shown (board cards, detail header, linked-deal sections). */
+export async function updateDealTitle(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const id = str(formData, "id");
+  if (!id) return { error: "Missing deal id." };
+
+  const title = str(formData, "title");
+  if (!title) return { error: "A deal title is required." };
+
+  const supabase = await createClient();
+  const agencyId = await currentAgencyId(supabase);
+  if (!agencyId) return { error: "No agency is linked to your account." };
+
+  const { error } = await supabase
+    .from("deals")
+    .update({ title })
+    .eq("id", id)
+    .eq("agency_id", agencyId);
+  if (error) return { error: error.message };
+
+  revalidatePath("/deals");
+  revalidatePath(`/deals/${id}`);
+  return { message: "Saved." };
+}
+
 /** Update a deal's editable fields from the detail-page form. */
 export async function updateDeal(
   _prev: FormState,
