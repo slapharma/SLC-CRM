@@ -61,6 +61,9 @@ const ACCENT: Record<Accent, { chip: string; ring: string; bar: string }> = {
   },
 };
 
+/** A captioned screenshot shown inside a faux browser frame. */
+type Shot = { path: string; src: string; caption: string };
+
 type Step = {
   key: string;
   /** Short label for the rail / dots. */
@@ -73,6 +76,8 @@ type Step = {
   what: string;
   /** 2–4 concrete "how to use it" actions. */
   how: string[];
+  /** Real screenshots, one per part of the step. */
+  shots: Shot[];
   href: string;
   cta: string;
   /** Optional pro tip shown in a muted callout. */
@@ -94,6 +99,14 @@ const STEPS: Step[] = [
       "Use the Quick actions panel to add your first company, contact, listing or requirement.",
       "Glance at the map to see where your stock is concentrated.",
     ],
+    shots: [
+      {
+        path: "/dashboard",
+        src: "/guide/dashboard.png",
+        caption:
+          "KPI cards, quick actions and a live listings map — your whole agency in one screen.",
+      },
+    ],
     href: "/dashboard",
     cta: "Open Dashboard",
     tip: "Come back here any time you want the big picture in one screen.",
@@ -107,9 +120,28 @@ const STEPS: Step[] = [
     accent: "primary",
     what: "Companies are the organisations you work with — pub operators, restaurant groups, landlords, funds and agents. Each company holds its type, location and a full activity history.",
     how: [
-      "Hit “Add company” and record the name, type and address.",
+      "Hit “New company” and record the name, type and address.",
+      "Filter the list by type, or read the portfolio heat-map to see your mix.",
       "Open a company to see its contacts, listings, requirements and deals in one place.",
-      "Edit the company type inline — types are configurable in Admin.",
+    ],
+    shots: [
+      {
+        path: "/companies",
+        src: "/guide/companies-list.png",
+        caption:
+          "The Companies list: type filters, a portfolio heat-map and a location map of every record.",
+      },
+      {
+        path: "/companies/new",
+        src: "/guide/companies-new.png",
+        caption: "Adding a company — name and type are all you need to start.",
+      },
+      {
+        path: "/companies/…",
+        src: "/guide/companies-detail.png",
+        caption:
+          "A company profile ties together contacts, KYC, AI Deep Dive, requirements and deals.",
+      },
     ],
     href: "/companies",
     cta: "Open Companies",
@@ -125,7 +157,25 @@ const STEPS: Step[] = [
     how: [
       "Create a contact and assign their role (e.g. Operator, Investor, Landlord).",
       "Link them to their company so they appear on that company's page.",
-      "Roles are fully editable in Admin to match how your team works.",
+      "Open a contact to see everything tied to them.",
+    ],
+    shots: [
+      {
+        path: "/contacts",
+        src: "/guide/contacts-list.png",
+        caption: "Your contacts — searchable, role-tagged and mapped.",
+      },
+      {
+        path: "/contacts/new",
+        src: "/guide/contacts-new.png",
+        caption:
+          "Create a contact, set their role and link them to a company (or make a new one inline).",
+      },
+      {
+        path: "/contacts/…",
+        src: "/guide/contacts-detail.png",
+        caption: "A contact linked to their company and activity.",
+      },
     ],
     href: "/contacts",
     cta: "Open Contacts",
@@ -140,9 +190,28 @@ const STEPS: Step[] = [
     accent: "primary",
     what: "Listings are the properties you're disposing of or marketing. Each carries location, size, tenure and a CDG or INTEL type so you can separate public stock from off-market intel.",
     how: [
-      "Add a listing with its address, key figures and a linked company & contact.",
+      "Add a listing with its address, key figures and a linked contact.",
       "Set the listing type — CDG for marketed stock, INTEL for confidential leads.",
-      "Export a branded (CDG) or unbranded (INTEL) PDF to share with clients.",
+      "Open a listing to export a branded (CDG) or unbranded (INTEL) PDF, or share it.",
+    ],
+    shots: [
+      {
+        path: "/listings",
+        src: "/guide/listings-list.png",
+        caption: "The Listings register, with CDG / INTEL types and status.",
+      },
+      {
+        path: "/listings/new",
+        src: "/guide/listings-new.png",
+        caption:
+          "Add a listing — type, location, premises, commercials and a required point of contact.",
+      },
+      {
+        path: "/listings/…",
+        src: "/guide/listings-detail.png",
+        caption:
+          "Full particulars with a map, plus one-click Download PDF, Share, Print and Post to CDG.",
+      },
     ],
     href: "/listings",
     cta: "Open Listings",
@@ -159,6 +228,14 @@ const STEPS: Step[] = [
       "Search a company to generate a KYC report.",
       "Review the Companies House, sanctions and VAT results in one view.",
       "Save the report against the record for your audit trail.",
+    ],
+    shots: [
+      {
+        path: "/kyc",
+        src: "/guide/kyc.png",
+        caption:
+          "Search a company to run Companies House, OFSI sanctions and VAT checks in one place.",
+      },
     ],
     href: "/kyc",
     cta: "Open KYC",
@@ -177,6 +254,13 @@ const STEPS: Step[] = [
       "Click a pin to open its record in a quick modal.",
       "Use it to brief a client on where your coverage is strongest.",
     ],
+    shots: [
+      {
+        path: "/map",
+        src: "/guide/map.png",
+        caption: "Listings, companies and contacts plotted across the UK.",
+      },
+    ],
     href: "/map",
     cta: "Open Map",
   },
@@ -190,8 +274,26 @@ const STEPS: Step[] = [
     what: "Requirements record what an acquirer wants — location, size, budget and use class. They're the demand side that powers automatic matching against your listings.",
     how: [
       "Add a requirement and link it to the company & contact behind it.",
-      "Set the target area, size band and budget.",
+      "Set the target area, size band, use class, tenure and budget.",
       "Keep it active while the search is live so it stays in the matcher.",
+    ],
+    shots: [
+      {
+        path: "/requirements",
+        src: "/guide/requirements-list.png",
+        caption: "Active buyer requirements at a glance.",
+      },
+      {
+        path: "/requirements/new",
+        src: "/guide/requirements-new.png",
+        caption:
+          "Capture a brief — location, property, size, covers, fit-out, tenure and budget.",
+      },
+      {
+        path: "/requirements/…",
+        src: "/guide/requirements-detail.png",
+        caption: "A requirement and the criteria it will match on.",
+      },
     ],
     href: "/requirements",
     cta: "Open Requirements",
@@ -203,11 +305,19 @@ const STEPS: Step[] = [
     tagline: "Supply, meet demand",
     icon: Sparkles,
     accent: "primary",
-    what: "MatchMaker automatically pairs your live requirements against your listings, surfacing the best fits so you never miss an obvious introduction.",
+    what: "MatchMaker automatically pairs your live requirements against your listings, scoring each fit so you never miss an obvious introduction.",
     how: [
-      "Open MatchMaker to see suggested requirement ↔ listing pairs.",
-      "Review the match strength and the reasons behind it.",
-      "Act on a strong match by starting a deal or messaging the contact.",
+      "Open MatchMaker to see scored requirement ↔ listing pairs.",
+      "Read the match chips — location, size, use class, tenure and budget.",
+      "Turn a strong match into a deal with one click, or message the contact.",
+    ],
+    shots: [
+      {
+        path: "/matches",
+        src: "/guide/matches.png",
+        caption:
+          "Scored pairs with the exact reasons they fit — and a one-click “Create deal”.",
+      },
     ],
     href: "/matches",
     cta: "Open MatchMaker",
@@ -226,6 +336,18 @@ const STEPS: Step[] = [
       "Move it through the stages as it progresses and set reminders.",
       "Watch the pipeline value roll up onto your Dashboard.",
     ],
+    shots: [
+      {
+        path: "/deals",
+        src: "/guide/deals.png",
+        caption: "Your pipeline, grouped by stage.",
+      },
+      {
+        path: "/deals/…",
+        src: "/guide/deals-detail.png",
+        caption: "A deal's value, history and reminders in one place.",
+      },
+    ],
     href: "/deals",
     cta: "Open PipeLine",
   },
@@ -239,8 +361,15 @@ const STEPS: Step[] = [
     what: "My Messages is your internal inbox. Send notes to colleagues, loop the team in on a record and keep deal chatter out of scattered emails.",
     how: [
       "Open My Messages to read what's been sent to you.",
-      "Use “Send to team” to share an update or ask a question.",
+      "Use “New message” to share an update or ask a question.",
       "Reference the company, listing or deal you're talking about.",
+    ],
+    shots: [
+      {
+        path: "/messages",
+        src: "/guide/messages.png",
+        caption: "Your internal inbox and send-to-team composer.",
+      },
     ],
     href: "/messages",
     cta: "Open Messages",
@@ -258,6 +387,13 @@ const STEPS: Step[] = [
       "Search by company name, address or keyword.",
       "Jump straight to the record from the results.",
     ],
+    shots: [
+      {
+        path: "/search?q=bar",
+        src: "/guide/search.png",
+        caption: "One search across companies, listings and requirements.",
+      },
+    ],
     href: "/search",
     cta: "Try Search",
   },
@@ -273,6 +409,13 @@ const STEPS: Step[] = [
       "Click the bell to see your latest notifications.",
       "Click a notification to open the record it points to.",
       "Use “Mark all read” to clear the badge.",
+    ],
+    shots: [
+      {
+        path: "/dashboard",
+        src: "/guide/notifications.png",
+        caption: "The bell gathers new matches, deal reminders and messages.",
+      },
     ],
     href: "/dashboard",
     cta: "Back to Dashboard",
@@ -290,12 +433,46 @@ const STEPS: Step[] = [
       "Edit the company types and contact roles your records use.",
       "Add integration keys (e.g. Deep Dive) to unlock enrichment.",
     ],
+    shots: [
+      {
+        path: "/admin",
+        src: "/guide/admin.png",
+        caption: "Team, roles, editable company types and integrations, all in one place.",
+      },
+    ],
     href: "/admin",
     cta: "Open Admin",
     tip: "Admin tools are available to agency administrators.",
     adminOnly: true,
   },
 ];
+
+function ShotFrame({ path, src, caption }: Shot) {
+  return (
+    <figure className="overflow-hidden rounded-lg border bg-card shadow-sm">
+      <div className="flex items-center gap-1.5 border-b bg-muted/40 px-3 py-2">
+        <span className="h-2.5 w-2.5 rounded-full bg-destructive/40" />
+        <span className="h-2.5 w-2.5 rounded-full bg-warning/50" />
+        <span className="h-2.5 w-2.5 rounded-full bg-success/50" />
+        <span className="ml-2 truncate font-mono text-[11px] text-muted-foreground">
+          {path}
+        </span>
+      </div>
+      {/* Static onboarding screenshots (captured at 1440×900 = 16:10). Only the
+          current step's 1–3 shots are mounted, so we load eagerly for instant
+          display; the aspect ratio reserves space to avoid layout shift. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt={caption}
+        className="block aspect-[16/10] w-full bg-muted/40 object-cover"
+      />
+      <figcaption className="border-t px-3 py-2 text-xs text-muted-foreground">
+        {caption}
+      </figcaption>
+    </figure>
+  );
+}
 
 export function GuideJourney({ isAdmin = false }: { isAdmin?: boolean }) {
   const steps = React.useMemo(
@@ -316,6 +493,7 @@ export function GuideJourney({ isAdmin = false }: { isAdmin?: boolean }) {
       const clamped = Math.max(0, Math.min(total - 1, next));
       setIndex(clamped);
       setSeen((s) => Math.max(s, clamped));
+      if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
     },
     [total],
   );
@@ -331,7 +509,7 @@ export function GuideJourney({ isAdmin = false }: { isAdmin?: boolean }) {
 
   const prev = React.useCallback(() => go(index - 1), [go, index]);
 
-  // Arrow-key navigation once the journey has focus/hover.
+  // Arrow-key navigation.
   React.useEffect(() => {
     if (done) return;
     function onKey(e: KeyboardEvent) {
@@ -343,7 +521,14 @@ export function GuideJourney({ isAdmin = false }: { isAdmin?: boolean }) {
   }, [done, next, prev]);
 
   if (done) {
-    return <GuideComplete onRestart={() => { setDone(false); go(0); }} />;
+    return (
+      <GuideComplete
+        onRestart={() => {
+          setDone(false);
+          go(0);
+        }}
+      />
+    );
   }
 
   const step = steps[index];
@@ -363,8 +548,9 @@ export function GuideJourney({ isAdmin = false }: { isAdmin?: boolean }) {
           Welcome — let&apos;s get you up to speed
         </h1>
         <p className="mt-1.5 max-w-2xl text-muted-foreground">
-          A two-minute tour of everything the CRM does, in the order you&apos;ll
-          use it. Step through at your own pace.
+          A guided tour of everything the CRM does, in the order you&apos;ll use
+          it — with a real screenshot of every screen. Step through at your own
+          pace.
         </p>
       </div>
 
@@ -394,7 +580,7 @@ export function GuideJourney({ isAdmin = false }: { isAdmin?: boolean }) {
       <div className="grid gap-6 lg:grid-cols-[220px_1fr]">
         {/* Rail (desktop) */}
         <nav aria-label="Guide steps" className="hidden lg:block">
-          <ol className="space-y-1">
+          <ol className="sticky top-20 space-y-1">
             {steps.map((s, i) => {
               const RailIcon = s.icon;
               const isCurrent = i === index;
@@ -486,6 +672,24 @@ export function GuideJourney({ isAdmin = false }: { isAdmin?: boolean }) {
                   </li>
                 ))}
               </ul>
+            </div>
+
+            {/* Real screenshots — one per part of this step. */}
+            <div className="mt-7">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                See it in action
+              </p>
+              <div className="space-y-4">
+                {step.shots.map((s, i) => (
+                  <div
+                    key={s.src}
+                    className="guide-reveal"
+                    style={{ ["--guide-delay" as string]: `${150 + i * 110}ms` }}
+                  >
+                    <ShotFrame {...s} />
+                  </div>
+                ))}
+              </div>
             </div>
 
             {step.tip ? (
