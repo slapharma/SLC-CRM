@@ -16,3 +16,12 @@ export const isMapsBrowserConfigured = Boolean(GOOGLE_MAPS_BROWSER_KEY);
 
 /** True once the server key is present (gates geocoding + PDF static map). */
 export const isMapsServerConfigured = Boolean(GOOGLE_MAPS_SERVER_KEY);
+
+// Missing GOOGLE_MAPS_SERVER_KEY fails soft everywhere it's used (null coords,
+// blank PDF maps) with no other signal — surface it once in server logs so ops
+// notices during deployment rather than from a support ticket.
+if (!GOOGLE_MAPS_SERVER_KEY) {
+  console.warn(
+    "[config] GOOGLE_MAPS_SERVER_KEY is not set — geocoding and PDF static maps will silently no-op.",
+  );
+}

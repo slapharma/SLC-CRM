@@ -69,7 +69,7 @@ export default async function ListingsPage({
   if (q) query = query.or(`title.ilike.%${q}%,city.ilike.%${q}%`);
   if (disposal_type) query = query.eq("disposal_type", disposal_type);
   const { data } = await query;
-  const mapLayers = await getMapLayers(supabase);
+  const mapLayers = await getMapLayers(supabase, { include: ["listing"] });
   // `rows` is the heatmap base (q + type filtered). The town/status facets that
   // the heatmap controls are applied to the table in memory, so the grid keeps
   // showing the full distribution for re-slicing.
@@ -116,11 +116,15 @@ export default async function ListingsPage({
     .sort((a, b) => b[1] - a[1])
     .slice(0, 6)
     .map((e) => e[0]);
+  const cellCounts = new Map<string, number>();
+  for (const r of rows) {
+    cellCounts.set(
+      `${r.city ?? "—"}|${r.status ?? "—"}`,
+      (cellCounts.get(`${r.city ?? "—"}|${r.status ?? "—"}`) ?? 0) + 1,
+    );
+  }
   const heatMatrix = heatTowns.map((t) =>
-    heatStatuses.map(
-      (sName) =>
-        rows.filter((r) => (r.city ?? "—") === t && (r.status ?? "—") === sName).length,
-    ),
+    heatStatuses.map((sName) => cellCounts.get(`${t}|${sName}`) ?? 0),
   );
 
   return (
@@ -180,7 +184,7 @@ export default async function ListingsPage({
 
       {rows.length > 0 ? (
         <div className="mb-5 grid gap-4 lg:grid-cols-2">
-          <Card>
+          <Card className="hidden sm:block">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm">Portfolio Spread — town × status</CardTitle>
             </CardHeader>
@@ -207,6 +211,12 @@ export default async function ListingsPage({
             </CardContent>
           </Card>
         </div>
+      ) : null}
+
+      {listRows.length > 0 && listRows.length < rows.length ? (
+        <p className="mb-2 text-xs text-muted-foreground">
+          Showing {listRows.length} of {rows.length}
+        </p>
       ) : null}
 
       {listRows.length === 0 ? (

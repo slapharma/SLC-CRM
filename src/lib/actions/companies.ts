@@ -172,11 +172,13 @@ export async function updateCompany(
   };
   const { data: existing } = await supabase
     .from("companies")
-    .select("address_line, city, postcode, lat, lng")
+    .select("address_line, city, postcode, lat, lng, updated_at")
     .eq("id", id)
     .maybeSingle();
+  if (!existing) return { error: "This company no longer exists." };
+
   const geo = await geocodeForSave(address, existing);
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("companies")
     .update({
       name,
@@ -192,8 +194,16 @@ export async function updateCompany(
       ...(geo ?? {}),
     })
     .eq("id", id)
-    .eq("agency_id", agencyId);
+    .eq("agency_id", agencyId)
+    .eq("updated_at", existing.updated_at)
+    .select("id");
   if (error) return { error: error.message };
+  if (!updated || updated.length === 0) {
+    return {
+      error:
+        "This company was changed by someone else while you were editing. Reload the page and try again.",
+    };
+  }
 
   await syncCompanyAgents(supabase, id, agencyId, extra);
 

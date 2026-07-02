@@ -92,7 +92,7 @@ export function DisposalAreas({
                         variant="ghost"
                         size="icon"
                         aria-label={`Delete ${a.name}`}
-                        className="h-7 w-7 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                        className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                       >
                         <Trash2 className="h-4 w-4" />
                       </ConfirmSubmitButton>

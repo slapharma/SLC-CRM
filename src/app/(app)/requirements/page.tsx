@@ -156,6 +156,12 @@ export default async function RequirementsPage({
 
       {rows.length > 0 ? <StatsBar stats={stats} className="mb-5" /> : null}
 
+      {listRows.length > 0 && listRows.length < rows.length ? (
+        <p className="mb-2 text-xs text-muted-foreground">
+          Showing {listRows.length} of {rows.length}
+        </p>
+      ) : null}
+
       {listRows.length === 0 ? (
         <EmptyState
           icon={Target}

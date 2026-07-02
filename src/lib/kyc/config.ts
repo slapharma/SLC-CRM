@@ -28,3 +28,11 @@ export const isKycConfigured = Boolean(COMPANIES_HOUSE_API_KEY);
 
 /** True once a Didit key is present (gates the optional paid KYB/AML provider). */
 export const isDiditConfigured = Boolean(DIDIT_API_KEY);
+
+// The UI already shows a "not configured" notice, but that's easy to miss during
+// deployment — surface it once in server logs too.
+if (!COMPANIES_HOUSE_API_KEY) {
+  console.warn(
+    "[config] COMPANIES_HOUSE_API_KEY is not set — KYC reports will run without company/officer/PSC data.",
+  );
+}

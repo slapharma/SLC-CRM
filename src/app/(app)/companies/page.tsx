@@ -56,7 +56,7 @@ export default async function CompaniesPage({
     .order(column, { ascending });
   if (q) query = query.ilike("name", `%${q}%`);
   const { data } = await query;
-  const mapLayers = await getMapLayers(supabase);
+  const mapLayers = await getMapLayers(supabase, { include: ["company"] });
   const companyTypes = await getCompanyTypes();
   // `rows` is the heatmap base (q filtered). The tag/type facets that the
   // heatmap controls are applied to the table in memory so the grid keeps the
@@ -87,10 +87,15 @@ export default async function CompaniesPage({
     .slice(0, 8)
     .map((e) => e[0]);
   const heatTypes = companyTypes.map((ct) => ({ value: ct.slug, label: ct.label }));
+  const cellCounts = new Map<string, number>();
+  for (const c of rows) {
+    for (const t of c.sector_tags) {
+      const key = `${t}|${c.type}`;
+      cellCounts.set(key, (cellCounts.get(key) ?? 0) + 1);
+    }
+  }
   const heatMatrix = heatTags.map((tag) =>
-    heatTypes.map(
-      (ty) => rows.filter((c) => c.type === ty.value && c.sector_tags.includes(tag)).length,
-    ),
+    heatTypes.map((ty) => cellCounts.get(`${tag}|${ty.value}`) ?? 0),
   );
 
   return (
@@ -132,7 +137,7 @@ export default async function CompaniesPage({
 
       {rows.length > 0 && heatTags.length > 0 ? (
         <div className="mb-5 grid gap-4 lg:grid-cols-2">
-          <Card>
+          <Card className="hidden sm:block">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm">Portfolio Spread — sector × type</CardTitle>
             </CardHeader>
@@ -166,6 +171,12 @@ export default async function CompaniesPage({
             </CardContent>
           </Card>
         </div>
+      ) : null}
+
+      {listRows.length > 0 && listRows.length < rows.length ? (
+        <p className="mb-2 text-xs text-muted-foreground">
+          Showing {listRows.length} of {rows.length}
+        </p>
       ) : null}
 
       {listRows.length === 0 ? (

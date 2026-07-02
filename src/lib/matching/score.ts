@@ -19,7 +19,22 @@ type Requirement = Pick<
   | "max_guide_price"
   | "fit_out_prefs"
 >;
-type Disposal = Tables<"disposals">;
+type Disposal = Pick<
+  Tables<"disposals">,
+  | "city"
+  | "area"
+  | "postcode"
+  | "address_line"
+  | "size_sqft"
+  | "covers_internal"
+  | "use_class"
+  | "property_type"
+  | "disposal_type"
+  | "rent_pa"
+  | "premium"
+  | "guide_price"
+  | "fit_out_state"
+>;
 
 export type MatchReason = { label: string; ok: boolean };
 export type MatchResult = { score: number; reasons: MatchReason[] };

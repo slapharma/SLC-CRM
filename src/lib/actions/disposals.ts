@@ -155,16 +155,26 @@ export async function updateDisposal(
   // Re-geocode only when the address changed or coords are missing.
   const { data: existing } = await supabase
     .from("disposals")
-    .select("address_line, city, postcode, lat, lng")
+    .select("address_line, city, postcode, lat, lng, updated_at")
     .eq("id", id)
     .maybeSingle();
+  if (!existing) return { error: "This listing no longer exists." };
+
   const geo = await geocodeForSave(fields, existing);
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("disposals")
     .update({ ...fields, ...(geo ?? {}) })
     .eq("id", id)
-    .eq("agency_id", agencyId);
+    .eq("agency_id", agencyId)
+    .eq("updated_at", existing.updated_at)
+    .select("id");
   if (error) return { error: error.message };
+  if (!updated || updated.length === 0) {
+    return {
+      error:
+        "This listing was changed by someone else while you were editing. Reload the page and try again.",
+    };
+  }
 
   await syncDisposalAgents(supabase, agencyId, id, fields.lead_agent_id ?? null, formData);
 

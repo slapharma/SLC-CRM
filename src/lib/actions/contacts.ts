@@ -121,16 +121,26 @@ export async function updateContact(
 
   const { data: existing } = await supabase
     .from("contacts")
-    .select("address_line, city, postcode, lat, lng")
+    .select("address_line, city, postcode, lat, lng, updated_at")
     .eq("id", id)
     .maybeSingle();
+  if (!existing) return { error: "This contact no longer exists." };
+
   const geo = await geocodeForSave(data, existing);
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("contacts")
     .update({ ...data, ...(geo ?? {}) })
     .eq("id", id)
-    .eq("agency_id", agencyId);
+    .eq("agency_id", agencyId)
+    .eq("updated_at", existing.updated_at)
+    .select("id");
   if (error) return { error: error.message };
+  if (!updated || updated.length === 0) {
+    return {
+      error:
+        "This contact was changed by someone else while you were editing. Reload the page and try again.",
+    };
+  }
 
   await syncContactAgents(supabase, id, agencyId, agents(formData).extra);
 

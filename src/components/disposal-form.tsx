@@ -136,7 +136,7 @@ export function DisposalForm({
         <Field label="Address" htmlFor="address_line">
           <Input id="address_line" name="address_line" defaultValue={d?.address_line ?? ""} />
         </Field>
-        <div className="grid gap-5 sm:grid-cols-3">
+        <div className="grid gap-5 md:grid-cols-3">
           <Field label="Area" htmlFor="area">
             <Input id="area" name="area" defaultValue={d?.area ?? ""} />
           </Field>
@@ -195,7 +195,7 @@ export function DisposalForm({
       </Section>
 
       <Section title="Commercials">
-        <div className="grid gap-5 sm:grid-cols-3">
+        <div className="grid gap-5 md:grid-cols-3">
           <Field label="Rent (£ pa)" htmlFor="rent_pa">
             <Input id="rent_pa" name="rent_pa" type="number" inputMode="numeric" defaultValue={d?.rent_pa ?? ""} />
           </Field>

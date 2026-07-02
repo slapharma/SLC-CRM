@@ -50,7 +50,7 @@ export default async function ContactsPage({
     .order(column, { ascending });
   if (q) query = query.or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%`);
   const { data } = await query;
-  const mapLayers = await getMapLayers(supabase);
+  const mapLayers = await getMapLayers(supabase, { include: ["contact"] });
   // `rows` is the tile base (q filtered). The role facet is applied to the table
   // in memory so the tile counts always show the full distribution.
   const rows = data ?? [];
@@ -86,11 +86,13 @@ export default async function ContactsPage({
     .sort((a, b) => b[1] - a[1])
     .slice(0, 6)
     .map((e) => e[0]);
+  const cellCounts = new Map<string, number>();
+  for (const c of rows) {
+    const key = `${c.city ?? "—"}|${c.role ?? "—"}`;
+    cellCounts.set(key, (cellCounts.get(key) ?? 0) + 1);
+  }
   const heatMatrix = heatTowns.map((t) =>
-    heatRoles.map(
-      (rSlug) =>
-        rows.filter((c) => (c.city ?? "—") === t && (c.role ?? "—") === rSlug).length,
-    ),
+    heatRoles.map((rSlug) => cellCounts.get(`${t}|${rSlug}`) ?? 0),
   );
 
   const ids = [
@@ -139,7 +141,7 @@ export default async function ContactsPage({
 
       {rows.length > 0 ? (
         <div className="mb-5 grid gap-4 lg:grid-cols-2">
-          <Card>
+          <Card className="hidden sm:block">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm">Portfolio Spread — town × role</CardTitle>
             </CardHeader>
@@ -166,6 +168,12 @@ export default async function ContactsPage({
             </CardContent>
           </Card>
         </div>
+      ) : null}
+
+      {listRows.length > 0 && listRows.length < rows.length ? (
+        <p className="mb-2 text-xs text-muted-foreground">
+          Showing {listRows.length} of {rows.length}
+        </p>
       ) : null}
 
       {listRows.length === 0 ? (

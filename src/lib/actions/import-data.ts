@@ -25,6 +25,10 @@ const numOrNull = (v: string) => {
 const boolOf = (v: string) => /^(true|yes|y|1)$/i.test(v.trim());
 const oneOf = (v: string, allowed: readonly string[], fb: string) =>
   allowed.includes(v) ? v : fb;
+// Loose format check — good enough to catch obvious CSV garbage (missing "@",
+// no domain) without rejecting real addresses a stricter regex might miss.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const emailOrNull = (v: string) => (v && EMAIL_RE.test(v) ? v : null);
 
 /** Bulk-import CSV rows into companies / contacts / requirements / listings (#8). */
 export async function importEntityCsv(
@@ -97,7 +101,7 @@ export async function importEntityCsv(
           ...base,
           first_name: get("first_name"),
           last_name: get("last_name") || null,
-          email: get("email") || null,
+          email: emailOrNull(get("email")),
           phone: get("phone") || null,
           role: oneOf(get("role"), roleSlugs, "other"),
           marketing_opt_in: boolOf(get("marketing_opt_in")),

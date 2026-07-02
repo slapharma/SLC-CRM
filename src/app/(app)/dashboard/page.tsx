@@ -48,7 +48,7 @@ export default async function DashboardPage() {
         .eq("status", "active"),
       supabase.from("deals").select("*", { count: "exact", head: true }),
       supabase.from("deals").select("value"),
-      getMapLayers(supabase),
+      getMapLayers(supabase, { include: ["listing"] }),
     ]);
 
   const pipelineValue = (dealValues.data ?? []).reduce(
@@ -159,7 +159,7 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent>
             <ConcentrationMap
-              layers={{ listings: mapLayers.listings, companies: [], contacts: [] }}
+              layers={mapLayers}
               defaultActive="listing"
               compact
               hideToggles

@@ -36,8 +36,17 @@ export default async function MatchesPage({
 
   const supabase = await createClient();
   const [{ data: reqs }, { data: disposals }] = await Promise.all([
-    supabase.from("requirements").select("*").eq("status", "active"),
-    supabase.from("disposals").select("*"),
+    supabase
+      .from("requirements")
+      .select(
+        "id, title, target_towns, target_regions, min_sqft, max_sqft, min_covers, max_covers, use_classes, property_types, tenure_prefs, max_rent, max_premium, max_guide_price, fit_out_prefs",
+      )
+      .eq("status", "active"),
+    supabase
+      .from("disposals")
+      .select(
+        "id, title, status, city, area, postcode, address_line, size_sqft, covers_internal, use_class, property_type, disposal_type, rent_pa, premium, guide_price, fit_out_state",
+      ),
   ]);
   const requirements = reqs ?? [];
   // Only pitch live stock — never surface let/sold/withdrawn listings as matches.

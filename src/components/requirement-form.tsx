@@ -329,24 +329,34 @@ function NumberRange({
   return (
     <div className="space-y-2">
       <Label>{label}</Label>
-      <div className="flex items-center gap-2">
-        <Input
-          name={minName}
-          type="number"
-          inputMode="numeric"
-          placeholder="Min"
-          aria-label={`${label} minimum`}
-          defaultValue={minDefault ?? ""}
-        />
-        <span className="text-muted-foreground">–</span>
-        <Input
-          name={maxName}
-          type="number"
-          inputMode="numeric"
-          placeholder="Max"
-          aria-label={`${label} maximum`}
-          defaultValue={maxDefault ?? ""}
-        />
+      <div className="flex items-end gap-2">
+        <div className="flex-1 space-y-1">
+          <Label htmlFor={`${minName}-input`} className="text-xs text-muted-foreground">
+            Min
+          </Label>
+          <Input
+            id={`${minName}-input`}
+            name={minName}
+            type="number"
+            inputMode="numeric"
+            placeholder="Min"
+            defaultValue={minDefault ?? ""}
+          />
+        </div>
+        <span className="pb-2 text-muted-foreground">–</span>
+        <div className="flex-1 space-y-1">
+          <Label htmlFor={`${maxName}-input`} className="text-xs text-muted-foreground">
+            Max
+          </Label>
+          <Input
+            id={`${maxName}-input`}
+            name={maxName}
+            type="number"
+            inputMode="numeric"
+            placeholder="Max"
+            defaultValue={maxDefault ?? ""}
+          />
+        </div>
       </div>
     </div>
   );
