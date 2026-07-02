@@ -1,6 +1,7 @@
 import * as React from "react";
 import { ExternalLink } from "lucide-react";
 
+import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { kycRiskBadge } from "@/lib/badges";
@@ -176,10 +177,10 @@ export function KycReportView({
         <CardContent className="text-sm">
           {data && data.sanctions.length > 0 ? (
             <div className="space-y-3">
-              <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+              <Alert tone="error">
                 Potential matches found — these require manual review. A name match
                 is not proof of a sanctioned entity.
-              </p>
+              </Alert>
               <ul className="divide-y">
                 {data.sanctions.map((m, i) => (
                   <li key={i} className="flex items-center justify-between gap-2 py-2">

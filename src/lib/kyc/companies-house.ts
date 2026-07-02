@@ -26,6 +26,7 @@ async function chFetch<T>(path: string): Promise<T | null> {
     const res = await fetch(`${COMPANIES_HOUSE_API_BASE}${path}`, {
       headers: { Authorization: authHeader(), Accept: "application/json" },
       cache: "no-store",
+      signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok) return null; // 404 = no such record / resource → fail soft
     return (await res.json()) as T;

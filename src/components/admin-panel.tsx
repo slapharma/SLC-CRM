@@ -12,6 +12,7 @@ import {
   Trash2,
 } from "lucide-react";
 
+import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -114,7 +115,7 @@ function TeamPanel({
           type="button"
           onClick={() => setOpen((o) => !o)}
           aria-expanded={open}
-          className="flex flex-1 items-center gap-3 text-left focus-visible:outline-none"
+          className="flex flex-1 items-center gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <ChevronDown
             className={cn(
@@ -163,18 +164,8 @@ function TeamPanel({
 }
 
 function Notice({ state }: { state: FormState }) {
-  if (state.error)
-    return (
-      <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
-        {state.error}
-      </p>
-    );
-  if (state.message)
-    return (
-      <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-300">
-        {state.message}
-      </p>
-    );
+  if (state.error) return <Alert tone="error">{state.error}</Alert>;
+  if (state.message) return <Alert tone="success">{state.message}</Alert>;
   return null;
 }
 

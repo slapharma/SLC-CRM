@@ -10,7 +10,7 @@ import {
   UserPlus,
 } from "lucide-react";
 
-import { ConcentrationMap } from "@/components/concentration-map";
+import { ConcentrationMap } from "@/components/concentration-map-lazy";
 import { buttonVariants } from "@/components/ui/button";
 import {
   Card,
@@ -104,7 +104,7 @@ export default async function DashboardPage() {
               href={kpi.href}
               className="block rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
-              <Card className="h-full transition-all hover:border-primary/40 hover:shadow-md">
+              <Card className="h-full transition-all hover:border-primary/40">
                 <CardContent className="flex items-center justify-between p-5 sm:p-5">
                   <div>
                     <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">

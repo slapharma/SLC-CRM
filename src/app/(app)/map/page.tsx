@@ -7,7 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { ConcentrationMap } from "@/components/concentration-map";
+import { ConcentrationMap } from "@/components/concentration-map-lazy";
 import { createClient } from "@/lib/supabase/server";
 import { getMapLayers } from "@/lib/supabase/map-points";
 

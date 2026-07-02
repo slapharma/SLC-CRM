@@ -4,7 +4,6 @@ import * as React from "react";
 import { useActionState } from "react";
 import { useRouter } from "next/navigation";
 import { Download, Upload } from "lucide-react";
-import * as XLSX from "xlsx";
 
 import { Button } from "@/components/ui/button";
 import { importEntityCsv } from "@/lib/actions/import-data";
@@ -41,6 +40,8 @@ function EntityImporter({ entity }: { entity: ImportEntity }) {
     setFileName(f.name);
     if (/\.(xlsx|xls)$/i.test(f.name)) {
       // Parse the first sheet of an Excel workbook to CSV, reusing the CSV pipeline.
+      // Loaded on demand — xlsx is ~120KB gz and most sessions never touch it.
+      const XLSX = await import("xlsx");
       const wb = XLSX.read(await f.arrayBuffer(), { type: "array" });
       const ws = wb.Sheets[wb.SheetNames[0]];
       setCsv(ws ? XLSX.utils.sheet_to_csv(ws) : "");

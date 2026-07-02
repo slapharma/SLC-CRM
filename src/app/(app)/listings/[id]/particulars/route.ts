@@ -28,7 +28,10 @@ async function fetchHero(images: ImageItem[]): Promise<Buffer | null> {
   const url = images[0]?.url;
   if (!url) return null;
   try {
-    const res = await fetch(url, { cache: "no-store" });
+    const res = await fetch(url, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(10_000),
+    });
     if (!res.ok) return null;
     return Buffer.from(await res.arrayBuffer());
   } catch {
@@ -45,7 +48,10 @@ async function fetchStaticMap(
   const url = staticMapUrl(lat, lng);
   if (!url) return null;
   try {
-    const res = await fetch(url, { cache: "no-store" });
+    const res = await fetch(url, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(10_000),
+    });
     if (!res.ok) return null;
     return Buffer.from(await res.arrayBuffer());
   } catch {

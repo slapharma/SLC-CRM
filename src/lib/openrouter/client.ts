@@ -34,6 +34,7 @@ export async function openRouterChat({
       ],
     }),
     cache: "no-store",
+    signal: AbortSignal.timeout(10_000),
   });
 
   if (!res.ok) {
@@ -43,9 +44,14 @@ export async function openRouterChat({
     );
   }
 
-  const body = (await res.json()) as {
-    choices?: { message?: { content?: string } }[];
-  };
+  let body: { choices?: { message?: { content?: string } }[] };
+  try {
+    body = (await res.json()) as {
+      choices?: { message?: { content?: string } }[];
+    };
+  } catch {
+    throw new Error("OpenRouter returned invalid JSON.");
+  }
   const content = body.choices?.[0]?.message?.content;
   if (!content || typeof content !== "string") {
     throw new Error("OpenRouter returned an empty response.");

@@ -78,6 +78,7 @@ async function loadList(): Promise<SanctionEntry[] | null> {
   try {
     const res = await fetch(OFSI_CONSOLIDATED_LIST_URL, {
       next: { revalidate: 86400 },
+      signal: AbortSignal.timeout(5_000),
     });
     if (!res.ok) return null;
     const text = await res.text();

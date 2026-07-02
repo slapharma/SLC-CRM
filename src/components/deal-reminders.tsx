@@ -5,6 +5,7 @@ import { useActionState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Plus, Trash2 } from "lucide-react";
 
+import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -101,17 +102,15 @@ export function DealReminders({
                 <form action={deleteDealReminder}>
                   <input type="hidden" name="id" value={r.id} />
                   <input type="hidden" name="deal_id" value={dealId} />
-                  <button
-                    type="submit"
+                  <ConfirmSubmitButton
+                    confirmMessage={`Delete the reminder "${r.title}"?`}
+                    variant="ghost"
+                    size="icon"
                     aria-label={`Delete ${r.title}`}
-                    onClick={(e) => {
-                      if (!window.confirm(`Delete the reminder “${r.title}”?`))
-                        e.preventDefault();
-                    }}
-                    className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                    className="h-7 w-7 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                   >
                     <Trash2 className="h-4 w-4" />
-                  </button>
+                  </ConfirmSubmitButton>
                 </form>
               </li>
             );

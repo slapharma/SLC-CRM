@@ -35,20 +35,21 @@ export default async function AppLayout({
     // Scope to the caller's OWN membership — agency_members RLS can surface
     // co-members, so an unscoped role=admin check would leak the Admin nav to
     // any non-admin whose agency has an admin.
-    const { data: adminRow } = await supabase
-      .from("agency_members")
-      .select("agency_id")
-      .eq("user_id", authedUser.id)
-      .eq("role", "admin")
-      .limit(1)
-      .maybeSingle();
+    const [{ data: adminRow }, { data: noteRows }] = await Promise.all([
+      supabase
+        .from("agency_members")
+        .select("agency_id")
+        .eq("user_id", authedUser.id)
+        .eq("role", "admin")
+        .limit(1)
+        .maybeSingle(),
+      supabase
+        .from("notifications")
+        .select("id, title, body, link, read_at, created_at")
+        .order("created_at", { ascending: false })
+        .limit(20),
+    ]);
     isAdmin = Boolean(adminRow);
-
-    const { data: noteRows } = await supabase
-      .from("notifications")
-      .select("id, title, body, link, read_at, created_at")
-      .order("created_at", { ascending: false })
-      .limit(20);
     notifications = noteRows ?? [];
   }
 

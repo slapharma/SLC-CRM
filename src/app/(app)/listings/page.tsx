@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Pencil, Plus, Store } from "lucide-react";
 
-import { ConcentrationMap } from "@/components/concentration-map";
+import { ConcentrationMap } from "@/components/concentration-map-lazy";
 import { EmptyState } from "@/components/empty-state";
 import { FilterBar, FilterSelect } from "@/components/filter-bar";
 import { FilterTiles } from "@/components/filter-tiles";
@@ -224,19 +224,29 @@ export default async function ListingsPage({
           <TableHeader>
             <TableRow>
               <SortHeader column="title" label="Title" params={params} />
-              <SortHeader column="city" label="Town" params={params} />
-              <SortHeader column="use_class" label="Use class" params={params} />
+              <SortHeader
+                column="city"
+                label="Town"
+                params={params}
+                className="hidden md:table-cell"
+              />
+              <SortHeader
+                column="use_class"
+                label="Use class"
+                params={params}
+                className="hidden md:table-cell"
+              />
               <SortHeader
                 column="size_sqft"
                 label="Size (sq ft)"
                 params={params}
-                className="text-right"
+                className="hidden text-right md:table-cell"
               />
               <SortHeader
                 column="rent_pa"
                 label="Rent / Premium"
                 params={params}
-                className="text-right"
+                className="hidden text-right md:table-cell"
               />
               <SortHeader column="status" label="Status" params={params} />
               <TableHead className="w-10">
@@ -261,18 +271,18 @@ export default async function ListingsPage({
                       <Badge tone={t.tone}>{t.label}</Badge>
                     </div>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">
+                  <TableCell className="hidden text-muted-foreground md:table-cell">
                     {d.city ?? "—"}
                   </TableCell>
-                  <TableCell className="text-muted-foreground">
+                  <TableCell className="hidden text-muted-foreground md:table-cell">
                     {d.use_class ?? "—"}
                   </TableCell>
-                  <TableCell className="text-right font-mono tabular-nums text-muted-foreground">
+                  <TableCell className="hidden text-right font-mono tabular-nums text-muted-foreground md:table-cell">
                     {d.size_sqft != null
                       ? Number(d.size_sqft).toLocaleString("en-GB")
                       : "—"}
                   </TableCell>
-                  <TableCell className="text-right font-mono tabular-nums text-muted-foreground">
+                  <TableCell className="hidden text-right font-mono tabular-nums text-muted-foreground md:table-cell">
                     {d.rent_pa != null
                       ? `${fmtMoney(d.rent_pa)} pa`
                       : d.premium != null

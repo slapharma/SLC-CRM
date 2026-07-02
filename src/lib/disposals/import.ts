@@ -85,5 +85,6 @@ export async function importDisposalFromUrl(
     .single();
 
   if (error) throw new Error(`Upsert failed: ${error.message}`);
+  if (!data) throw new Error("Upsert returned no data");
   return { id: (data as { id: string }).id, row, rehost };
 }

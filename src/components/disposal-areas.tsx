@@ -5,6 +5,7 @@ import { useActionState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2 } from "lucide-react";
 
+import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -86,17 +87,15 @@ export function DisposalAreas({
                     <form action={deleteDisposalArea}>
                       <input type="hidden" name="id" value={a.id} />
                       <input type="hidden" name="disposal_id" value={disposalId} />
-                      <button
-                        type="submit"
+                      <ConfirmSubmitButton
+                        confirmMessage={`Delete the "${a.name}" area row?`}
+                        variant="ghost"
+                        size="icon"
                         aria-label={`Delete ${a.name}`}
-                        onClick={(e) => {
-                          if (!window.confirm(`Delete the “${a.name}” area row?`))
-                            e.preventDefault();
-                        }}
-                        className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                        className="h-7 w-7 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                       >
                         <Trash2 className="h-4 w-4" />
-                      </button>
+                      </ConfirmSubmitButton>
                     </form>
                   </td>
                 </tr>

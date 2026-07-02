@@ -38,7 +38,10 @@ export async function geocodeAddress(
     `?address=${encodeURIComponent(query)}&region=gb&key=${key}`;
 
   try {
-    const res = await fetch(url, { cache: "no-store" });
+    const res = await fetch(url, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(10_000),
+    });
     if (!res.ok) return null;
     const body = (await res.json()) as {
       status: string;

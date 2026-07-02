@@ -72,70 +72,80 @@ export default async function ListingDetailPage({
   const sections = (Array.isArray(d.sections) ? d.sections : []) as SectionItem[];
   const location = [d.address_line, d.city, d.postcode].filter(Boolean).join(", ");
 
-  const { data: reqs } = await supabase.from("requirements").select("*");
+  // None of these depend on each other's results (only on `d`, already
+  // resolved above) — fetch them all concurrently instead of serially.
+  const [
+    { data: reqs },
+    { data: dealRows },
+    { data: agentRows },
+    agents,
+    { data: docRows },
+    { data: areaRows },
+    { data: leadAgent },
+    companyTypes,
+  ] = await Promise.all([
+    supabase
+      .from("requirements")
+      .select(
+        "id, title, target_towns, target_regions, min_sqft, max_sqft, min_covers, max_covers, use_classes, property_types, tenure_prefs, max_rent, max_premium, max_guide_price, fit_out_prefs",
+      ),
+    // Deals already created from this listing ("under offer to X").
+    supabase
+      .from("deals")
+      .select("id, title, stage, value")
+      .eq("listing_id", id)
+      .order("updated_at", { ascending: false }),
+    supabase.from("disposal_agents").select("user_id").eq("disposal_id", id),
+    getAgencyMembers(supabase, d.agency_id),
+    supabase
+      .from("disposal_documents")
+      .select("id, name, doc_type, size_bytes, file_path")
+      .eq("disposal_id", id)
+      .order("created_at"),
+    supabase
+      .from("disposal_areas")
+      .select("id, name, size_sqft, size_sqm, rent_pa, availability")
+      .eq("disposal_id", id)
+      .order("sort_order")
+      .order("created_at"),
+    d.lead_agent_id
+      ? supabase
+          .from("profiles")
+          .select("full_name, email, phone, avatar_url, linkedin_url, x_url")
+          .eq("id", d.lead_agent_id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+    getCompanyTypes(),
+  ]);
+
   const matches = (reqs ?? [])
     .map((rq) => ({ rq, ...scoreMatch(rq, d) }))
     .filter((m) => m.score > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, 10);
 
-  // Deals already created from this listing ("under offer to X").
-  const { data: dealRows } = await supabase
-    .from("deals")
-    .select("id, title, stage, value")
-    .eq("listing_id", id)
-    .order("updated_at", { ascending: false });
   const deals = dealRows ?? [];
-
-  const { data: agentRows } = await supabase
-    .from("disposal_agents")
-    .select("user_id")
-    .eq("disposal_id", id);
-  const agents = await getAgencyMembers(supabase, d.agency_id);
   const additionalAgentIds = (agentRows ?? []).map((r) => r.user_id);
 
-  const { data: docRows } = await supabase
-    .from("disposal_documents")
-    .select("id, name, doc_type, size_bytes, file_path")
-    .eq("disposal_id", id)
-    .order("created_at");
-  const docs: DisposalDoc[] = await Promise.all(
-    (docRows ?? []).map(async (r) => {
-      const { data: signed } = await supabase.storage
+  const docRowsList = docRows ?? [];
+  const { data: signedList } = docRowsList.length
+    ? await supabase.storage
         .from("disposal-docs")
-        .createSignedUrl(r.file_path, 3600);
-      return { ...r, url: signed?.signedUrl ?? null };
-    }),
+        .createSignedUrls(
+          docRowsList.map((r) => r.file_path),
+          3600,
+        )
+    : { data: [] as { path: string | null; signedUrl: string | null }[] };
+  const signedByPath = new Map(
+    (signedList ?? []).map((s) => [s.path, s.signedUrl]),
   );
+  const docs: DisposalDoc[] = docRowsList.map((r) => ({
+    ...r,
+    url: signedByPath.get(r.file_path) ?? null,
+  }));
 
-  const { data: areaRows } = await supabase
-    .from("disposal_areas")
-    .select("id, name, size_sqft, size_sqm, rent_pa, availability")
-    .eq("disposal_id", id)
-    .order("sort_order")
-    .order("created_at");
   const areas = areaRows ?? [];
 
-  let leadAgent:
-    | {
-        full_name: string | null;
-        email: string | null;
-        phone: string | null;
-        avatar_url: string | null;
-        linkedin_url: string | null;
-        x_url: string | null;
-      }
-    | null = null;
-  if (d.lead_agent_id) {
-    const { data } = await supabase
-      .from("profiles")
-      .select("full_name, email, phone, avatar_url, linkedin_url, x_url")
-      .eq("id", d.lead_agent_id)
-      .maybeSingle();
-    leadAgent = data;
-  }
-
-  const companyTypes = await getCompanyTypes();
   // #4: linked company + point-of-contact for this listing.
   const [{ data: linkedCompany }, { data: linkedContact }] = await Promise.all([
     d.company_id

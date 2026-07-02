@@ -1,6 +1,24 @@
 import type { Tables } from "@/lib/database.types";
 
-type Requirement = Tables<"requirements">;
+// Pick (rather than the full row) so callers can narrow their `select()` to
+// just these columns — e.g. the listing detail page, which only needs this
+// subset to score matches.
+type Requirement = Pick<
+  Tables<"requirements">,
+  | "target_towns"
+  | "target_regions"
+  | "min_sqft"
+  | "max_sqft"
+  | "min_covers"
+  | "max_covers"
+  | "use_classes"
+  | "property_types"
+  | "tenure_prefs"
+  | "max_rent"
+  | "max_premium"
+  | "max_guide_price"
+  | "fit_out_prefs"
+>;
 type Disposal = Tables<"disposals">;
 
 export type MatchReason = { label: string; ok: boolean };

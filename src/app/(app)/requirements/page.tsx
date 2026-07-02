@@ -181,9 +181,14 @@ export default async function RequirementsPage({
           <TableHeader>
             <TableRow>
               <SortHeader column="title" label="Title" params={params} />
-              <TableHead>Operator</TableHead>
-              <TableHead>Towns</TableHead>
-              <SortHeader column="max_rent" label="Max rent" params={params} />
+              <TableHead className="hidden md:table-cell">Operator</TableHead>
+              <TableHead className="hidden md:table-cell">Towns</TableHead>
+              <SortHeader
+                column="max_rent"
+                label="Max rent"
+                params={params}
+                className="hidden md:table-cell"
+              />
               <SortHeader column="status" label="Status" params={params} />
             </TableRow>
           </TableHeader>
@@ -200,13 +205,13 @@ export default async function RequirementsPage({
                       {r.title}
                     </Link>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">
+                  <TableCell className="hidden text-muted-foreground md:table-cell">
                     {r.company_id ? (names.get(r.company_id) ?? "—") : "—"}
                   </TableCell>
-                  <TableCell className="text-muted-foreground">
+                  <TableCell className="hidden text-muted-foreground md:table-cell">
                     {r.target_towns.join(", ") || "—"}
                   </TableCell>
-                  <TableCell className="font-mono tabular-nums text-muted-foreground">
+                  <TableCell className="hidden font-mono tabular-nums text-muted-foreground md:table-cell">
                     {r.max_rent != null ? `£${r.max_rent.toLocaleString("en-GB")}` : "—"}
                   </TableCell>
                   <TableCell>

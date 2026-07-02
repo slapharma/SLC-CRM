@@ -4,6 +4,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Download, FileText, Trash2 } from "lucide-react";
 
+import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
@@ -117,21 +118,15 @@ export function DisposalDocuments({
                   <input type="hidden" name="id" value={doc.id} />
                   <input type="hidden" name="disposal_id" value={disposalId} />
                   <input type="hidden" name="file_path" value={doc.file_path} />
-                  <button
-                    type="submit"
+                  <ConfirmSubmitButton
+                    confirmMessage={`Delete "${doc.name}"? The file is permanently removed.`}
+                    variant="ghost"
+                    size="icon"
                     aria-label={`Delete ${doc.name}`}
-                    onClick={(e) => {
-                      if (
-                        !window.confirm(
-                          `Delete “${doc.name}”? The file is permanently removed.`,
-                        )
-                      )
-                        e.preventDefault();
-                    }}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                    className="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                   >
                     <Trash2 className="h-4 w-4" />
-                  </button>
+                  </ConfirmSubmitButton>
                 </form>
               </div>
             </li>

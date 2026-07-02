@@ -9,6 +9,7 @@ import {
   CompanyCreatableSelect,
   ContactCreatableSelect,
 } from "@/components/creatable-select";
+import { Alert } from "@/components/ui/alert";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -256,11 +257,7 @@ export function DisposalForm({
         />
       </Section>
 
-      {state.error ? (
-        <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
-          {state.error}
-        </p>
-      ) : null}
+      {state.error ? <Alert tone="error">{state.error}</Alert> : null}
 
       <div className="flex items-center gap-2">
         <Button type="submit" disabled={pending}>

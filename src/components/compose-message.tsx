@@ -5,6 +5,7 @@ import { useActionState } from "react";
 import { PenSquare } from "lucide-react";
 
 import { Modal } from "@/components/ui/modal";
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -92,16 +93,8 @@ export function ComposeMessage({
               />
             </div>
 
-            {state.error ? (
-              <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
-                {state.error}
-              </p>
-            ) : null}
-            {state.message ? (
-              <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-300">
-                {state.message}
-              </p>
-            ) : null}
+            {state.error ? <Alert tone="error">{state.error}</Alert> : null}
+            {state.message ? <Alert tone="success">{state.message}</Alert> : null}
 
             <div className="flex justify-end gap-2">
               <Button type="button" variant="secondary" onClick={() => setOpen(false)}>

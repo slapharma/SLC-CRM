@@ -77,7 +77,7 @@ export function NotificationsBell({ initialNotes = [] }: { initialNotes?: Note[]
       {open ? (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} aria-hidden="true" />
-          <div className="absolute right-0 z-50 mt-2 w-80 rounded-md border bg-card shadow-lg">
+          <div className="absolute right-0 z-50 mt-2 w-[min(320px,calc(100vw-24px))] rounded-md border bg-card shadow-lg">
             <div className="flex items-center justify-between border-b px-3 py-2">
               <span className="text-sm font-medium text-foreground">Notifications</span>
               {unread > 0 ? (

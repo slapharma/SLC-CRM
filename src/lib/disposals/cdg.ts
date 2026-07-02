@@ -589,7 +589,9 @@ export async function fetchAndExtractCdg(
 ): Promise<DisposalInsert> {
   const res = await fetch(url, {
     headers: { "User-Agent": init?.userAgent ?? DEFAULT_UA },
-    signal: init?.signal,
+    signal: init?.signal
+      ? AbortSignal.any([init.signal, AbortSignal.timeout(10_000)])
+      : AbortSignal.timeout(10_000),
   });
   if (!res.ok) {
     throw new CdgExtractError(`Fetch failed: HTTP ${res.status} ${res.statusText} for ${url}`);

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Building2, Plus } from "lucide-react";
 
-import { ConcentrationMap } from "@/components/concentration-map";
+import { ConcentrationMap } from "@/components/concentration-map-lazy";
 import { EmptyState } from "@/components/empty-state";
 import { FilterBar, FilterSelect } from "@/components/filter-bar";
 import { FilterTiles } from "@/components/filter-tiles";
@@ -194,8 +194,8 @@ export default async function CompaniesPage({
             <TableRow>
               <SortHeader column="name" label="Name" params={params} />
               <SortHeader column="type" label="Type" params={params} />
-              <TableHead>Sectors</TableHead>
-              <TableHead>Website</TableHead>
+              <TableHead className="hidden md:table-cell">Sectors</TableHead>
+              <TableHead className="hidden md:table-cell">Website</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -214,10 +214,10 @@ export default async function CompaniesPage({
                   <TableCell>
                     <Badge tone={t.tone}>{t.label}</Badge>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">
+                  <TableCell className="hidden text-muted-foreground md:table-cell">
                     {c.sector_tags.join(", ") || "—"}
                   </TableCell>
-                  <TableCell className="text-muted-foreground">
+                  <TableCell className="hidden text-muted-foreground md:table-cell">
                     {c.website ?? "—"}
                   </TableCell>
                 </TableRow>

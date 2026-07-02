@@ -32,7 +32,7 @@ export function CollapsibleCard({
           type="button"
           onClick={() => setOpen((o) => !o)}
           aria-expanded={open}
-          className="flex flex-1 items-center gap-3 text-left focus-visible:outline-none"
+          className="flex flex-1 items-center gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <ChevronDown
             className={cn(

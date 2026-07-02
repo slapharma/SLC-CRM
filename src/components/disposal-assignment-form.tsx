@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 
 import { AgentFields } from "@/components/agent-fields";
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { updateDisposalAssignment } from "@/lib/actions/disposals";
 import type { FormState } from "@/lib/actions/types";
@@ -33,16 +34,8 @@ export function DisposalAssignmentForm({
         additionalAgentIds={additionalAgentIds}
       />
 
-      {state.error ? (
-        <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
-          {state.error}
-        </p>
-      ) : null}
-      {state.message ? (
-        <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-300">
-          {state.message}
-        </p>
-      ) : null}
+      {state.error ? <Alert tone="error">{state.error}</Alert> : null}
+      {state.message ? <Alert tone="success">{state.message}</Alert> : null}
 
       <Button type="submit" disabled={pending}>
         {pending ? "Saving…" : "Save assignment"}

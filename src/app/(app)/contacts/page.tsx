@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Plus, Users } from "lucide-react";
 
-import { ConcentrationMap } from "@/components/concentration-map";
+import { ConcentrationMap } from "@/components/concentration-map-lazy";
 import { EmptyState } from "@/components/empty-state";
 import { FilterBar, FilterSelect } from "@/components/filter-bar";
 import { FilterTiles } from "@/components/filter-tiles";
@@ -191,9 +191,9 @@ export default async function ContactsPage({
             <TableRow>
               <SortHeader column="name" label="Name" params={params} />
               <SortHeader column="role" label="Role" params={params} />
-              <TableHead>Company</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Phone</TableHead>
+              <TableHead className="hidden md:table-cell">Company</TableHead>
+              <TableHead className="hidden md:table-cell">Email</TableHead>
+              <TableHead className="hidden md:table-cell">Phone</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -212,13 +212,13 @@ export default async function ContactsPage({
                   <TableCell>
                     <Badge tone={r.tone}>{r.label}</Badge>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">
+                  <TableCell className="hidden text-muted-foreground md:table-cell">
                     {c.company_id ? (names.get(c.company_id) ?? "—") : "—"}
                   </TableCell>
-                  <TableCell className="text-muted-foreground">
+                  <TableCell className="hidden text-muted-foreground md:table-cell">
                     {c.email ?? "—"}
                   </TableCell>
-                  <TableCell className="text-muted-foreground">
+                  <TableCell className="hidden text-muted-foreground md:table-cell">
                     {c.phone ?? "—"}
                   </TableCell>
                 </TableRow>
