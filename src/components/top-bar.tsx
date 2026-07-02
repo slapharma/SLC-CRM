@@ -1,4 +1,5 @@
-import { Search } from "lucide-react";
+import Link from "next/link";
+import { Compass, Search } from "lucide-react";
 
 import { MobileNav } from "@/components/mobile-nav";
 import { NotificationsBell, type Note } from "@/components/notifications-bell";
@@ -35,6 +36,14 @@ export function TopBar({
             Demo — Supabase not configured
           </span>
         ) : null}
+        <Link
+          href="/guide"
+          aria-label="Quick Guide"
+          className="inline-flex h-9 items-center gap-1.5 rounded-md px-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <Compass className="h-5 w-5" />
+          <span className="hidden sm:inline">Quick Guide</span>
+        </Link>
         <NotificationsBell initialNotes={notifications} />
         <ThemeToggle />
         {user?.email ? (
