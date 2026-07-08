@@ -58,9 +58,9 @@ export function MobileNav({ isAdmin = false }: { isAdmin?: boolean }) {
               onClick={() => setOpen(false)}
             />
           <aside className="absolute inset-y-0 left-0 flex w-64 flex-col border-r bg-sidebar text-sidebar-foreground shadow-lg">
-            <div className="flex h-14 items-center justify-between gap-2 border-b px-4">
+            <div className="flex h-16 items-center justify-between gap-2 border-b px-4">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo.png" alt="CliftonAi-CRM" className="h-7 w-auto" />
+              <img src="/logo.png" alt="CliftonAi-CRM" className="h-[49px] w-auto" />
               <button
                 ref={closeRef}
                 type="button"

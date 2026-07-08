@@ -106,12 +106,12 @@ export default function LandingPage() {
             />
           </picture>
           {/* In-hero top bar: logo left, auth buttons right (no separate header) */}
-          <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 pt-6">
+          <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-y-3 px-6 pt-6 sm:flex-nowrap">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/landing/logo.png"
               alt="CliftonAi-CRM"
-              className="h-9 w-auto sm:h-14 lg:h-16"
+              className="h-[63px] w-auto sm:h-[98px] lg:h-28"
             />
             <nav className="flex items-center gap-1 sm:gap-2">
               <Link
@@ -343,7 +343,7 @@ export default function LandingPage() {
       <footer className="border-t">
         <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-2 px-6 py-6 text-sm text-muted-foreground sm:flex-row">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/landing/logo.png" alt="CliftonAi-CRM" className="h-7 w-auto" />
+          <img src="/landing/logo.png" alt="CliftonAi-CRM" className="h-[49px] w-auto" />
           <span className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             Built for leisure &amp; licensed-sector agents
