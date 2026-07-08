@@ -202,36 +202,6 @@ const QUOTES = [
 export default function LandingPage() {
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="border-b bg-white/90 backdrop-blur">
-        <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-6">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/landing/logo.png"
-            alt="CliftonAi-CRM"
-            className="h-9 w-auto"
-          />
-          <nav className="flex items-center gap-2">
-            <Link
-              href="/login"
-              className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
-            >
-              Sign in
-            </Link>
-            <Link
-              href="/sign-up"
-              className={cn(
-                buttonVariants({ size: "sm" }),
-                GREEN_BG,
-                GREEN_BG_HOVER,
-                "text-white",
-              )}
-            >
-              Start free
-            </Link>
-          </nav>
-        </div>
-      </header>
-
       <main className="flex-1">
         {/* Hero — the mockup's restaurant scene as canvas, real text overlaid.
             The image sits in the right ~82% at a reduced scale, fading into a
@@ -245,7 +215,38 @@ export default function LandingPage() {
               className="h-full w-full object-cover object-[80%_center] [mask-image:linear-gradient(to_right,transparent,black_45%)]"
             />
           </picture>
-          <div className="mx-auto w-full max-w-6xl px-6 py-24 sm:py-32 lg:py-36">
+          {/* In-hero top bar: logo left, auth buttons right (no separate header) */}
+          <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 pt-6">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/landing/logo.png"
+              alt="CliftonAi-CRM"
+              className="h-12 w-auto sm:h-16"
+            />
+            <nav className="flex items-center gap-2">
+              <Link
+                href="/login"
+                className={cn(
+                  buttonVariants({ variant: "ghost", size: "sm" }),
+                  GREEN_TEXT,
+                )}
+              >
+                Sign in
+              </Link>
+              <Link
+                href="/sign-up"
+                className={cn(
+                  buttonVariants({ size: "sm" }),
+                  GREEN_BG,
+                  GREEN_BG_HOVER,
+                  "text-white",
+                )}
+              >
+                Start free
+              </Link>
+            </nav>
+          </div>
+          <div className="mx-auto w-full max-w-6xl px-6 pb-24 pt-16 sm:pb-32 sm:pt-20 lg:pb-36 lg:pt-24">
             <div className="max-w-xl">
               <p
                 className={cn(
@@ -267,12 +268,11 @@ export default function LandingPage() {
               </h1>
               <div className={cn("mt-6 h-0.5 w-12", GREEN_BG)} />
               <p className={cn("mt-5 text-lg font-medium", GREEN_TEXT)}>
-                Smarter clients. Stronger relationships. Better results.
+                Smarter Systems. Stronger Relationships. Better Outcomes.
               </p>
               <p className="mt-3 max-w-md text-pretty leading-relaxed text-foreground/70">
-                Track operators, landlords and leisure listings — then let
-                MatchMaker pair supply with demand automatically, scored and
-                explained.
+                Designed to properly track; Operators, Landlords and Listings,
+                allowing MatchMaker to surface potential deals.
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-3">
                 <Link
