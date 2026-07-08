@@ -1,8 +1,7 @@
 import Link from "next/link";
-import { Playfair_Display } from "next/font/google";
+import { Space_Grotesk } from "next/font/google";
 import {
   Bell,
-  Building2,
   FileText,
   Handshake,
   MessageSquare,
@@ -16,7 +15,7 @@ import {
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-const playfair = Playfair_Display({ subsets: ["latin"], weight: ["600", "700"] });
+const headingFont = Space_Grotesk({ subsets: ["latin"], weight: ["500", "600", "700"] });
 
 /* Landing-page palette, matched to the hero mockup's forest green. */
 const GREEN_TEXT = "text-[#1E4B38]";
@@ -205,19 +204,12 @@ export default function LandingPage() {
     <div className="flex min-h-screen flex-col">
       <header className="border-b bg-white/90 backdrop-blur">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-6">
-          <div className="flex items-center gap-2">
-            <div
-              className={cn(
-                "flex h-8 w-8 items-center justify-center rounded-md text-white",
-                GREEN_BG,
-              )}
-            >
-              <Building2 className="h-5 w-5" />
-            </div>
-            <span className="text-lg font-semibold tracking-tight">
-              CliftonAi<span className={GREEN_TEXT}>-CRM</span>
-            </span>
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/landing/logo.png"
+            alt="CliftonAi-CRM"
+            className="h-9 w-auto"
+          />
           <nav className="flex items-center gap-2">
             <Link
               href="/login"
@@ -241,22 +233,19 @@ export default function LandingPage() {
       </header>
 
       <main className="flex-1">
-        {/* Hero — the mockup's restaurant scene as canvas, real text overlaid */}
-        <section className="relative isolate overflow-hidden">
-          <picture className="absolute inset-0 -z-10">
+        {/* Hero — the mockup's restaurant scene as canvas, real text overlaid.
+            The image sits in the right ~82% at a reduced scale, fading into a
+            white left edge so the headline never overlaps the laptop. */}
+        <section className="relative isolate overflow-hidden bg-white">
+          <picture className="absolute inset-y-0 left-[18%] right-0 -z-10 sm:left-[22%]">
             <source media="(max-width: 640px)" srcSet="/landing/hero-mobile.webp" />
             <img
               src="/landing/hero.webp"
               alt=""
-              className="h-full w-full object-cover object-[72%_center]"
+              className="h-full w-full object-cover object-[80%_center] [mask-image:linear-gradient(to_right,transparent,black_45%)]"
             />
           </picture>
-          {/* Soft white wash on the left so the text reads over the scene */}
-          <div
-            aria-hidden
-            className="absolute inset-0 -z-10 bg-gradient-to-r from-white/95 via-white/70 to-white/10 sm:via-white/55 sm:to-transparent"
-          />
-          <div className="mx-auto w-full max-w-6xl px-6 py-24 sm:py-32 lg:py-40">
+          <div className="mx-auto w-full max-w-6xl px-6 py-24 sm:py-32 lg:py-36">
             <div className="max-w-xl">
               <p
                 className={cn(
@@ -269,9 +258,9 @@ export default function LandingPage() {
               </p>
               <h1
                 className={cn(
-                  playfair.className,
+                  headingFont.className,
                   GREEN_TEXT,
-                  "text-balance text-4xl font-semibold leading-tight sm:text-5xl lg:text-[3.4rem]",
+                  "max-w-lg text-balance text-4xl font-semibold leading-tight tracking-tight sm:text-5xl",
                 )}
               >
                 The AI-Powered CRM Built for Property Professionals
@@ -345,7 +334,7 @@ export default function LandingPage() {
           <div className="mx-auto max-w-2xl text-center">
             <h2
               className={cn(
-                playfair.className,
+                headingFont.className,
                 "text-balance text-3xl font-semibold tracking-tight",
               )}
             >
@@ -387,7 +376,7 @@ export default function LandingPage() {
                   </p>
                   <h2
                     className={cn(
-                      playfair.className,
+                      headingFont.className,
                       "mt-2 text-balance text-3xl font-semibold tracking-tight",
                     )}
                   >
@@ -423,7 +412,7 @@ export default function LandingPage() {
           <div className="mx-auto max-w-2xl text-center">
             <h2
               className={cn(
-                playfair.className,
+                headingFont.className,
                 "text-balance text-3xl font-semibold tracking-tight",
               )}
             >
@@ -464,7 +453,7 @@ export default function LandingPage() {
             <div className="mx-auto max-w-2xl text-center">
               <h2
                 className={cn(
-                  playfair.className,
+                  headingFont.className,
                   "text-balance text-3xl font-semibold tracking-tight",
                 )}
               >
@@ -500,7 +489,7 @@ export default function LandingPage() {
           <div className="mx-auto max-w-2xl text-center">
             <h2
               className={cn(
-                playfair.className,
+                headingFont.className,
                 "text-balance text-3xl font-semibold tracking-tight",
               )}
             >
@@ -531,7 +520,7 @@ export default function LandingPage() {
               <Handshake className="h-8 w-8 opacity-80" aria-hidden />
               <h2
                 className={cn(
-                  playfair.className,
+                  headingFont.className,
                   "mt-4 text-balance text-3xl font-semibold tracking-tight sm:text-4xl",
                 )}
               >
@@ -562,10 +551,8 @@ export default function LandingPage() {
 
       <footer className="border-t">
         <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-2 px-6 py-6 text-sm text-muted-foreground sm:flex-row">
-          <span className="flex items-center gap-2">
-            <Handshake className="h-4 w-4" />
-            CliftonAi-CRM
-          </span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/landing/logo.png" alt="CliftonAi-CRM" className="h-7 w-auto" />
           <span className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             Built for leisure &amp; licensed-sector agents
