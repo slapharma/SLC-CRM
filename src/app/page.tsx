@@ -1,10 +1,10 @@
 import Link from "next/link";
+import { Playfair_Display } from "next/font/google";
 import {
   Bell,
   Building2,
   FileText,
   Handshake,
-  MapPin,
   MessageSquare,
   Quote,
   Search,
@@ -16,17 +16,23 @@ import {
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
+const playfair = Playfair_Display({ subsets: ["latin"], weight: ["600", "700"] });
+
+/* Landing-page palette, matched to the hero mockup's forest green. */
+const GREEN_TEXT = "text-[#1E4B38]";
+const GREEN_BG = "bg-[#1E4B38]";
+const GREEN_BG_HOVER = "hover:bg-[#16382A]";
+const GREEN_TINT = "bg-[#1E4B38]/10";
+
 /** A landing-page screenshot inside the same faux browser frame the Quick Guide uses. */
 function ShotFrame({
   path,
   src,
   alt,
-  eager = false,
 }: {
   path: string;
   src: string;
   alt: string;
-  eager?: boolean;
 }) {
   return (
     <figure className="overflow-hidden rounded-xl border bg-card shadow-lg">
@@ -44,7 +50,7 @@ function ShotFrame({
       <img
         src={src}
         alt={alt}
-        loading={eager ? "eager" : "lazy"}
+        loading="lazy"
         className="block aspect-[16/10] w-full bg-muted/40 object-cover"
       />
     </figure>
@@ -197,13 +203,20 @@ const QUOTES = [
 export default function LandingPage() {
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="border-b">
+      <header className="border-b bg-white/90 backdrop-blur">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-6">
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
+            <div
+              className={cn(
+                "flex h-8 w-8 items-center justify-center rounded-md text-white",
+                GREEN_BG,
+              )}
+            >
               <Building2 className="h-5 w-5" />
             </div>
-            <span className="text-lg font-semibold tracking-tight">CliftonAi-CRM</span>
+            <span className="text-lg font-semibold tracking-tight">
+              CliftonAi<span className={GREEN_TEXT}>-CRM</span>
+            </span>
           </div>
           <nav className="flex items-center gap-2">
             <Link
@@ -212,7 +225,15 @@ export default function LandingPage() {
             >
               Sign in
             </Link>
-            <Link href="/sign-up" className={cn(buttonVariants({ size: "sm" }))}>
+            <Link
+              href="/sign-up"
+              className={cn(
+                buttonVariants({ size: "sm" }),
+                GREEN_BG,
+                GREEN_BG_HOVER,
+                "text-white",
+              )}
+            >
               Start free
             </Link>
           </nav>
@@ -220,46 +241,78 @@ export default function LandingPage() {
       </header>
 
       <main className="flex-1">
-        {/* Hero */}
-        <section className="mx-auto w-full max-w-6xl px-6 pb-16 pt-20 sm:pt-24">
-          <div className="mx-auto max-w-3xl text-center">
-            <p className="mb-4 inline-flex items-center gap-2 rounded-full border bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-              Built for UK leisure &amp; licensed property agents
-            </p>
-            <h1 className="text-balance text-4xl font-semibold leading-tight tracking-tight sm:text-5xl">
-              Your next deal is already in your database.
-              <span className="text-primary"> Find it in seconds.</span>
-            </h1>
-            <p className="mx-auto mt-5 max-w-2xl text-pretty text-lg leading-relaxed text-muted-foreground">
-              CliftonAi-CRM tracks your operators, landlords and leisure listings —
-              then matches supply to demand automatically, with a score and the
-              reasons behind it. Built for restaurant, bar and licensed-premises
-              agency, not adapted to it.
-            </p>
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-              <Link href="/sign-up" className={cn(buttonVariants({ size: "lg" }))}>
-                Start free — takes a minute
-              </Link>
-              <Link
-                href="/login"
-                className={cn(buttonVariants({ variant: "secondary", size: "lg" }))}
-              >
-                Sign in
-              </Link>
-            </div>
-            <p className="mt-3 text-xs text-muted-foreground">
-              No card required. Your agency workspace is ready the moment you sign up.
-            </p>
-          </div>
-
-          <div className="mx-auto mt-12 max-w-5xl">
-            <ShotFrame
-              path="/dashboard"
-              src="/guide/dashboard.png"
-              alt="CliftonAi-CRM dashboard showing companies, listings, requirements, pipeline value and a UK listings map"
-              eager
+        {/* Hero — the mockup's restaurant scene as canvas, real text overlaid */}
+        <section className="relative isolate overflow-hidden">
+          <picture className="absolute inset-0 -z-10">
+            <source media="(max-width: 640px)" srcSet="/landing/hero-mobile.webp" />
+            <img
+              src="/landing/hero.webp"
+              alt=""
+              className="h-full w-full object-cover object-[72%_center]"
             />
+          </picture>
+          {/* Soft white wash on the left so the text reads over the scene */}
+          <div
+            aria-hidden
+            className="absolute inset-0 -z-10 bg-gradient-to-r from-white/95 via-white/70 to-white/10 sm:via-white/55 sm:to-transparent"
+          />
+          <div className="mx-auto w-full max-w-6xl px-6 py-24 sm:py-32 lg:py-40">
+            <div className="max-w-xl">
+              <p
+                className={cn(
+                  "mb-5 inline-flex items-center gap-2 rounded-full border border-[#1E4B38]/20 bg-white/80 px-3 py-1 text-xs font-medium",
+                  GREEN_TEXT,
+                )}
+              >
+                <span className={cn("h-1.5 w-1.5 rounded-full", GREEN_BG)} />
+                UK leisure &amp; licensed property
+              </p>
+              <h1
+                className={cn(
+                  playfair.className,
+                  GREEN_TEXT,
+                  "text-balance text-4xl font-semibold leading-tight sm:text-5xl lg:text-[3.4rem]",
+                )}
+              >
+                The AI-Powered CRM Built for Property Professionals
+              </h1>
+              <div className={cn("mt-6 h-0.5 w-12", GREEN_BG)} />
+              <p className={cn("mt-5 text-lg font-medium", GREEN_TEXT)}>
+                Smarter clients. Stronger relationships. Better results.
+              </p>
+              <p className="mt-3 max-w-md text-pretty leading-relaxed text-foreground/70">
+                Track operators, landlords and leisure listings — then let
+                MatchMaker pair supply with demand automatically, scored and
+                explained.
+              </p>
+              <div className="mt-8 flex flex-wrap items-center gap-3">
+                <Link
+                  href="/sign-up"
+                  className={cn(
+                    buttonVariants({ size: "lg" }),
+                    GREEN_BG,
+                    GREEN_BG_HOVER,
+                    "text-white",
+                  )}
+                >
+                  Start free — takes a minute
+                </Link>
+                <Link
+                  href="/login"
+                  className={cn(
+                    buttonVariants({ variant: "outline", size: "lg" }),
+                    "border-[#1E4B38]/30 bg-white/70",
+                    GREEN_TEXT,
+                  )}
+                >
+                  Sign in
+                </Link>
+              </div>
+              <p className="mt-3 text-xs text-foreground/60">
+                No card required. Your agency workspace is ready the moment you
+                sign up.
+              </p>
+            </div>
           </div>
         </section>
 
@@ -290,7 +343,12 @@ export default function LandingPage() {
         {/* Pain */}
         <section className="mx-auto w-full max-w-6xl px-6 py-20">
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-balance text-3xl font-semibold tracking-tight">
+            <h2
+              className={cn(
+                playfair.className,
+                "text-balance text-3xl font-semibold tracking-tight",
+              )}
+            >
               Sound familiar?
             </h2>
             <p className="mt-3 text-muted-foreground">
@@ -319,10 +377,20 @@ export default function LandingPage() {
                 className="grid items-center gap-10 lg:grid-cols-2"
               >
                 <div className={i % 2 === 1 ? "lg:order-2" : undefined}>
-                  <p className="text-sm font-semibold uppercase tracking-wide text-primary">
+                  <p
+                    className={cn(
+                      "text-sm font-semibold uppercase tracking-wide",
+                      GREEN_TEXT,
+                    )}
+                  >
                     {f.kicker}
                   </p>
-                  <h2 className="mt-2 text-balance text-3xl font-semibold tracking-tight">
+                  <h2
+                    className={cn(
+                      playfair.className,
+                      "mt-2 text-balance text-3xl font-semibold tracking-tight",
+                    )}
+                  >
                     {f.title}
                   </h2>
                   <p className="mt-4 leading-relaxed text-muted-foreground">
@@ -331,7 +399,12 @@ export default function LandingPage() {
                   <ul className="mt-5 space-y-2.5">
                     {f.points.map((pt) => (
                       <li key={pt} className="flex items-start gap-2.5 text-sm">
-                        <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                        <span
+                          className={cn(
+                            "mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full",
+                            GREEN_BG,
+                          )}
+                        />
                         {pt}
                       </li>
                     ))}
@@ -348,7 +421,12 @@ export default function LandingPage() {
         {/* Everything else */}
         <section className="mx-auto w-full max-w-6xl px-6 py-20">
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-balance text-3xl font-semibold tracking-tight">
+            <h2
+              className={cn(
+                playfair.className,
+                "text-balance text-3xl font-semibold tracking-tight",
+              )}
+            >
               And everything around the deal, too
             </h2>
             <p className="mt-3 text-muted-foreground">
@@ -361,7 +439,13 @@ export default function LandingPage() {
               const Icon = f.icon;
               return (
                 <div key={f.title} className="rounded-lg border bg-card p-5">
-                  <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary">
+                  <div
+                    className={cn(
+                      "mb-3 flex h-9 w-9 items-center justify-center rounded-md",
+                      GREEN_TINT,
+                      GREEN_TEXT,
+                    )}
+                  >
                     <Icon className="h-5 w-5" />
                   </div>
                   <h3 className="text-sm font-semibold">{f.title}</h3>
@@ -378,7 +462,12 @@ export default function LandingPage() {
         <section className="border-t bg-muted/30">
           <div className="mx-auto w-full max-w-6xl px-6 py-20">
             <div className="mx-auto max-w-2xl text-center">
-              <h2 className="text-balance text-3xl font-semibold tracking-tight">
+              <h2
+                className={cn(
+                  playfair.className,
+                  "text-balance text-3xl font-semibold tracking-tight",
+                )}
+              >
                 Up and running before your coffee goes cold
               </h2>
               <p className="mt-3 text-muted-foreground">
@@ -388,7 +477,12 @@ export default function LandingPage() {
             <div className="mt-10 grid gap-4 sm:grid-cols-3">
               {STEPS.map((s) => (
                 <div key={s.step} className="rounded-lg border bg-card p-6">
-                  <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
+                  <div
+                    className={cn(
+                      "mb-3 flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold text-white",
+                      GREEN_BG,
+                    )}
+                  >
                     {s.step}
                   </div>
                   <h3 className="font-semibold">{s.title}</h3>
@@ -404,14 +498,19 @@ export default function LandingPage() {
         {/* Testimonials */}
         <section className="mx-auto w-full max-w-6xl px-6 py-20">
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-balance text-3xl font-semibold tracking-tight">
+            <h2
+              className={cn(
+                playfair.className,
+                "text-balance text-3xl font-semibold tracking-tight",
+              )}
+            >
               Agents who stopped matching from memory
             </h2>
           </div>
           <div className="mt-10 grid gap-4 sm:grid-cols-3">
             {QUOTES.map((q) => (
               <figure key={q.quote} className="flex flex-col rounded-lg border bg-card p-6">
-                <Quote className="h-5 w-5 text-primary" aria-hidden />
+                <Quote className={cn("h-5 w-5", GREEN_TEXT)} aria-hidden />
                 <blockquote className="mt-3 flex-1 text-sm leading-relaxed">
                   &ldquo;{q.quote}&rdquo;
                 </blockquote>
@@ -426,11 +525,16 @@ export default function LandingPage() {
         </section>
 
         {/* Final CTA */}
-        <section className="border-t bg-primary text-primary-foreground">
+        <section className={cn("border-t text-white", GREEN_BG)}>
           <div className="mx-auto w-full max-w-6xl px-6 py-20 text-center">
             <div className="mx-auto flex max-w-2xl flex-col items-center">
-              <MapPin className="h-8 w-8 opacity-80" aria-hidden />
-              <h2 className="mt-4 text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
+              <Handshake className="h-8 w-8 opacity-80" aria-hidden />
+              <h2
+                className={cn(
+                  playfair.className,
+                  "mt-4 text-balance text-3xl font-semibold tracking-tight sm:text-4xl",
+                )}
+              >
                 The next great pairing in your patch is sitting in a spreadsheet.
               </h2>
               <p className="mt-4 max-w-xl text-pretty leading-relaxed opacity-90">
@@ -442,6 +546,7 @@ export default function LandingPage() {
                   href="/sign-up"
                   className={cn(
                     buttonVariants({ variant: "secondary", size: "lg" }),
+                    "bg-white text-[#1E4B38] hover:bg-white/90",
                   )}
                 >
                   Create your free account
