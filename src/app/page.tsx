@@ -1,16 +1,6 @@
 import Link from "next/link";
 import { Space_Grotesk } from "next/font/google";
-import {
-  Bell,
-  FileText,
-  Handshake,
-  MessageSquare,
-  Quote,
-  Search,
-  ShieldCheck,
-  Sparkles,
-  Users,
-} from "lucide-react";
+import { Handshake, Users } from "lucide-react";
 
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -21,7 +11,6 @@ const headingFont = Space_Grotesk({ subsets: ["latin"], weight: ["500", "600", "
 const GREEN_TEXT = "text-[#1E4B38]";
 const GREEN_BG = "bg-[#1E4B38]";
 const GREEN_BG_HOVER = "hover:bg-[#16382A]";
-const GREEN_TINT = "bg-[#1E4B38]/10";
 
 /** A landing-page screenshot inside the same faux browser frame the Quick Guide uses. */
 function ShotFrame({
@@ -98,117 +87,18 @@ const SHOWCASE = [
       "Share, print or post to your website from the same screen",
     ],
   },
-  {
-    path: "/deals",
-    src: "/guide/deals.png",
-    alt: "Pipeline page showing deals grouped by stage with total pipeline value",
-    kicker: "Pipeline",
-    title: "Every deal and every fee, at a glance",
-    body: "Deals move through your pipeline stage by stage, with the total value always on screen. Filter by agent to see who's closing what — and never let a viewing go quiet again.",
-    points: [
-      "Pipeline value, open deals and wins on one screen",
-      "Move a deal through stages in two clicks",
-      "Reminders and notifications keep every deal warm",
-    ],
-  },
-  {
-    path: "/map",
-    src: "/guide/map.png",
-    alt: "UK map with listings, companies and contacts pinned across England",
-    kicker: "Map",
-    title: "Your whole patch on one map",
-    body: "Every listing, company and contact, geocoded and pinned across the UK. Click a pin for the full record. When an operator says 'anything in the North West?', the answer is one glance away.",
-    points: [
-      "Listings, companies and contacts as separate layers",
-      "Click any pin to open the record card",
-      "Spot gaps and clusters in your coverage instantly",
-    ],
-  },
-];
-
-const EXTRAS = [
-  {
-    icon: ShieldCheck,
-    title: "Built-in KYC",
-    body: "Companies House, sanctions and VAT checks on any company — before you commit to acting.",
-  },
-  {
-    icon: Sparkles,
-    title: "AI Deep Dive",
-    body: "One click builds a research report on any company, so you walk into every call informed.",
-  },
-  {
-    icon: MessageSquare,
-    title: "Team messaging",
-    body: "Send a listing or a note straight to a colleague. No more 'did you see my email?'",
-  },
-  {
-    icon: Search,
-    title: "Search everything",
-    body: "Companies, listings and requirements from one search bar, from any page.",
-  },
-  {
-    icon: FileText,
-    title: "Branded PDFs",
-    body: "Client-ready particulars, branded or unbranded, generated in seconds.",
-  },
-  {
-    icon: Bell,
-    title: "Reminders that chase",
-    body: "Deal reminders and notifications so nothing goes cold while you're out viewing.",
-  },
-];
-
-const STEPS = [
-  {
-    step: "1",
-    title: "Add what you know",
-    body: "Companies, contacts, listings and operator requirements — with fields built for leisure property, it takes minutes, not days.",
-  },
-  {
-    step: "2",
-    title: "Let MatchMaker work",
-    body: "Every requirement is scored against every listing automatically. Your best opportunities surface themselves, ranked and explained.",
-  },
-  {
-    step: "3",
-    title: "Close and get paid",
-    body: "Turn a match into a deal in one click, walk it through your pipeline, and watch the fee land — with the whole team in the loop.",
-  },
-];
-
-/* Placeholder testimonials — swap for real client quotes before launch. */
-const QUOTES = [
-  {
-    quote:
-      "The first morning we switched it on, MatchMaker surfaced a pairing we'd all missed. That one deal paid for years of the software.",
-    name: "Director",
-    firm: "Leisure agency, London",
-  },
-  {
-    quote:
-      "Finally a CRM with a field for a premises licence. Our particulars go out same-day now instead of 'by the end of the week'.",
-    name: "Associate agent",
-    firm: "Licensed property specialists, Manchester",
-  },
-  {
-    quote:
-      "The map sold it for me. An operator asked what we had in the North West and I answered before the call ended.",
-    name: "Head of agency",
-    firm: "Restaurant & bar agency, Leeds",
-  },
 ];
 
 export default function LandingPage() {
   return (
     <div className="flex min-h-screen flex-col">
       <main className="flex-1">
-        {/* Hero — the mockup's restaurant scene as canvas, real text overlaid.
-            The image sits in the right ~82% at a reduced scale, fading into a
-            white left edge so the headline never overlaps the laptop. */}
+        {/* Hero — white background throughout; the mockup photo only appears
+            as a right-hand backdrop from sm: up. On mobile it drops down as a
+            plain stacked image below the text instead of an absolute overlay,
+            so there's no cropping/overlap fight on narrow screens. */}
         <section className="relative isolate overflow-hidden bg-white">
-          <picture className="absolute inset-y-0 left-[18%] right-0 -z-10 sm:left-[22%]">
-            <source media="(max-width: 640px)" srcSet="/landing/hero-mobile.webp" />
+          <picture className="absolute inset-y-0 left-[22%] right-0 -z-10 hidden sm:block">
             <img
               src="/landing/hero.webp"
               alt=""
@@ -221,9 +111,9 @@ export default function LandingPage() {
             <img
               src="/landing/logo.png"
               alt="CliftonAi-CRM"
-              className="h-12 w-auto sm:h-16"
+              className="h-9 w-auto sm:h-14 lg:h-16"
             />
-            <nav className="flex items-center gap-2">
+            <nav className="flex items-center gap-1 sm:gap-2">
               <Link
                 href="/login"
                 className={cn(
@@ -246,7 +136,7 @@ export default function LandingPage() {
               </Link>
             </nav>
           </div>
-          <div className="mx-auto w-full max-w-6xl px-6 pb-24 pt-16 sm:pb-32 sm:pt-20 lg:pb-36 lg:pt-24">
+          <div className="mx-auto w-full max-w-6xl px-6 pb-10 pt-10 sm:pb-32 sm:pt-20 lg:pb-36 lg:pt-24">
             <div className="max-w-xl">
               <p
                 className={cn(
@@ -302,11 +192,18 @@ export default function LandingPage() {
                 sign up.
               </p>
             </div>
+            {/* Mobile-only: the hero photo stacks below the text as a plain card */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/landing/hero-mobile.webp"
+              alt="CliftonAi-CRM dashboard on a laptop in a restaurant setting"
+              className="mt-10 aspect-[16/9] w-full rounded-xl border object-cover object-[65%_40%] shadow-lg sm:hidden"
+            />
           </div>
         </section>
 
         {/* Proof strip */}
-        <section className="border-y bg-muted/30">
+        <section className="border-y">
           <div className="mx-auto grid w-full max-w-6xl gap-6 px-6 py-10 text-center sm:grid-cols-3">
             <div>
               <p className="text-2xl font-semibold tracking-tight">Scored matching</p>
@@ -358,8 +255,8 @@ export default function LandingPage() {
         </section>
 
         {/* Feature showcases */}
-        <section className="border-t bg-muted/30">
-          <div className="mx-auto w-full max-w-6xl space-y-24 px-6 py-20">
+        <section className="border-t">
+          <div className="mx-auto w-full max-w-6xl space-y-16 px-6 py-20 sm:space-y-24">
             {SHOWCASE.map((f, i) => (
               <div
                 key={f.kicker}
@@ -403,112 +300,6 @@ export default function LandingPage() {
                   <ShotFrame path={f.path} src={f.src} alt={f.alt} />
                 </div>
               </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Everything else */}
-        <section className="mx-auto w-full max-w-6xl px-6 py-20">
-          <div className="mx-auto max-w-2xl text-center">
-            <h2
-              className={cn(
-                headingFont.className,
-                "text-balance text-3xl font-semibold tracking-tight",
-              )}
-            >
-              And everything around the deal, too
-            </h2>
-            <p className="mt-3 text-muted-foreground">
-              The admin that eats your week — compliance, research, chasing,
-              paperwork — handled in the same place you work.
-            </p>
-          </div>
-          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {EXTRAS.map((f) => {
-              const Icon = f.icon;
-              return (
-                <div key={f.title} className="rounded-lg border bg-card p-5">
-                  <div
-                    className={cn(
-                      "mb-3 flex h-9 w-9 items-center justify-center rounded-md",
-                      GREEN_TINT,
-                      GREEN_TEXT,
-                    )}
-                  >
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <h3 className="text-sm font-semibold">{f.title}</h3>
-                  <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-                    {f.body}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* How it works */}
-        <section className="border-t bg-muted/30">
-          <div className="mx-auto w-full max-w-6xl px-6 py-20">
-            <div className="mx-auto max-w-2xl text-center">
-              <h2
-                className={cn(
-                  headingFont.className,
-                  "text-balance text-3xl font-semibold tracking-tight",
-                )}
-              >
-                Up and running before your coffee goes cold
-              </h2>
-              <p className="mt-3 text-muted-foreground">
-                Three steps between you and your first scored match.
-              </p>
-            </div>
-            <div className="mt-10 grid gap-4 sm:grid-cols-3">
-              {STEPS.map((s) => (
-                <div key={s.step} className="rounded-lg border bg-card p-6">
-                  <div
-                    className={cn(
-                      "mb-3 flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold text-white",
-                      GREEN_BG,
-                    )}
-                  >
-                    {s.step}
-                  </div>
-                  <h3 className="font-semibold">{s.title}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                    {s.body}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Testimonials */}
-        <section className="mx-auto w-full max-w-6xl px-6 py-20">
-          <div className="mx-auto max-w-2xl text-center">
-            <h2
-              className={cn(
-                headingFont.className,
-                "text-balance text-3xl font-semibold tracking-tight",
-              )}
-            >
-              Agents who stopped matching from memory
-            </h2>
-          </div>
-          <div className="mt-10 grid gap-4 sm:grid-cols-3">
-            {QUOTES.map((q) => (
-              <figure key={q.quote} className="flex flex-col rounded-lg border bg-card p-6">
-                <Quote className={cn("h-5 w-5", GREEN_TEXT)} aria-hidden />
-                <blockquote className="mt-3 flex-1 text-sm leading-relaxed">
-                  &ldquo;{q.quote}&rdquo;
-                </blockquote>
-                <figcaption className="mt-4 text-xs text-muted-foreground">
-                  <span className="font-medium text-foreground">{q.name}</span>
-                  {" · "}
-                  {q.firm}
-                </figcaption>
-              </figure>
             ))}
           </div>
         </section>
