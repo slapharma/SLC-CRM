@@ -300,8 +300,8 @@ export default function LandingPage() {
                 <Link
                   href="/login"
                   className={cn(
-                    buttonVariants({ variant: "outline", size: "lg" }),
-                    "border-[#1E4B38]/30 bg-white/70",
+                    buttonVariants({ variant: "secondary", size: "lg" }),
+                    "border border-[#1E4B38]/30 bg-white/70 hover:bg-white",
                     GREEN_TEXT,
                   )}
                 >
