@@ -75,11 +75,9 @@ export function AppSidebar({ isAdmin = false }: { isAdmin?: boolean }) {
 
   return (
     <aside className="hidden w-60 shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground md:flex">
-      <div className="flex h-14 items-center gap-2 border-b px-4">
-        <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
-          <Building2 className="h-4 w-4" />
-        </div>
-        <span className="font-semibold tracking-tight text-foreground">CliftonAi-CRM</span>
+      <div className="flex h-14 items-center border-b px-4">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo.png" alt="CliftonAi-CRM" className="h-7 w-auto" />
       </div>
 
       <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-4">

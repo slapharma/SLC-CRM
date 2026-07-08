@@ -4,7 +4,7 @@ import * as React from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Building2, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 
 import { NAV, visibleItems } from "@/components/app-sidebar";
 import { signOut } from "@/lib/actions/auth";
@@ -59,14 +59,8 @@ export function MobileNav({ isAdmin = false }: { isAdmin?: boolean }) {
             />
           <aside className="absolute inset-y-0 left-0 flex w-64 flex-col border-r bg-sidebar text-sidebar-foreground shadow-lg">
             <div className="flex h-14 items-center justify-between gap-2 border-b px-4">
-              <div className="flex items-center gap-2">
-                <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
-                  <Building2 className="h-4 w-4" />
-                </div>
-                <span className="font-semibold tracking-tight text-foreground">
-                  CliftonAi-CRM
-                </span>
-              </div>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo.png" alt="CliftonAi-CRM" className="h-7 w-auto" />
               <button
                 ref={closeRef}
                 type="button"
