@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Space_Grotesk } from "next/font/google";
-import { Handshake, Users } from "lucide-react";
+import { ArrowUpRight, Handshake, Users } from "lucide-react";
 
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -11,6 +11,25 @@ const headingFont = Space_Grotesk({ subsets: ["latin"], weight: ["500", "600", "
 const GREEN_TEXT = "text-[#1E4B38]";
 const GREEN_BG = "bg-[#1E4B38]";
 const GREEN_BG_HOVER = "hover:bg-[#16382A]";
+
+/** Sibling CliftonAi products, for the cross-sell footer band. */
+const SIBLINGS = [
+  {
+    name: "CliftonAi ContentFlow",
+    tag: "Content operations for WordPress",
+    href: "https://flow.cliftonai.co",
+  },
+  {
+    name: "CliftonAi DiffDoc",
+    tag: "Document comparison",
+    href: "https://diffdoc.cliftonai.co",
+  },
+  {
+    name: "CliftonAi DealMaker",
+    tag: "Deal pipeline for small business",
+    href: "https://dealmaker.cliftonai.co",
+  },
+];
 
 /** A landing-page screenshot inside the same faux browser frame the Quick Guide uses. */
 function ShotFrame({
@@ -114,6 +133,18 @@ export default function LandingPage() {
               className="h-[63px] w-auto sm:h-[98px] lg:h-28"
             />
             <nav className="flex items-center gap-1 sm:gap-2">
+              <a
+                href="https://cliftonai.co"
+                target="_blank"
+                rel="noopener"
+                className={cn(
+                  "mr-1 hidden items-center gap-1 text-xs font-medium text-muted-foreground transition-colors sm:inline-flex",
+                  "hover:text-[#1E4B38]",
+                )}
+              >
+                Part of CliftonAi
+                <ArrowUpRight className="h-3 w-3" />
+              </a>
               <Link
                 href="/login"
                 className={cn(
@@ -341,6 +372,35 @@ export default function LandingPage() {
       </main>
 
       <footer className="border-t">
+        {/* More from CliftonAi — cross-sell band to sibling products */}
+        <div className="border-b bg-black/[0.015]">
+          <div className="mx-auto w-full max-w-6xl px-6 py-10">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+              More from CliftonAi
+            </p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              {SIBLINGS.map((s) => (
+                <a
+                  key={s.name}
+                  href={s.href}
+                  target="_blank"
+                  rel="noopener"
+                  className="group flex items-center justify-between gap-3 rounded-xl border bg-white px-4 py-3 transition-colors hover:border-[#1E4B38]/40"
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-semibold text-[#1E4B38]">
+                      {s.name}
+                    </span>
+                    <span className="block truncate text-xs text-muted-foreground">
+                      {s.tag}
+                    </span>
+                  </span>
+                  <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground transition-colors group-hover:text-[#1E4B38]" />
+                </a>
+              ))}
+            </div>
+          </div>
+        </div>
         <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-2 px-6 py-6 text-sm text-muted-foreground sm:flex-row">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/landing/logo.png" alt="CliftonAi-CRM" className="h-[49px] w-auto" />
