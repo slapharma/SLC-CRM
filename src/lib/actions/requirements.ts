@@ -50,6 +50,10 @@ function payload(fd: FormData) {
     ) as ReqStatus,
     target_towns: commaArr(fd, "target_towns"),
     target_regions: commaArr(fd, "target_regions"),
+    target_counties: commaArr(fd, "target_counties"),
+    target_postcode_districts: commaArr(fd, "target_postcode_districts").map((s) =>
+      s.toUpperCase(),
+    ),
     property_types: commaArr(fd, "property_types"),
     use_classes: pickEnum<UseClass>(fd, "use_classes", Constants.public.Enums.use_class),
     tenure_prefs: pickEnum<Tenure>(fd, "tenure_prefs", Constants.public.Enums.tenure_type),

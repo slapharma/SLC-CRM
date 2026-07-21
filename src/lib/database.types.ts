@@ -149,6 +149,7 @@ export type Database = {
           agency_id: string
           city: string | null
           company_number: string | null
+          county: string | null
           created_at: string
           created_by: string | null
           id: string
@@ -170,6 +171,7 @@ export type Database = {
           agency_id: string
           city?: string | null
           company_number?: string | null
+          county?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -191,6 +193,7 @@ export type Database = {
           agency_id?: string
           city?: string | null
           company_number?: string | null
+          county?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -349,6 +352,7 @@ export type Database = {
           agency_id: string
           city: string | null
           company_id: string | null
+          county: string | null
           created_at: string
           created_by: string | null
           email: string | null
@@ -370,6 +374,7 @@ export type Database = {
           agency_id: string
           city?: string | null
           company_id?: string | null
+          county?: string | null
           created_at?: string
           created_by?: string | null
           email?: string | null
@@ -391,6 +396,7 @@ export type Database = {
           agency_id?: string
           city?: string | null
           company_id?: string | null
+          county?: string | null
           created_at?: string
           created_by?: string | null
           email?: string | null
@@ -801,6 +807,7 @@ export type Database = {
           company_id: string | null
           contact_id: string | null
           covers_external: number | null
+          county: string | null
           covers_internal: number | null
           created_at: string
           created_by: string | null
@@ -867,6 +874,7 @@ export type Database = {
           company_id?: string | null
           contact_id?: string | null
           covers_external?: number | null
+          county?: string | null
           covers_internal?: number | null
           created_at?: string
           created_by?: string | null
@@ -933,6 +941,7 @@ export type Database = {
           company_id?: string | null
           contact_id?: string | null
           covers_external?: number | null
+          county?: string | null
           covers_internal?: number | null
           created_at?: string
           created_by?: string | null
@@ -1310,6 +1319,8 @@ export type Database = {
           notes: string | null
           property_types: string[]
           status: Database["public"]["Enums"]["requirement_status"]
+          target_counties: string[]
+          target_postcode_districts: string[]
           target_regions: string[]
           target_towns: string[]
           tenure_prefs: Database["public"]["Enums"]["tenure_type"][]
@@ -1336,6 +1347,8 @@ export type Database = {
           notes?: string | null
           property_types?: string[]
           status?: Database["public"]["Enums"]["requirement_status"]
+          target_counties?: string[]
+          target_postcode_districts?: string[]
           target_regions?: string[]
           target_towns?: string[]
           tenure_prefs?: Database["public"]["Enums"]["tenure_type"][]
@@ -1362,6 +1375,8 @@ export type Database = {
           notes?: string | null
           property_types?: string[]
           status?: Database["public"]["Enums"]["requirement_status"]
+          target_counties?: string[]
+          target_postcode_districts?: string[]
           target_regions?: string[]
           target_towns?: string[]
           tenure_prefs?: Database["public"]["Enums"]["tenure_type"][]

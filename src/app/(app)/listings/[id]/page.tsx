@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { ExternalLink, FileDown, Pencil } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { EditableDealTitle } from "@/components/editable-deal-title";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -17,7 +17,8 @@ import {
 } from "@/lib/badges";
 import { deleteDisposal } from "@/lib/actions/disposals";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
-import { scoreMatch } from "@/lib/matching/score";
+import { DEFAULT_LOCATION_FLEX, scoreMatch } from "@/lib/matching/score";
+import { LocationFlexSlider } from "@/components/location-flex-slider";
 import { CreateDealButton } from "@/components/create-deal-button";
 import { MatchReasons } from "@/components/match-reasons";
 import { DisposalAssignmentForm } from "@/components/disposal-assignment-form";
@@ -52,10 +53,18 @@ type SectionItem = { title: string; content: string };
 
 export default async function ListingDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ flex?: string }>;
 }) {
   const { id } = await params;
+  const { flex } = await searchParams;
+  const flexParsed = Number(flex ?? DEFAULT_LOCATION_FLEX);
+  const locationFlex = Math.min(
+    100,
+    Math.max(0, Number.isFinite(flexParsed) ? flexParsed : DEFAULT_LOCATION_FLEX),
+  );
   const supabase = await createClient();
   const {
     data: { user },
@@ -71,7 +80,9 @@ export default async function ListingDetailPage({
   const lt = listingTypeBadge(d.listing_type);
   const images = (Array.isArray(d.images) ? d.images : []) as ImageItem[];
   const sections = (Array.isArray(d.sections) ? d.sections : []) as SectionItem[];
-  const location = [d.address_line, d.city, d.postcode].filter(Boolean).join(", ");
+  const location = [d.address_line, d.city, d.county, d.postcode]
+    .filter(Boolean)
+    .join(", ");
 
   // None of these depend on each other's results (only on `d`, already
   // resolved above) — fetch them all concurrently instead of serially.
@@ -88,7 +99,7 @@ export default async function ListingDetailPage({
     supabase
       .from("requirements")
       .select(
-        "id, title, target_towns, target_regions, min_sqft, max_sqft, min_covers, max_covers, use_classes, property_types, tenure_prefs, max_rent, max_premium, max_guide_price, fit_out_prefs",
+        "id, title, target_towns, target_regions, target_counties, target_postcode_districts, min_sqft, max_sqft, min_covers, max_covers, use_classes, property_types, tenure_prefs, max_rent, max_premium, max_guide_price, fit_out_prefs",
       ),
     // Deals already created from this listing ("under offer to X").
     supabase
@@ -120,7 +131,7 @@ export default async function ListingDetailPage({
   ]);
 
   const matches = (reqs ?? [])
-    .map((rq) => ({ rq, ...scoreMatch(rq, d) }))
+    .map((rq) => ({ rq, ...scoreMatch(rq, d, { locationFlex }) }))
     .filter((m) => m.score > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, 10);
@@ -337,8 +348,14 @@ export default async function ListingDetailPage({
       </Card>
 
       <Card className="mt-4">
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-4">
           <CardTitle>MatchMaker Opportunities</CardTitle>
+          <form className="flex items-end gap-2">
+            <LocationFlexSlider defaultValue={locationFlex} />
+            <Button type="submit" size="sm" variant="secondary">
+              Apply
+            </Button>
+          </form>
         </CardHeader>
         <CardContent>
           {matches.length === 0 ? (

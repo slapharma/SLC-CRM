@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import { currentAgencyId } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
+import { deriveCounty } from "@/lib/locations";
 import { geocodeForSave } from "@/lib/maps/geocode";
 import type { TablesInsert } from "@/lib/database.types";
 import type { FormState } from "@/lib/actions/types";
@@ -45,6 +46,9 @@ function disposalFieldsFromForm(fd: FormData): Omit<TablesInsert<"disposals">, "
     area: textOrNull(fd, "area"),
     city: textOrNull(fd, "city"),
     postcode: textOrNull(fd, "postcode"),
+    county:
+      textOrNull(fd, "county") ??
+      deriveCounty({ postcode: str(fd, "postcode"), city: str(fd, "city") }),
     property_type: textOrNull(fd, "property_type"),
     use_class: textOrNull(fd, "use_class"),
     size_sqft: numOrNull(fd, "size_sqft"),

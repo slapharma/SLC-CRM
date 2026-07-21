@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import { currentAgencyId } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
+import { deriveCounty } from "@/lib/locations";
 import { geocodeForSave } from "@/lib/maps/geocode";
 import type { FormState } from "@/lib/actions/types";
 
@@ -31,6 +32,9 @@ function payload(fd: FormData) {
     address_line: nullable(fd, "address_line"),
     city: nullable(fd, "city"),
     postcode: nullable(fd, "postcode"),
+    county:
+      nullable(fd, "county") ??
+      deriveCounty({ postcode: str(fd, "postcode"), city: str(fd, "city") }),
     notes: nullable(fd, "notes"),
     lead_agent_id: nullable(fd, "lead_agent_id"),
     marketing_opt_in: fd.get("marketing_opt_in") != null,

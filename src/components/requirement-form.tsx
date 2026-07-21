@@ -14,6 +14,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { TargetLocationsField } from "@/components/target-locations-field";
 import { Textarea } from "@/components/ui/textarea";
 import type { FormState } from "@/lib/actions/types";
 import type { Tables } from "@/lib/database.types";
@@ -114,24 +115,13 @@ export function RequirementForm({
         />
       </Section>
 
-      <Section title="Location → matches disposal town / area / postcode">
-        <div className="grid gap-5 sm:grid-cols-2">
-          <Field label="Target towns" htmlFor="target_towns" hint="Comma-separated">
-            <Input
-              id="target_towns"
-              name="target_towns"
-              defaultValue={(r?.target_towns ?? []).join(", ")}
-              placeholder="London, Manchester"
-            />
-          </Field>
-          <Field label="Target regions" htmlFor="target_regions" hint="Comma-separated">
-            <Input
-              id="target_regions"
-              name="target_regions"
-              defaultValue={(r?.target_regions ?? []).join(", ")}
-            />
-          </Field>
-        </div>
+      <Section title="Location → matches disposal town / county / postcode">
+        <TargetLocationsField
+          towns={r?.target_towns ?? []}
+          regions={r?.target_regions ?? []}
+          counties={r?.target_counties ?? []}
+          districts={r?.target_postcode_districts ?? []}
+        />
       </Section>
 
       <Section title="Property → matches use class / type / size / covers / fit-out">

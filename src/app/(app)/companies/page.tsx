@@ -22,6 +22,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { companyTypeBadge } from "@/lib/badges";
+import { deriveCounty, HOME_COUNTIES } from "@/lib/locations";
 import { getCompanyTypes, typeLabel } from "@/lib/company-types";
 import { filterHref, resolveSort } from "@/lib/sort";
 import { createClient } from "@/lib/supabase/server";
@@ -38,9 +39,11 @@ export default async function CompaniesPage({
     dir?: string;
     type?: string;
     tag?: string;
+    town?: string;
+    county?: string;
   }>;
 }) {
-  const { q, sort, dir, type, tag } = await searchParams;
+  const { q, sort, dir, type, tag, town, county } = await searchParams;
   const supabase = await createClient();
 
   const { column, ascending } = resolveSort(
@@ -52,7 +55,7 @@ export default async function CompaniesPage({
 
   let query = supabase
     .from("companies")
-    .select("id, name, type, sector_tags, website")
+    .select("id, name, type, sector_tags, website, city, postcode, county")
     .order(column, { ascending });
   if (q) query = query.ilike("name", `%${q}%`);
   const { data } = await query;
@@ -61,12 +64,35 @@ export default async function CompaniesPage({
   // `rows` is the heatmap base (q filtered). The tag/type facets that the
   // heatmap controls are applied to the table in memory so the grid keeps the
   // full distribution.
-  const rows = data ?? [];
+  const rows = (data ?? []).map((c) => ({
+    ...c,
+    county: c.county ?? deriveCounty({ postcode: c.postcode, city: c.city }),
+  }));
+  const matchesCounty = (rowCounty: string | null) =>
+    !county ||
+    (county === "Home Counties"
+      ? rowCounty != null && HOME_COUNTIES.includes(rowCounty)
+      : (rowCounty ?? "—") === county);
   const listRows = rows.filter(
-    (c) => (!type || c.type === type) && (!tag || c.sector_tags.includes(tag)),
+    (c) =>
+      (!type || c.type === type) &&
+      (!tag || c.sector_tags.includes(tag)) &&
+      (!town || (c.city ?? "—") === town) &&
+      matchesCounty(c.county),
   );
 
-  const params = { q, sort, dir, type, tag };
+  const params = { q, sort, dir, type, tag, town, county };
+
+  const townOptions = [...new Set(rows.map((c) => c.city).filter(Boolean))]
+    .sort()
+    .map((v) => ({ value: v as string, label: v as string }));
+  const countyValues = [...new Set(rows.map((c) => c.county).filter(Boolean))].sort();
+  const countyOptions = [
+    ...(countyValues.some((c) => HOME_COUNTIES.includes(c as string))
+      ? [{ value: "Home Counties", label: "Home Counties" }]
+      : []),
+    ...countyValues.map((v) => ({ value: v as string, label: v as string })),
+  ];
 
   // Stats bar: counts per company type (whole q-filtered set), click to facet.
   // Types are editable data, so derive tiles from the live list (admin-chosen labels).
@@ -117,7 +143,7 @@ export default async function CompaniesPage({
         dir={dir}
         placeholder="Search companies…"
         basePath="/companies"
-        hasActiveFilters={Boolean(type || tag)}
+        hasActiveFilters={Boolean(type || tag || town || county)}
       >
         <FilterSelect
           name="type"
@@ -125,6 +151,8 @@ export default async function CompaniesPage({
           value={type}
           options={companyTypes.map((t) => ({ value: t.slug, label: t.label }))}
         />
+        <FilterSelect name="town" label="Town" value={town} options={townOptions} />
+        <FilterSelect name="county" label="County" value={county} options={countyOptions} />
       </FilterBar>
 
       {rows.length > 0 ? (

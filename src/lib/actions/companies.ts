@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import { currentAgencyId } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
+import { deriveCounty } from "@/lib/locations";
 import { geocodeForSave } from "@/lib/maps/geocode";
 import type { FormState } from "@/lib/actions/types";
 
@@ -73,6 +74,12 @@ export async function createCompany(
     address_line: nullable(formData, "address_line"),
     city: nullable(formData, "city"),
     postcode: nullable(formData, "postcode"),
+    county:
+      nullable(formData, "county") ??
+      deriveCounty({
+        postcode: str(formData, "postcode"),
+        city: str(formData, "city"),
+      }),
   };
   const geo = await geocodeForSave(address);
   const { data, error } = await supabase
@@ -169,6 +176,12 @@ export async function updateCompany(
     address_line: nullable(formData, "address_line"),
     city: nullable(formData, "city"),
     postcode: nullable(formData, "postcode"),
+    county:
+      nullable(formData, "county") ??
+      deriveCounty({
+        postcode: str(formData, "postcode"),
+        city: str(formData, "city"),
+      }),
   };
   const { data: existing } = await supabase
     .from("companies")

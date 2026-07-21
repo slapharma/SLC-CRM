@@ -10,6 +10,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { LocationSelect } from "@/components/location-select";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { FormState } from "@/lib/actions/types";
@@ -92,12 +93,25 @@ export function ContactForm({
         />
       </Field>
       <div className="grid gap-5 sm:grid-cols-2">
-        <Field label="Town / city" htmlFor="city">
-          <Input id="city" name="city" defaultValue={c?.city ?? ""} />
-        </Field>
-        <Field label="Postcode" htmlFor="postcode">
-          <Input id="postcode" name="postcode" defaultValue={c?.postcode ?? ""} />
-        </Field>
+        <LocationSelect
+          name="city"
+          label="Town / city"
+          kinds={["town"]}
+          defaultValue={c?.city ?? ""}
+        />
+        <LocationSelect
+          name="postcode"
+          label="Postcode"
+          kinds={["district"]}
+          defaultValue={c?.postcode ?? ""}
+        />
+        <LocationSelect
+          name="county"
+          label="County"
+          kinds={["county"]}
+          defaultValue={c?.county ?? ""}
+          hint="Auto-filled from postcode/town if left blank"
+        />
       </div>
 
       <Field label="Notes" htmlFor="notes">

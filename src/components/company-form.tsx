@@ -10,6 +10,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { LocationSelect } from "@/components/location-select";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { FormState } from "@/lib/actions/types";
@@ -95,12 +96,25 @@ export function CompanyForm({
         />
       </Field>
       <div className="grid gap-5 sm:grid-cols-2">
-        <Field label="Town / city" htmlFor="city">
-          <Input id="city" name="city" defaultValue={company?.city ?? ""} />
-        </Field>
-        <Field label="Postcode" htmlFor="postcode">
-          <Input id="postcode" name="postcode" defaultValue={company?.postcode ?? ""} />
-        </Field>
+        <LocationSelect
+          name="city"
+          label="Town / city"
+          kinds={["town"]}
+          defaultValue={company?.city ?? ""}
+        />
+        <LocationSelect
+          name="postcode"
+          label="Postcode"
+          kinds={["district"]}
+          defaultValue={company?.postcode ?? ""}
+        />
+        <LocationSelect
+          name="county"
+          label="County"
+          kinds={["county"]}
+          defaultValue={company?.county ?? ""}
+          hint="Auto-filled from postcode/town if left blank"
+        />
       </div>
 
       <div className="grid gap-5 sm:grid-cols-2">

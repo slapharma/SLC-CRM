@@ -347,3 +347,33 @@ After applying: regenerate `database.types.ts` (hand-edits already match), and r
 
 ## Review
 Shipped Enquiries→Requirements rename, portfolio-spread+geo-map across list pages, contact/company links, listing CDG/INTEL type + unbranded INTEL PDF, dashboard refresh, Admin accordion redesign + editable company types, and mandatory-contact enforcement. All gated behind two DB migrations awaiting authorization.
+
+---
+
+# BATCH — UK locations dropdowns + county field + proximity MatchMaker (cflack, 2026-07-21)
+
+Plan: C:\Users\clift\.claude\plans\wise-plotting-sphinx.md
+
+- [x] 1. Dataset: scripts/build-uk-locations.mjs (doogal districts CSV single source + curated regions/counties/area→county map) → 2,944 districts / 1,448 towns / 71 counties in src/lib/locations/data/*.json (server 463KB + client-safe 82KB split)
+- [x] 2. Locations lib: src/lib/locations/index.ts (server-side, geocode.ts comment convention) + options.ts (client-safe)
+- [x] 3. Migration file 0026 written + database.types.ts hand-updated (5 new columns) — ⚠️ NOT applied to live DB: Supabase MCP returns "You do not have permission" (connection lacks access, like the Vercel MCP 403)
+- [x] 4. UI: ui/slider.tsx + location-select.tsx (LocationSelect single + LocationMultiPicker chips) + target-locations-field.tsx
+- [x] 5. Forms + actions (requirement, disposal, contact, company) with deriveCounty fallback on save
+- [x] 6. List-page filters: Town + County (incl. "Home Counties") on listings/contacts/companies; Target location on requirements
+- [x] 7. Proximity scoring in score.ts (exact=1.0; decay ≤0.8 cap; flex 0–100 → radius (flex/100)×25mi; W1 prefix-average centroid) + amber partial chips in match-reasons
+- [x] 8. Slider wiring ?flex= on /matches FilterBar + requirement/listing detail match cards
+- [x] 9. CSV templates + import (county, target_counties, target_postcode_districts)
+- [x] 10. Verify: tsc CLEAN · eslint CLEAN · `next build` GREEN (all routes) · W1→W2 math verified against dataset (13 W1 sub-districts, centroid 1.99 mi from W2 → 17/25 pts at flex 50, 0 at flex 0; GU1→Surrey derivation ✓)
+
+## Review
+Shipped structured UK locations end-to-end: repo-bundled dataset (doogal OGL districts + curated counties/regions, split server/client JSON), searchable comboboxes on every postcode/town/county field (free text always allowed), unified Target-locations multi-select on requirements, Town/County/"Home Counties" filters on all list pages (county derived at read time for legacy rows), CSV import/template support, and proximity-aware MatchMaker scoring (exact hit = full 25 pts; near-miss decays linearly within a slider-controlled radius, capped at 0.8× so proximity never beats exact; ?flex= slider on /matches + both detail pages).
+
+## Migration 0026 — APPLIED ✅ (user re-authed the Supabase connector)
+Columns confirmed live; 103 disposals intact. Live verification via throwaway QA agency (qa-w1test-0721@slc.test, isolated — left in place):
+- New listing "Paddington test bar" (city London, postcode W2 1AA, county left blank) → saved with county **Greater London** auto-derived server-side ✓
+- Listings page shows new Town + County filter dropdowns; county for legacy NULL rows derived at read time ✓
+- Requirement "Central London bar brief (W1)" saved with target_postcode_districts=['W1'] ✓
+- /matches?flex=0 → W1D listing matches exactly ("Location: W1D"), W2 listing absent ✓
+- /matches?flex=50 → W2 + NW1 listings surface with "~1 mi from W1" partial (amber) chips ✓
+- Bug found & fixed during verification: formatValue function prop crossed the RSC boundary → new client wrapper `location-flex-slider.tsx` (used on /matches + both detail pages)
+- Harness note: the preview pane ran pages without paint/hydration — combobox interaction untestable there (native form POSTs fine); combobox visuals worth a quick manual click-through in a real browser.

@@ -22,6 +22,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { listingStatusBadge, listingTypeBadge } from "@/lib/badges";
+import { deriveCounty, HOME_COUNTIES } from "@/lib/locations";
 import { filterHref, resolveSort } from "@/lib/sort";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
@@ -41,9 +42,10 @@ export default async function ListingsPage({
     status?: string;
     disposal_type?: string;
     town?: string;
+    county?: string;
   }>;
 }) {
-  const { q, sort, dir, status, disposal_type, town } = await searchParams;
+  const { q, sort, dir, status, disposal_type, town, county } = await searchParams;
   const supabase = await createClient();
 
   const { column, ascending } = resolveSort(
@@ -63,7 +65,7 @@ export default async function ListingsPage({
   let query = supabase
     .from("disposals")
     .select(
-      "id, title, city, status, use_class, disposal_type, listing_type, size_sqft, rent_pa, premium",
+      "id, title, city, postcode, county, status, use_class, disposal_type, listing_type, size_sqft, rent_pa, premium",
     )
     .order(column, { ascending });
   if (q) query = query.or(`title.ilike.%${q}%,city.ilike.%${q}%`);
@@ -73,13 +75,35 @@ export default async function ListingsPage({
   // `rows` is the heatmap base (q + type filtered). The town/status facets that
   // the heatmap controls are applied to the table in memory, so the grid keeps
   // showing the full distribution for re-slicing.
-  const rows = data ?? [];
+  // County is stored on new saves and derived from postcode/town for legacy rows.
+  const rows = (data ?? []).map((r) => ({
+    ...r,
+    county: r.county ?? deriveCounty({ postcode: r.postcode, city: r.city }),
+  }));
+  const matchesCounty = (rowCounty: string | null) =>
+    !county ||
+    (county === "Home Counties"
+      ? rowCounty != null && HOME_COUNTIES.includes(rowCounty)
+      : (rowCounty ?? "—") === county);
   const listRows = rows.filter(
     (r) =>
-      (!town || (r.city ?? "—") === town) && (!status || (r.status ?? "—") === status),
+      (!town || (r.city ?? "—") === town) &&
+      (!status || (r.status ?? "—") === status) &&
+      matchesCounty(r.county),
   );
 
-  const params = { q, sort, dir, status, disposal_type, town };
+  const params = { q, sort, dir, status, disposal_type, town, county };
+
+  const townOptions = [...new Set(rows.map((r) => r.city).filter(Boolean))]
+    .sort()
+    .map((v) => ({ value: v as string, label: v as string }));
+  const countyValues = [...new Set(rows.map((r) => r.county).filter(Boolean))].sort();
+  const countyOptions = [
+    ...(countyValues.some((c) => HOME_COUNTIES.includes(c as string))
+      ? [{ value: "Home Counties", label: "Home Counties" }]
+      : []),
+    ...countyValues.map((v) => ({ value: v as string, label: v as string })),
+  ];
 
   // Stats bar: counts per status (whole q + type filtered set), click to facet.
   const STATUS_TILES = [
@@ -146,8 +170,10 @@ export default async function ListingsPage({
         dir={dir}
         placeholder="Search by title or town…"
         basePath="/listings"
-        hasActiveFilters={Boolean(status || disposal_type || town)}
+        hasActiveFilters={Boolean(status || disposal_type || town || county)}
       >
+        <FilterSelect name="town" label="Town" value={town} options={townOptions} />
+        <FilterSelect name="county" label="County" value={county} options={countyOptions} />
         <FilterSelect
           name="status"
           label="Status"
@@ -222,9 +248,11 @@ export default async function ListingsPage({
       {listRows.length === 0 ? (
         <EmptyState
           icon={Store}
-          title={q || status || town || disposal_type ? "No matches" : "No listings yet"}
+          title={
+            q || status || town || county || disposal_type ? "No matches" : "No listings yet"
+          }
           description={
-            q || status || town || disposal_type
+            q || status || town || county || disposal_type
               ? "Try a different search or filter."
               : "Click “New listing” to add your first premises."
           }

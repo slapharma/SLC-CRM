@@ -8,8 +8,9 @@ import { FilterBar, FilterSelect } from "@/components/filter-bar";
 import { MatchReasons } from "@/components/match-reasons";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
+import { LocationFlexSlider } from "@/components/location-flex-slider";
 import { isListingMatchable, matchScoreBadge } from "@/lib/badges";
-import { scoreMatch } from "@/lib/matching/score";
+import { DEFAULT_LOCATION_FLEX, scoreMatch } from "@/lib/matching/score";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
@@ -50,23 +51,28 @@ const USE_CLASS_OPTIONS = [
 export default async function MatchesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; min?: string; use_class?: string }>;
+  searchParams: Promise<{ q?: string; min?: string; use_class?: string; flex?: string }>;
 }) {
-  const { q, min, use_class } = await searchParams;
+  const { q, min, use_class, flex } = await searchParams;
   const minScore = Math.min(95, Math.max(0, Number(min ?? "50") || 50));
+  const flexParsed = Number(flex ?? DEFAULT_LOCATION_FLEX);
+  const locationFlex = Math.min(
+    100,
+    Math.max(0, Number.isFinite(flexParsed) ? flexParsed : DEFAULT_LOCATION_FLEX),
+  );
 
   const supabase = await createClient();
   const [{ data: reqs }, { data: disposals }] = await Promise.all([
     supabase
       .from("requirements")
       .select(
-        "id, title, target_towns, target_regions, min_sqft, max_sqft, min_covers, max_covers, use_classes, property_types, tenure_prefs, max_rent, max_premium, max_guide_price, fit_out_prefs",
+        "id, title, target_towns, target_regions, target_counties, target_postcode_districts, min_sqft, max_sqft, min_covers, max_covers, use_classes, property_types, tenure_prefs, max_rent, max_premium, max_guide_price, fit_out_prefs",
       )
       .eq("status", "active"),
     supabase
       .from("disposals")
       .select(
-        "id, title, status, city, area, postcode, address_line, size_sqft, covers_internal, use_class, property_type, disposal_type, rent_pa, premium, guide_price, fit_out_state",
+        "id, title, status, city, area, postcode, address_line, county, lat, lng, size_sqft, covers_internal, use_class, property_type, disposal_type, rent_pa, premium, guide_price, fit_out_state",
       ),
   ]);
   const requirements = reqs ?? [];
@@ -75,7 +81,7 @@ export default async function MatchesPage({
 
   const term = (q ?? "").trim().toLowerCase();
   let pairs = requirements
-    .flatMap((rq) => supply.map((d) => ({ rq, d, ...scoreMatch(rq, d) })))
+    .flatMap((rq) => supply.map((d) => ({ rq, d, ...scoreMatch(rq, d, { locationFlex }) })))
     .filter((p) => p.score >= minScore);
   if (term) {
     pairs = pairs.filter(
@@ -137,8 +143,13 @@ export default async function MatchesPage({
         q={q}
         placeholder="Filter by town or name…"
         basePath="/matches"
-        hasActiveFilters={Boolean(use_class) || (min != null && min !== "50")}
+        hasActiveFilters={
+          Boolean(use_class) ||
+          (min != null && min !== "50") ||
+          locationFlex !== DEFAULT_LOCATION_FLEX
+        }
       >
+        <LocationFlexSlider defaultValue={locationFlex} />
         <FilterSelect
           name="min"
           label="Min score"

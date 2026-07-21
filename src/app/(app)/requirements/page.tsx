@@ -19,6 +19,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { propertyUseBadge, requirementStatusBadge } from "@/lib/badges";
+import { HOME_COUNTIES } from "@/lib/locations";
 import { filterHref, resolveSort } from "@/lib/sort";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
@@ -28,9 +29,15 @@ export const metadata: Metadata = { title: "Requirements" };
 export default async function RequirementsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; sort?: string; dir?: string; status?: string }>;
+  searchParams: Promise<{
+    q?: string;
+    sort?: string;
+    dir?: string;
+    status?: string;
+    loc?: string;
+  }>;
 }) {
-  const { q, sort, dir, status } = await searchParams;
+  const { q, sort, dir, status, loc } = await searchParams;
   const supabase = await createClient();
 
   const { column, ascending } = resolveSort(
@@ -43,7 +50,7 @@ export default async function RequirementsPage({
   let query = supabase
     .from("requirements")
     .select(
-      "id, title, status, target_towns, max_rent, company_id, created_at, property_types, use_classes",
+      "id, title, status, target_towns, target_regions, target_counties, target_postcode_districts, max_rent, company_id, created_at, property_types, use_classes",
     )
     .order(column, { ascending });
   if (q) query = query.ilike("title", `%${q}%`);
@@ -51,9 +58,30 @@ export default async function RequirementsPage({
   // `rows` is the tile base (q filtered). The status facet is applied to the
   // table in memory so the tile counts always show the full distribution.
   const rows = data ?? [];
-  const listRows = status ? rows.filter((r) => r.status === status) : rows;
+  const targetsOf = (r: (typeof rows)[number]) => [
+    ...(r.target_towns ?? []),
+    ...(r.target_regions ?? []),
+    ...(r.target_counties ?? []),
+    ...(r.target_postcode_districts ?? []),
+  ];
+  const matchesLoc = (r: (typeof rows)[number]) => {
+    if (!loc) return true;
+    const targets = targetsOf(r).map((t) => t.toLowerCase());
+    if (loc === "Home Counties") {
+      return (
+        targets.includes("home counties") ||
+        HOME_COUNTIES.some((hc) => targets.includes(hc.toLowerCase()))
+      );
+    }
+    return targets.includes(loc.toLowerCase());
+  };
+  const listRows = rows.filter((r) => (!status || r.status === status) && matchesLoc(r));
 
-  const params = { q, sort, dir, status };
+  const params = { q, sort, dir, status, loc };
+
+  const locOptions = [...new Set(rows.flatMap(targetsOf).filter(Boolean))]
+    .sort()
+    .map((v) => ({ value: v, label: v }));
 
   const STATUS_TILES = [
     { value: "active", label: "Active" },
@@ -131,8 +159,14 @@ export default async function RequirementsPage({
         dir={dir}
         placeholder="Search requirements…"
         basePath="/requirements"
-        hasActiveFilters={Boolean(status)}
+        hasActiveFilters={Boolean(status || loc)}
       >
+        <FilterSelect
+          name="loc"
+          label="Target location"
+          value={loc}
+          options={locOptions}
+        />
         <FilterSelect
           name="status"
           label="Status"

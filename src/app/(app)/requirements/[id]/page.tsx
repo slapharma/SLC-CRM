@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { Pencil } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   isListingMatchable,
@@ -15,7 +15,8 @@ import {
 } from "@/lib/badges";
 import { deleteRequirement } from "@/lib/actions/requirements";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
-import { scoreMatch } from "@/lib/matching/score";
+import { DEFAULT_LOCATION_FLEX, scoreMatch } from "@/lib/matching/score";
+import { LocationFlexSlider } from "@/components/location-flex-slider";
 import { CreateDealButton } from "@/components/create-deal-button";
 import { MatchReasons } from "@/components/match-reasons";
 import { SendToTeam } from "@/components/send-to-team";
@@ -39,10 +40,18 @@ const money = (v: number | null) => (v != null ? `£${v.toLocaleString("en-GB")}
 
 export default async function RequirementDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ flex?: string }>;
 }) {
   const { id } = await params;
+  const { flex } = await searchParams;
+  const flexParsed = Number(flex ?? DEFAULT_LOCATION_FLEX);
+  const locationFlex = Math.min(
+    100,
+    Math.max(0, Number.isFinite(flexParsed) ? flexParsed : DEFAULT_LOCATION_FLEX),
+  );
   const supabase = await createClient();
   const {
     data: { user },
@@ -96,7 +105,7 @@ export default async function RequirementDetailPage({
   const { data: disposals } = await supabase.from("disposals").select("*");
   const matches = (disposals ?? [])
     .filter((d) => isListingMatchable(d.status))
-    .map((d) => ({ d, ...scoreMatch(r, d) }))
+    .map((d) => ({ d, ...scoreMatch(r, d, { locationFlex }) }))
     .filter((m) => m.score > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, 10);
@@ -248,8 +257,14 @@ export default async function RequirementDetailPage({
       </div>
 
       <Card className="mt-4">
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-4">
           <CardTitle>MatchMaker Opportunities</CardTitle>
+          <form className="flex items-end gap-2">
+            <LocationFlexSlider defaultValue={locationFlex} />
+            <Button type="submit" size="sm" variant="secondary">
+              Apply
+            </Button>
+          </form>
         </CardHeader>
         <CardContent>
           {matches.length === 0 ? (

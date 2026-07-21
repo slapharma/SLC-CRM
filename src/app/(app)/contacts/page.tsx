@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/table";
 import { contactRoleBadge } from "@/lib/badges";
 import { getContactRoles, roleLabel } from "@/lib/contact-roles";
+import { deriveCounty, HOME_COUNTIES } from "@/lib/locations";
 import { filterHref, resolveSort } from "@/lib/sort";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
@@ -38,9 +39,10 @@ export default async function ContactsPage({
     dir?: string;
     role?: string;
     town?: string;
+    county?: string;
   }>;
 }) {
-  const { q, sort, dir, role, town } = await searchParams;
+  const { q, sort, dir, role, town, county } = await searchParams;
   const supabase = await createClient();
 
   const { column, ascending } = resolveSort(
@@ -52,20 +54,41 @@ export default async function ContactsPage({
 
   let query = supabase
     .from("contacts")
-    .select("id, first_name, last_name, role, email, phone, company_id, city")
+    .select("id, first_name, last_name, role, email, phone, company_id, city, postcode, county")
     .order(column, { ascending });
   if (q) query = query.or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%`);
   const { data } = await query;
   const mapLayers = await getMapLayers(supabase, { include: ["contact"] });
   // `rows` is the tile base (q filtered). The role/town facets are applied to
   // the table in memory so the tile counts always show the full distribution.
-  const rows = data ?? [];
+  const rows = (data ?? []).map((c) => ({
+    ...c,
+    county: c.county ?? deriveCounty({ postcode: c.postcode, city: c.city }),
+  }));
+  const matchesCounty = (rowCounty: string | null) =>
+    !county ||
+    (county === "Home Counties"
+      ? rowCounty != null && HOME_COUNTIES.includes(rowCounty)
+      : (rowCounty ?? "—") === county);
   const listRows = rows.filter(
     (c) =>
-      (!role || c.role === role) && (!town || (c.city ?? "—") === town),
+      (!role || c.role === role) &&
+      (!town || (c.city ?? "—") === town) &&
+      matchesCounty(c.county),
   );
 
-  const params = { q, sort, dir, role, town };
+  const params = { q, sort, dir, role, town, county };
+
+  const townOptions = [...new Set(rows.map((c) => c.city).filter(Boolean))]
+    .sort()
+    .map((v) => ({ value: v as string, label: v as string }));
+  const countyValues = [...new Set(rows.map((c) => c.county).filter(Boolean))].sort();
+  const countyOptions = [
+    ...(countyValues.some((c) => HOME_COUNTIES.includes(c as string))
+      ? [{ value: "Home Counties", label: "Home Counties" }]
+      : []),
+    ...countyValues.map((v) => ({ value: v as string, label: v as string })),
+  ];
 
   const roles = await getContactRoles();
   const roleOptions = roles.map((r) => ({ value: r.slug, label: r.label }));
@@ -134,9 +157,11 @@ export default async function ContactsPage({
         dir={dir}
         placeholder="Search contacts…"
         basePath="/contacts"
-        hasActiveFilters={Boolean(role)}
+        hasActiveFilters={Boolean(role || town || county)}
       >
         <FilterSelect name="role" label="Role" value={role} options={roleOptions} />
+        <FilterSelect name="town" label="Town" value={town} options={townOptions} />
+        <FilterSelect name="county" label="County" value={county} options={countyOptions} />
       </FilterBar>
 
       {rows.length > 0 ? (
@@ -198,14 +223,14 @@ export default async function ContactsPage({
       {listRows.length === 0 ? (
         <EmptyState
           icon={Users}
-          title={q || role ? "No matches" : "No contacts yet"}
+          title={q || role || town || county ? "No matches" : "No contacts yet"}
           description={
-            q || role
+            q || role || town || county
               ? "Try a different search or filter."
               : "Add the people behind your companies."
           }
           action={
-            q || role ? undefined : (
+            q || role || town || county ? undefined : (
               <Link href="/contacts/new" className={cn(buttonVariants({ size: "sm" }))}>
                 New contact
               </Link>

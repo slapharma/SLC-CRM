@@ -12,6 +12,7 @@ import {
 import { Alert } from "@/components/ui/alert";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { LocationSelect } from "@/components/location-select";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -136,16 +137,30 @@ export function DisposalForm({
         <Field label="Address" htmlFor="address_line">
           <Input id="address_line" name="address_line" defaultValue={d?.address_line ?? ""} />
         </Field>
-        <div className="grid gap-5 md:grid-cols-3">
+        <div className="grid gap-5 md:grid-cols-2">
           <Field label="Area" htmlFor="area">
             <Input id="area" name="area" defaultValue={d?.area ?? ""} />
           </Field>
-          <Field label="Town / city" htmlFor="city">
-            <Input id="city" name="city" defaultValue={d?.city ?? ""} />
-          </Field>
-          <Field label="Postcode" htmlFor="postcode">
-            <Input id="postcode" name="postcode" defaultValue={d?.postcode ?? ""} />
-          </Field>
+          <LocationSelect
+            name="city"
+            label="Town / city"
+            kinds={["town"]}
+            defaultValue={d?.city ?? ""}
+          />
+          <LocationSelect
+            name="county"
+            label="County"
+            kinds={["county"]}
+            defaultValue={d?.county ?? ""}
+            hint="Auto-filled from postcode/town if left blank"
+          />
+          <LocationSelect
+            name="postcode"
+            label="Postcode"
+            kinds={["district"]}
+            defaultValue={d?.postcode ?? ""}
+            placeholder="e.g. W1D 3QF"
+          />
         </div>
       </Section>
 

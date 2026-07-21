@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { currentAgencyId } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
+import { deriveCounty } from "@/lib/locations";
 import { Constants } from "@/lib/database.types";
 import { parseCsv, type ImportEntity } from "@/lib/csv";
 import type { FormState } from "@/lib/actions/types";
@@ -119,6 +120,10 @@ export async function importEntityCsv(
           status: oneOf(get("status"), Constants.public.Enums.requirement_status, "active"),
           target_towns: list(get("target_towns")),
           target_regions: list(get("target_regions")),
+          target_counties: list(get("target_counties")),
+          target_postcode_districts: list(get("target_postcode_districts")).map((s) =>
+            s.toUpperCase(),
+          ),
           max_rent: numOrNull(get("max_rent")),
           notes: get("notes") || null,
         });
@@ -139,6 +144,9 @@ export async function importEntityCsv(
             : "unknown",
           city: get("city") || null,
           postcode: get("postcode") || null,
+          county:
+            get("county") ||
+            deriveCounty({ postcode: get("postcode"), city: get("city") }),
           use_class: get("use_class") || null,
           size_sqft: numOrNull(get("size_sqft")),
           rent_pa: numOrNull(get("rent_pa")),
