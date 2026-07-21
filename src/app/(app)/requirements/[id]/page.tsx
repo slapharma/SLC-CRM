@@ -8,6 +8,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   isListingMatchable,
+  listingTypeBadge,
   matchScoreBadge,
   requirementStatusBadge,
   tenureBadge,
@@ -19,7 +20,10 @@ import { DEFAULT_LOCATION_FLEX, scoreMatch } from "@/lib/matching/score";
 import { LocationFlexSlider } from "@/components/location-flex-slider";
 import { CreateDealButton } from "@/components/create-deal-button";
 import { MatchReasons } from "@/components/match-reasons";
+import { SendDealModal } from "@/components/send-deal-modal";
+import { SendHistoryCard } from "@/components/send-history-card";
 import { SendToTeam } from "@/components/send-to-team";
+import { getSendHistory } from "@/lib/send-history";
 import { getAgencyMembers } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
@@ -109,6 +113,37 @@ export default async function RequirementDetailPage({
     .filter((m) => m.score > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, 10);
+
+  // Pickers for the Send Deal wizard's external step.
+  const [{ data: companyRows }, { data: contactRows }] = await Promise.all([
+    supabase.from("companies").select("id, name").order("name"),
+    supabase.from("contacts").select("id, first_name, last_name").order("first_name"),
+  ]);
+  const companyOptions = companyRows ?? [];
+  const contactOptions = (contactRows ?? []).map((c) => ({
+    id: c.id,
+    name: [c.first_name, c.last_name].filter(Boolean).join(" ") || "Unnamed contact",
+  }));
+
+  // External send history for this requirement — history card + per-match chips.
+  const sendHistory = await getSendHistory(supabase, { requirementId: id });
+  const { data: pairSendRows } = await supabase
+    .from("external_sends")
+    .select("listing_id, contact_id, recipient_email, created_at")
+    .eq("requirement_id", id)
+    .not("listing_id", "is", null)
+    .order("created_at", { ascending: false });
+  const contactNameOf = new Map(contactOptions.map((c) => [c.id, c.name]));
+  const sentByListing = new Map<string, { name: string; at: string }[]>();
+  for (const s of pairSendRows ?? []) {
+    const list = sentByListing.get(s.listing_id as string) ?? [];
+    list.push({
+      name:
+        (s.contact_id ? contactNameOf.get(s.contact_id) : null) ?? s.recipient_email,
+      at: s.created_at,
+    });
+    sentByListing.set(s.listing_id as string, list);
+  }
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -275,18 +310,43 @@ export default async function RequirementDetailPage({
             <ul className="space-y-3">
               {matches.map(({ d, score, reasons }) => {
                 const ms = matchScoreBadge(score);
+                const previousSends = sentByListing.get(d.id);
                 return (
                   <li key={d.id} className="rounded-md border p-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <Link
-                        href={`/listings/${d.id}`}
-                        className="font-medium text-foreground hover:text-info hover:underline"
-                      >
-                        {d.title ?? "Untitled listing"}
-                        {d.city ? ` · ${d.city}` : ""}
-                      </Link>
-                      <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="flex flex-wrap items-center gap-1.5">
+                        <Link
+                          href={`/listings/${d.id}`}
+                          className="font-medium text-foreground hover:text-info hover:underline"
+                        >
+                          {d.title ?? "Untitled listing"}
+                          {d.city ? ` · ${d.city}` : ""}
+                        </Link>
+                        {(() => {
+                          const t = listingTypeBadge(d.listing_type);
+                          return <Badge tone={t.tone}>{t.label}</Badge>;
+                        })()}
+                      </span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {previousSends ? (
+                          <Badge tone="violet">
+                            Sent{previousSends.length > 1 ? ` ×${previousSends.length}` : ""}
+                            {" · "}
+                            {new Date(previousSends[0].at).toLocaleDateString("en-GB")}
+                          </Badge>
+                        ) : null}
                         <Badge tone={ms.tone}>{ms.label}</Badge>
+                        <SendDealModal
+                          agents={members}
+                          meId={user?.id}
+                          companies={companyOptions}
+                          contacts={contactOptions}
+                          requirementId={r.id}
+                          listingId={d.id}
+                          requirementTitle={r.title}
+                          listingTitle={d.title ?? "Untitled listing"}
+                          previousSends={previousSends}
+                        />
                         <CreateDealButton requirementId={r.id} listingId={d.id} />
                       </div>
                     </div>
@@ -300,6 +360,8 @@ export default async function RequirementDetailPage({
           )}
         </CardContent>
       </Card>
+
+      <SendHistoryCard sends={sendHistory} className="mt-4" />
     </div>
   );
 }

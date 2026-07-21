@@ -123,7 +123,7 @@ export type FitOutState = "fully_fitted" | "part_fitted" | "shell" | null;
 
 export interface DisposalInsert {
   // provenance
-  source: "cdg";
+  source: string; // "cdg" | "lewiscraig" | future intel sources
   source_ref: string | null; // CDG/Agents' Society reference, e.g. "378436"
   source_url: string;
   status: string | null; // "Available" | "Under Offer" | ...

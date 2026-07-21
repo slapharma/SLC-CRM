@@ -22,6 +22,8 @@ import { LocationFlexSlider } from "@/components/location-flex-slider";
 import { CreateDealButton } from "@/components/create-deal-button";
 import { MatchReasons } from "@/components/match-reasons";
 import { DisposalAssignmentForm } from "@/components/disposal-assignment-form";
+import { SendHistoryCard } from "@/components/send-history-card";
+import { getSendHistory } from "@/lib/send-history";
 import { DisposalDocuments, type DisposalDoc } from "@/components/disposal-documents";
 import { DisposalAreas } from "@/components/disposal-areas";
 import { ListingShareActions } from "@/components/listing-share-actions";
@@ -157,6 +159,9 @@ export default async function ListingDetailPage({
   }));
 
   const areas = areaRows ?? [];
+
+  // External send history — who this listing has been emailed to.
+  const sendHistory = await getSendHistory(supabase, { listingId: id });
 
   // #4: linked company + point-of-contact for this listing.
   const [{ data: linkedCompany }, { data: linkedContact }] = await Promise.all([
@@ -621,6 +626,8 @@ export default async function ListingDetailPage({
           ))}
         </div>
       ) : null}
+
+      <SendHistoryCard sends={sendHistory} className="mt-4" />
     </div>
   );
 }

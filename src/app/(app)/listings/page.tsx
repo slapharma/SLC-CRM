@@ -43,9 +43,10 @@ export default async function ListingsPage({
     disposal_type?: string;
     town?: string;
     county?: string;
+    silo?: string;
   }>;
 }) {
-  const { q, sort, dir, status, disposal_type, town, county } = await searchParams;
+  const { q, sort, dir, status, disposal_type, town, county, silo } = await searchParams;
   const supabase = await createClient();
 
   const { column, ascending } = resolveSort(
@@ -70,6 +71,7 @@ export default async function ListingsPage({
     .order(column, { ascending });
   if (q) query = query.or(`title.ilike.%${q}%,city.ilike.%${q}%`);
   if (disposal_type) query = query.eq("disposal_type", disposal_type);
+  if (silo) query = query.eq("listing_type", silo);
   const { data } = await query;
   const mapLayers = await getMapLayers(supabase, { include: ["listing"] });
   // `rows` is the heatmap base (q + type filtered). The town/status facets that
@@ -92,7 +94,7 @@ export default async function ListingsPage({
       matchesCounty(r.county),
   );
 
-  const params = { q, sort, dir, status, disposal_type, town, county };
+  const params = { q, sort, dir, status, disposal_type, town, county, silo };
 
   const townOptions = [...new Set(rows.map((r) => r.city).filter(Boolean))]
     .sort()
@@ -170,8 +172,17 @@ export default async function ListingsPage({
         dir={dir}
         placeholder="Search by title or town…"
         basePath="/listings"
-        hasActiveFilters={Boolean(status || disposal_type || town || county)}
+        hasActiveFilters={Boolean(status || disposal_type || town || county || silo)}
       >
+        <FilterSelect
+          name="silo"
+          label="Silo"
+          value={silo}
+          options={[
+            { value: "cdg", label: "CDG listings" },
+            { value: "intel", label: "Market Intel" },
+          ]}
+        />
         <FilterSelect name="town" label="Town" value={town} options={townOptions} />
         <FilterSelect name="county" label="County" value={county} options={countyOptions} />
         <FilterSelect

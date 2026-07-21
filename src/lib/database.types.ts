@@ -1018,6 +1018,90 @@ export type Database = {
           },
         ]
       }
+      external_sends: {
+        Row: {
+          agency_id: string
+          body: string | null
+          company_id: string | null
+          contact_id: string | null
+          created_at: string
+          id: string
+          listing_id: string | null
+          pdf_kind: string | null
+          provider_id: string | null
+          recipient_email: string
+          requirement_id: string | null
+          sent_by: string
+          subject: string
+        }
+        Insert: {
+          agency_id: string
+          body?: string | null
+          company_id?: string | null
+          contact_id?: string | null
+          created_at?: string
+          id?: string
+          listing_id?: string | null
+          pdf_kind?: string | null
+          provider_id?: string | null
+          recipient_email: string
+          requirement_id?: string | null
+          sent_by: string
+          subject: string
+        }
+        Update: {
+          agency_id?: string
+          body?: string | null
+          company_id?: string | null
+          contact_id?: string | null
+          created_at?: string
+          id?: string
+          listing_id?: string | null
+          pdf_kind?: string | null
+          provider_id?: string | null
+          recipient_email?: string
+          requirement_id?: string | null
+          sent_by?: string
+          subject?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "external_sends_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "external_sends_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "external_sends_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "external_sends_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "disposals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "external_sends_requirement_id_fkey"
+            columns: ["requirement_id"]
+            isOneToOne: false
+            referencedRelation: "requirements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kyc_reports: {
         Row: {
           agency_id: string

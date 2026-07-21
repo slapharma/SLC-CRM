@@ -6,21 +6,13 @@ import { EmptyState } from "@/components/empty-state";
 import { FilterBar, FilterSelect } from "@/components/filter-bar";
 import { FilterTiles } from "@/components/filter-tiles";
 import { PageHeader } from "@/components/page-header";
-import { SortHeader } from "@/components/sort-header";
+import { RequirementsTable } from "@/components/requirements-table";
 import { StatsBar } from "@/components/stats-bar";
-import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { propertyUseBadge, requirementStatusBadge } from "@/lib/badges";
+import { propertyUseBadge } from "@/lib/badges";
 import { HOME_COUNTIES } from "@/lib/locations";
 import { filterHref, resolveSort } from "@/lib/sort";
+import { currentAgencyId, getAgencyMembers } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
@@ -128,17 +120,22 @@ export default async function RequirementsPage({
     },
   ];
 
-  const ids = [
-    ...new Set(rows.map((r) => r.company_id).filter((v): v is string => Boolean(v))),
-  ];
-  const names = new Map<string, string>();
-  if (ids.length) {
-    const { data: comps } = await supabase
-      .from("companies")
-      .select("id, name")
-      .in("id", ids);
-    (comps ?? []).forEach((c) => names.set(c.id, c.name));
-  }
+  // Companies double as the operator-name lookup and the Send Deal company picker.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const agencyId = await currentAgencyId(supabase);
+  const [members, { data: companyRows }, { data: contactRows }] = await Promise.all([
+    agencyId ? getAgencyMembers(supabase, agencyId) : Promise.resolve([]),
+    supabase.from("companies").select("id, name").order("name"),
+    supabase.from("contacts").select("id, first_name, last_name").order("first_name"),
+  ]);
+  const companies = companyRows ?? [];
+  const names = new Map(companies.map((c) => [c.id, c.name]));
+  const contacts = (contactRows ?? []).map((c) => ({
+    id: c.id,
+    name: [c.first_name, c.last_name].filter(Boolean).join(" ") || "Unnamed contact",
+  }));
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -217,51 +214,21 @@ export default async function RequirementsPage({
           }
         />
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <SortHeader column="title" label="Title" params={params} />
-              <TableHead className="hidden md:table-cell">Operator</TableHead>
-              <TableHead className="hidden md:table-cell">Towns</TableHead>
-              <SortHeader
-                column="max_rent"
-                label="Max rent"
-                params={params}
-                className="hidden md:table-cell"
-              />
-              <SortHeader column="status" label="Status" params={params} />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {listRows.map((r) => {
-              const s = requirementStatusBadge(r.status);
-              return (
-                <TableRow key={r.id}>
-                  <TableCell>
-                    <Link
-                      href={`/requirements/${r.id}`}
-                      className="font-medium text-foreground hover:text-info hover:underline"
-                    >
-                      {r.title}
-                    </Link>
-                  </TableCell>
-                  <TableCell className="hidden text-muted-foreground md:table-cell">
-                    {r.company_id ? (names.get(r.company_id) ?? "—") : "—"}
-                  </TableCell>
-                  <TableCell className="hidden text-muted-foreground md:table-cell">
-                    {r.target_towns.join(", ") || "—"}
-                  </TableCell>
-                  <TableCell className="hidden font-mono tabular-nums text-muted-foreground md:table-cell">
-                    {r.max_rent != null ? `£${r.max_rent.toLocaleString("en-GB")}` : "—"}
-                  </TableCell>
-                  <TableCell>
-                    <Badge tone={s.tone}>{s.label}</Badge>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+        <RequirementsTable
+          rows={listRows.map((r) => ({
+            id: r.id,
+            title: r.title,
+            status: r.status,
+            operatorName: r.company_id ? (names.get(r.company_id) ?? null) : null,
+            towns: r.target_towns.join(", "),
+            maxRent: r.max_rent,
+          }))}
+          params={params}
+          agents={members}
+          meId={user?.id}
+          companies={companies}
+          contacts={contacts}
+        />
       )}
     </div>
   );

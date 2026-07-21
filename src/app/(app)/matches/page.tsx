@@ -7,10 +7,13 @@ import { EmptyState } from "@/components/empty-state";
 import { FilterBar, FilterSelect } from "@/components/filter-bar";
 import { MatchReasons } from "@/components/match-reasons";
 import { PageHeader } from "@/components/page-header";
+import { SendDealModal } from "@/components/send-deal-modal";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { LocationFlexSlider } from "@/components/location-flex-slider";
-import { isListingMatchable, matchScoreBadge } from "@/lib/badges";
+import { isListingMatchable, listingTypeBadge, matchScoreBadge } from "@/lib/badges";
 import { DEFAULT_LOCATION_FLEX, scoreMatch } from "@/lib/matching/score";
+import { currentAgencyId, getAgencyMembers } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
@@ -51,9 +54,15 @@ const USE_CLASS_OPTIONS = [
 export default async function MatchesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; min?: string; use_class?: string; flex?: string }>;
+  searchParams: Promise<{
+    q?: string;
+    min?: string;
+    use_class?: string;
+    flex?: string;
+    silo?: string;
+  }>;
 }) {
-  const { q, min, use_class, flex } = await searchParams;
+  const { q, min, use_class, flex, silo } = await searchParams;
   const minScore = Math.min(95, Math.max(0, Number(min ?? "50") || 50));
   const flexParsed = Number(flex ?? DEFAULT_LOCATION_FLEX);
   const locationFlex = Math.min(
@@ -62,22 +71,66 @@ export default async function MatchesPage({
   );
 
   const supabase = await createClient();
-  const [{ data: reqs }, { data: disposals }] = await Promise.all([
+  const [
+    {
+      data: { user },
+    },
+    { data: reqs },
+    { data: disposals },
+  ] = await Promise.all([
+    supabase.auth.getUser(),
     supabase
       .from("requirements")
       .select(
-        "id, title, target_towns, target_regions, target_counties, target_postcode_districts, min_sqft, max_sqft, min_covers, max_covers, use_classes, property_types, tenure_prefs, max_rent, max_premium, max_guide_price, fit_out_prefs",
+        "id, title, company_id, target_towns, target_regions, target_counties, target_postcode_districts, min_sqft, max_sqft, min_covers, max_covers, use_classes, property_types, tenure_prefs, max_rent, max_premium, max_guide_price, fit_out_prefs",
       )
       .eq("status", "active"),
     supabase
       .from("disposals")
       .select(
-        "id, title, status, city, area, postcode, address_line, county, lat, lng, size_sqft, covers_internal, use_class, property_type, disposal_type, rent_pa, premium, guide_price, fit_out_state",
+        "id, title, status, listing_type, city, area, postcode, address_line, county, lat, lng, size_sqft, covers_internal, use_class, property_type, disposal_type, rent_pa, premium, guide_price, fit_out_state",
       ),
   ]);
   const requirements = reqs ?? [];
   // Only pitch live stock — never surface let/sold/withdrawn listings as matches.
-  const supply = (disposals ?? []).filter((d) => isListingMatchable(d.status));
+  // The silo filter splits CDG's own instructions from scraped Market Intel stock.
+  const supply = (disposals ?? []).filter(
+    (d) => isListingMatchable(d.status) && (!silo || d.listing_type === silo),
+  );
+
+  const agencyId = await currentAgencyId(supabase);
+  const [members, { data: companyRows }, { data: contactRows }] = await Promise.all([
+    agencyId ? getAgencyMembers(supabase, agencyId) : Promise.resolve([]),
+    supabase.from("companies").select("id, name").order("name"),
+    supabase.from("contacts").select("id, first_name, last_name").order("first_name"),
+  ]);
+  const companies = companyRows ?? [];
+  const operatorName = new Map(companies.map((c) => [c.id, c.name]));
+  const contacts = (contactRows ?? []).map((c) => ({
+    id: c.id,
+    name: [c.first_name, c.last_name].filter(Boolean).join(" ") || "Unnamed contact",
+  }));
+  const contactName = new Map(contacts.map((c) => [c.id, c.name]));
+
+  // Prior external sends per requirement↔listing pair — powers the "Sent" chip
+  // and the double-send warning inside the wizard.
+  const { data: sendRows } = await supabase
+    .from("external_sends")
+    .select("requirement_id, listing_id, contact_id, recipient_email, created_at")
+    .not("listing_id", "is", null)
+    .not("requirement_id", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(500);
+  const sentByPair = new Map<string, { name: string; at: string }[]>();
+  for (const s of sendRows ?? []) {
+    const key = `${s.requirement_id}:${s.listing_id}`;
+    const list = sentByPair.get(key) ?? [];
+    list.push({
+      name: (s.contact_id ? contactName.get(s.contact_id) : null) ?? s.recipient_email,
+      at: s.created_at,
+    });
+    sentByPair.set(key, list);
+  }
 
   const term = (q ?? "").trim().toLowerCase();
   let pairs = requirements
@@ -145,11 +198,21 @@ export default async function MatchesPage({
         basePath="/matches"
         hasActiveFilters={
           Boolean(use_class) ||
+          Boolean(silo) ||
           (min != null && min !== "50") ||
           locationFlex !== DEFAULT_LOCATION_FLEX
         }
       >
         <LocationFlexSlider defaultValue={locationFlex} />
+        <FilterSelect
+          name="silo"
+          label="Silo"
+          value={silo}
+          options={[
+            { value: "cdg", label: "CDG listings" },
+            { value: "intel", label: "Market Intel" },
+          ]}
+        />
         <FilterSelect
           name="min"
           label="Min score"
@@ -180,6 +243,7 @@ export default async function MatchesPage({
           {shown.map(({ rq, d, score, reasons }) => {
             const ms = matchScoreBadge(score);
             const accent = SCORE_ACCENT[ms.tone] ?? SCORE_ACCENT.slate;
+            const previousSends = sentByPair.get(`${rq.id}:${d.id}`);
             return (
               <Card
                 key={`${rq.id}-${d.id}`}
@@ -203,7 +267,7 @@ export default async function MatchesPage({
                   <div className="min-w-0 flex-1 space-y-2">
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div className="space-y-1 text-sm">
-                        <p className="flex items-center gap-1.5">
+                        <p className="flex flex-wrap items-center gap-1.5">
                           <Target className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                           <Link
                             href={`/requirements/${rq.id}`}
@@ -211,8 +275,21 @@ export default async function MatchesPage({
                           >
                             {rq.title}
                           </Link>
+                          {rq.company_id && operatorName.has(rq.company_id) ? (
+                            <span className="text-xs text-muted-foreground">
+                              <span className="font-medium uppercase tracking-wide">
+                                Operator
+                              </span>{" "}
+                              <Link
+                                href={`/companies/${rq.company_id}`}
+                                className="hover:text-info hover:underline"
+                              >
+                                {operatorName.get(rq.company_id)}
+                              </Link>
+                            </span>
+                          ) : null}
                         </p>
-                        <p className="flex items-center gap-1.5">
+                        <p className="flex flex-wrap items-center gap-1.5">
                           <Store className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                           <Link
                             href={`/listings/${d.id}`}
@@ -221,9 +298,36 @@ export default async function MatchesPage({
                             {d.title ?? "Untitled listing"}
                             {d.city ? ` · ${d.city}` : ""}
                           </Link>
+                          {(() => {
+                            const t = listingTypeBadge(d.listing_type);
+                            return <Badge tone={t.tone}>{t.label}</Badge>;
+                          })()}
                         </p>
                       </div>
-                      <CreateDealButton requirementId={rq.id} listingId={d.id} />
+                      <div className="flex shrink-0 flex-wrap items-center gap-2">
+                        {previousSends ? (
+                          <Badge
+                            tone="violet"
+                            title={`Sent to ${previousSends[0].name} on ${new Date(previousSends[0].at).toLocaleDateString("en-GB")}`}
+                          >
+                            Sent{previousSends.length > 1 ? ` ×${previousSends.length}` : ""}
+                            {" · "}
+                            {new Date(previousSends[0].at).toLocaleDateString("en-GB")}
+                          </Badge>
+                        ) : null}
+                        <SendDealModal
+                          agents={members}
+                          meId={user?.id}
+                          companies={companies}
+                          contacts={contacts}
+                          requirementId={rq.id}
+                          listingId={d.id}
+                          requirementTitle={rq.title}
+                          listingTitle={d.title ?? "Untitled listing"}
+                          previousSends={previousSends}
+                        />
+                        <CreateDealButton requirementId={rq.id} listingId={d.id} />
+                      </div>
                     </div>
                     <div className="border-t pt-2">
                       <MatchReasons reasons={reasons} />
