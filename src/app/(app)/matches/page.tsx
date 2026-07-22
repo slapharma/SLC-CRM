@@ -8,11 +8,13 @@ import { FilterBar, FilterSelect } from "@/components/filter-bar";
 import { MatchReasons } from "@/components/match-reasons";
 import { PageHeader } from "@/components/page-header";
 import { SendDealModal } from "@/components/send-deal-modal";
+import { SiloTabs } from "@/components/silo-tabs";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { LocationFlexSlider } from "@/components/location-flex-slider";
 import { isListingMatchable, listingTypeBadge, matchScoreBadge } from "@/lib/badges";
 import { DEFAULT_LOCATION_FLEX, scoreMatch } from "@/lib/matching/score";
+import { filterHref } from "@/lib/sort";
 import { currentAgencyId, getAgencyMembers } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
@@ -93,10 +95,15 @@ export default async function MatchesPage({
   ]);
   const requirements = reqs ?? [];
   // Only pitch live stock — never surface let/sold/withdrawn listings as matches.
-  // The silo filter splits CDG's own instructions from scraped Market Intel stock.
-  const supply = (disposals ?? []).filter(
-    (d) => isListingMatchable(d.status) && (!silo || d.listing_type === silo),
-  );
+  // The silo tabs split CDG's own instructions from scraped Market Intel stock;
+  // `matchable` (unscoped) powers the tab counts, `supply` is what's shown.
+  const matchable = (disposals ?? []).filter((d) => isListingMatchable(d.status));
+  const supply = matchable.filter((d) => !silo || (d.listing_type ?? "cdg") === silo);
+  const siloCounts = {
+    all: matchable.length,
+    cdg: matchable.filter((d) => (d.listing_type ?? "cdg") === "cdg").length,
+    intel: matchable.filter((d) => d.listing_type === "intel").length,
+  };
 
   const agencyId = await currentAgencyId(supabase);
   const [members, { data: companyRows }, { data: contactRows }] = await Promise.all([
@@ -155,6 +162,8 @@ export default async function MatchesPage({
     : 0;
   const shown = pairs.slice(0, 50);
 
+  const params = { q, min, use_class, flex, silo };
+
   const stats = [
     { label: "Active requirements", value: requirements.length, icon: Target },
     { label: "Live listings", value: supply.length, icon: Store },
@@ -192,6 +201,12 @@ export default async function MatchesPage({
         })}
       </div>
 
+      <SiloTabs
+        value={silo}
+        counts={siloCounts}
+        hrefFor={(v) => filterHref(params, { silo: v })}
+      />
+
       <FilterBar
         q={q}
         placeholder="Filter by town or name…"
@@ -204,15 +219,6 @@ export default async function MatchesPage({
         }
       >
         <LocationFlexSlider defaultValue={locationFlex} />
-        <FilterSelect
-          name="silo"
-          label="Silo"
-          value={silo}
-          options={[
-            { value: "cdg", label: "CDG listings" },
-            { value: "intel", label: "Market Intel" },
-          ]}
-        />
         <FilterSelect
           name="min"
           label="Min score"

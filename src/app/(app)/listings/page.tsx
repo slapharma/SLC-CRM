@@ -8,6 +8,7 @@ import { FilterBar, FilterSelect } from "@/components/filter-bar";
 import { FilterTiles } from "@/components/filter-tiles";
 import { Heatmap } from "@/components/heatmap";
 import { PageHeader } from "@/components/page-header";
+import { SiloTabs } from "@/components/silo-tabs";
 import { SortHeader } from "@/components/sort-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -71,7 +72,6 @@ export default async function ListingsPage({
     .order(column, { ascending });
   if (q) query = query.or(`title.ilike.%${q}%,city.ilike.%${q}%`);
   if (disposal_type) query = query.eq("disposal_type", disposal_type);
-  if (silo) query = query.eq("listing_type", silo);
   const { data } = await query;
   const mapLayers = await getMapLayers(supabase, { include: ["listing"] });
   // `rows` is the heatmap base (q + type filtered). The town/status facets that
@@ -87,7 +87,16 @@ export default async function ListingsPage({
     (county === "Home Counties"
       ? rowCounty != null && HOME_COUNTIES.includes(rowCounty)
       : (rowCounty ?? "—") === county);
-  const listRows = rows.filter(
+  // `rows` stays unscoped by silo so the tab counts reflect all three options;
+  // `siloRows` is what the heatmap/tiles/table below actually render.
+  const siloRows = rows.filter((r) => !silo || (r.listing_type ?? "cdg") === silo);
+  const siloCounts = {
+    all: rows.length,
+    cdg: rows.filter((r) => (r.listing_type ?? "cdg") === "cdg").length,
+    intel: rows.filter((r) => r.listing_type === "intel").length,
+  };
+
+  const listRows = siloRows.filter(
     (r) =>
       (!town || (r.city ?? "—") === town) &&
       (!status || (r.status ?? "—") === status) &&
@@ -96,10 +105,10 @@ export default async function ListingsPage({
 
   const params = { q, sort, dir, status, disposal_type, town, county, silo };
 
-  const townOptions = [...new Set(rows.map((r) => r.city).filter(Boolean))]
+  const townOptions = [...new Set(siloRows.map((r) => r.city).filter(Boolean))]
     .sort()
     .map((v) => ({ value: v as string, label: v as string }));
-  const countyValues = [...new Set(rows.map((r) => r.county).filter(Boolean))].sort();
+  const countyValues = [...new Set(siloRows.map((r) => r.county).filter(Boolean))].sort();
   const countyOptions = [
     ...(countyValues.some((c) => HOME_COUNTIES.includes(c as string))
       ? [{ value: "Home Counties", label: "Home Counties" }]
@@ -116,16 +125,16 @@ export default async function ListingsPage({
     { value: "Withdrawn", label: "Withdrawn" },
   ];
   const statusTiles = [
-    { value: "", label: "All", count: rows.length },
+    { value: "", label: "All", count: siloRows.length },
     ...STATUS_TILES.map((t) => ({
       ...t,
-      count: rows.filter((r) => (r.status ?? "") === t.value).length,
+      count: siloRows.filter((r) => (r.status ?? "") === t.value).length,
     })),
   ];
 
   // Heatmap: town × status — click a cell/label to filter the table below.
   const townCounts = new Map<string, number>();
-  for (const r of rows) {
+  for (const r of siloRows) {
     const t = r.city ?? "—";
     townCounts.set(t, (townCounts.get(t) ?? 0) + 1);
   }
@@ -134,7 +143,7 @@ export default async function ListingsPage({
     .slice(0, 8)
     .map((e) => e[0]);
   const statusCounts = new Map<string, number>();
-  for (const r of rows) {
+  for (const r of siloRows) {
     const sName = r.status ?? "—";
     statusCounts.set(sName, (statusCounts.get(sName) ?? 0) + 1);
   }
@@ -143,7 +152,7 @@ export default async function ListingsPage({
     .slice(0, 6)
     .map((e) => e[0]);
   const cellCounts = new Map<string, number>();
-  for (const r of rows) {
+  for (const r of siloRows) {
     cellCounts.set(
       `${r.city ?? "—"}|${r.status ?? "—"}`,
       (cellCounts.get(`${r.city ?? "—"}|${r.status ?? "—"}`) ?? 0) + 1,
@@ -166,6 +175,12 @@ export default async function ListingsPage({
         }
       />
 
+      <SiloTabs
+        value={silo}
+        counts={siloCounts}
+        hrefFor={(v) => filterHref(params, { silo: v })}
+      />
+
       <FilterBar
         q={q}
         sort={sort}
@@ -174,15 +189,6 @@ export default async function ListingsPage({
         basePath="/listings"
         hasActiveFilters={Boolean(status || disposal_type || town || county || silo)}
       >
-        <FilterSelect
-          name="silo"
-          label="Silo"
-          value={silo}
-          options={[
-            { value: "cdg", label: "CDG listings" },
-            { value: "intel", label: "Market Intel" },
-          ]}
-        />
         <FilterSelect name="town" label="Town" value={town} options={townOptions} />
         <FilterSelect name="county" label="County" value={county} options={countyOptions} />
         <FilterSelect
@@ -211,7 +217,7 @@ export default async function ListingsPage({
         />
       </FilterBar>
 
-      {rows.length > 0 ? (
+      {siloRows.length > 0 ? (
         <FilterTiles
           tiles={statusTiles}
           activeValue={status ?? ""}
@@ -219,7 +225,7 @@ export default async function ListingsPage({
         />
       ) : null}
 
-      {rows.length > 0 ? (
+      {siloRows.length > 0 ? (
         <div className="mb-5 grid gap-4 lg:grid-cols-2">
           <Card className="hidden sm:block">
             <CardHeader className="pb-3">
@@ -250,9 +256,9 @@ export default async function ListingsPage({
         </div>
       ) : null}
 
-      {listRows.length > 0 && listRows.length < rows.length ? (
+      {listRows.length > 0 && listRows.length < siloRows.length ? (
         <p className="mb-2 text-xs text-muted-foreground">
-          Showing {listRows.length} of {rows.length}
+          Showing {listRows.length} of {siloRows.length}
         </p>
       ) : null}
 
@@ -260,10 +266,12 @@ export default async function ListingsPage({
         <EmptyState
           icon={Store}
           title={
-            q || status || town || county || disposal_type ? "No matches" : "No listings yet"
+            q || status || town || county || disposal_type || silo
+              ? "No matches"
+              : "No listings yet"
           }
           description={
-            q || status || town || county || disposal_type
+            q || status || town || county || disposal_type || silo
               ? "Try a different search or filter."
               : "Click “New listing” to add your first premises."
           }
