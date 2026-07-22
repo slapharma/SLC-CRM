@@ -421,3 +421,20 @@ KNOWN FOLLOW-UPS (not blockers):
 - Requirement detail's own match list has no shortlist/reject UI (scoped to /matches).
 - County proximity is a centroid+bonus approximation; true border distance needs polygon data.
 - Browser-pane clicks landed at (0,0) during verification (pane not compositing), so Shortlist/Reject were verified by DB state + rendered markup rather than a live click.
+
+## Post-batch audit (adversarial re-check of P1/P2/quick-fixes) → commit dd90949
+An audit agent re-verified every P1 (9–22), P2 and quick-fix (1–18) item against the tree rather than trusting the build reports. All 18 quick fixes and 20 of 22 P1 items were genuinely done; SIX gaps were found and have now been closed:
+- [x] Activity timeline actor names were DANGLING — the component took an `actorNames` prop but no call site passed it and none selected `created_by`. Wired on company/contact/deal detail from the member list those pages already load. VERIFIED LIVE (activity now reads "qa.verify.silo.2026072201 · 22 Jul 2026").
+- [x] Inbox had no delete despite RLS allowing it since 0019 → `deleteMessage` + confirm button on Inbox and Sent rows; also scoped markMessageRead/markNotificationRead to the caller (defence-in-depth).
+- [x] Quick-create company modal used hardcoded types in 3 of 4 call sites (disposal-form, requirement-form, send-deal-modal) + a 4th found during integration (requirements-table bulk send) → real `company_types` threaded through all of them.
+- [x] Deal dedupe silently discarded the typed title → now renames the existing deal and the notice says so (`?existing=1&renamed=1`).
+- [x] Contact detail had no KYC path → link added when the contact has a company (KYC runs against the company).
+- [x] Entity pickers rendered every option into a native select → bounded type-ahead combobox (≤50 suggestions, keyboard accessible, identical form contract via hidden input); the four list pages now paginate at 25 with a separate lightweight aggregate query so tiles/heatmaps/facets still describe the WHOLE filtered set.
+
+DELIBERATELY NOT DONE: a DB unique index on contacts.email / companies.name. It would contradict the "Create anyway" override the duplicate warning is designed around, converting a friendly warning into an unbypassable DB error. Checked production: zero duplicate groups on either, so nothing is festering.
+
+RESIDUAL (honest limitations, not closed):
+- `getMapLayers()` still pulls every geocoded point for the concentration maps, and /requirements still fetches all companies + contacts to populate the Send Deal picker options (the combobox bounds what RENDERS, not what is fetched). Both are shared-lib reads needing whole lists; worth a follow-up if the book grows large.
+- Paginated tables' "select all" now selects the current page only (conventional, but a behaviour change).
+- Match rejection remains agency-wide, not per-user.
+- Verified: tsc CLEAN · eslint CLEAN · `next build` GREEN · deployed and spot-checked on prod.
