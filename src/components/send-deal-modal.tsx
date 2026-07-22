@@ -42,6 +42,7 @@ export function SendDealModal({
   meId,
   companies,
   contacts,
+  companyTypes,
   requirementId,
   listingId,
   dealId,
@@ -56,6 +57,8 @@ export function SendDealModal({
   meId?: string;
   companies: EntityOption[];
   contacts: ContactSendOption[];
+  /** Editable company_types list — feeds the "+ New company" quick-create modal. */
+  companyTypes?: { slug: string; label: string }[];
   /** Opportunity mode — one matched pair. */
   requirementId?: string;
   listingId?: string;
@@ -167,6 +170,7 @@ export function SendDealModal({
           <ExternalStep
             companies={companies}
             contacts={contacts}
+            companyTypes={companyTypes}
             listingId={listingId}
             dealId={dealId}
             requirementIds={requirementIds}
@@ -289,6 +293,7 @@ function InternalStep({
 function ExternalStep({
   companies,
   contacts,
+  companyTypes,
   listingId,
   dealId,
   requirementIds,
@@ -300,6 +305,7 @@ function ExternalStep({
 }: {
   companies: EntityOption[];
   contacts: ContactSendOption[];
+  companyTypes?: { slug: string; label: string }[];
   listingId?: string;
   dealId?: string;
   requirementIds: string[];
@@ -361,6 +367,7 @@ function ExternalStep({
         name="company_id"
         label="Company"
         options={companies}
+        types={companyTypes}
         placeholder="— Optional —"
       />
       <ContactCreatableSelect

@@ -4,6 +4,7 @@ import { RequirementForm } from "@/components/requirement-form";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { updateRequirement } from "@/lib/actions/requirements";
+import { getCompanyTypes } from "@/lib/company-types";
 import { getAgencyMembers } from "@/lib/supabase/agency";
 import { getContactOptions } from "@/lib/supabase/pickers";
 import { createClient } from "@/lib/supabase/server";
@@ -22,6 +23,7 @@ export default async function EditRequirementPage({
   if (!requirement) notFound();
 
   const contacts = await getContactOptions(supabase, requirement.agency_id);
+  const companyTypes = await getCompanyTypes();
 
   const { data: agentRows } = await supabase
     .from("requirement_agents")
@@ -40,6 +42,7 @@ export default async function EditRequirementPage({
             requirement={requirement}
             companies={companies ?? []}
             contacts={contacts}
+            companyTypes={companyTypes}
             agents={agents}
             additionalAgentIds={additionalAgentIds}
           />

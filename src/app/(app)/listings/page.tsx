@@ -9,6 +9,7 @@ import { FilterTiles } from "@/components/filter-tiles";
 import { Heatmap } from "@/components/heatmap";
 import { ListingsTable, type ListingTableRow } from "@/components/listings-table";
 import { PageHeader } from "@/components/page-header";
+import { Pagination, resolvePage } from "@/components/pagination";
 import { SiloTabs } from "@/components/silo-tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
@@ -26,6 +27,10 @@ export const metadata: Metadata = { title: "Listings" };
 // Filter value for the "Other" catch-all tile (statuses outside the canonical five).
 const OTHER_STATUS = "__other__";
 
+// Table rows per page. The silo tabs, status tiles, heatmap and facet
+// dropdowns keep describing the whole filtered set — only the table is paged.
+const PAGE_SIZE = 25;
+
 export default async function ListingsPage({
   searchParams,
 }: {
@@ -38,9 +43,20 @@ export default async function ListingsPage({
     town?: string;
     county?: string;
     silo?: string;
+    page?: string;
   }>;
 }) {
-  const { q, sort, dir, status, disposal_type, town, county, silo } = await searchParams;
+  const {
+    q,
+    sort,
+    dir,
+    status,
+    disposal_type,
+    town,
+    county,
+    silo,
+    page: pageParam,
+  } = await searchParams;
   const supabase = await createClient();
 
   const { column, ascending } = resolveSort(
@@ -58,11 +74,13 @@ export default async function ListingsPage({
     { column: "created_at", ascending: false },
   );
 
+  // Aggregate pass: only the columns the silo tabs, status tiles, heatmap,
+  // facet dropdowns and the source-label sort need (plus the id, which the
+  // paginated row fetch keys off). Ordered here so the page slice below is
+  // taken from the fully sorted set.
   let query = supabase
     .from("disposals")
-    .select(
-      "id, title, city, postcode, county, status, use_class, disposal_type, listing_type, source, size_sqft, rent_pa, premium",
-    )
+    .select("id, city, postcode, county, status, listing_type, source")
     .order(column, { ascending });
   if (q) {
     // Sanitised: commas/parens are structural in `.or()` and would break the query.
@@ -192,6 +210,27 @@ export default async function ListingsPage({
     heatStatuses.map((sName) => cellCounts.get(`${t}|${sName}`) ?? 0),
   );
 
+  // Pagination: every summary above is computed from the full filtered set (and
+  // the source-label sort was applied to it too), so the page total is exact and
+  // the slice is a true window onto the sorted list.
+  const total = listRows.length;
+  const pageState = resolvePage(pageParam, total, PAGE_SIZE);
+  const pageIds = listRows.slice(pageState.from, pageState.to).map((r) => r.id);
+
+  const { data: detail } = pageIds.length
+    ? await supabase
+        .from("disposals")
+        .select(
+          "id, title, city, use_class, source, size_sqft, rent_pa, premium, status, listing_type",
+        )
+        .in("id", pageIds)
+    : { data: [] };
+  // `.in()` does not preserve the requested order — re-apply the sorted slice.
+  const byId = new Map((detail ?? []).map((r) => [r.id, r]));
+  const pageRows = pageIds
+    .map((id) => byId.get(id))
+    .filter((r): r is NonNullable<typeof r> => r != null);
+
   return (
     <div className="mx-auto max-w-6xl">
       <PageHeader
@@ -287,12 +326,6 @@ export default async function ListingsPage({
         </div>
       ) : null}
 
-      {listRows.length > 0 && listRows.length < siloRows.length ? (
-        <p className="mb-2 text-xs text-muted-foreground">
-          Showing {listRows.length} of {siloRows.length}
-        </p>
-      ) : null}
-
       {listRows.length === 0 ? (
         <EmptyState
           icon={Store}
@@ -309,13 +342,13 @@ export default async function ListingsPage({
         />
       ) : (
         <ListingsTable
-          rows={listRows.map(
+          rows={pageRows.map(
             (d): ListingTableRow => ({
               id: d.id,
               title: d.title,
               city: d.city,
               use_class: d.use_class,
-              source_label: d.source_label,
+              source_label: intelSourceById.get(d.source)?.label ?? "CDG Leisure",
               size_sqft: d.size_sqft,
               rent_pa: d.rent_pa,
               premium: d.premium,
@@ -327,6 +360,14 @@ export default async function ListingsPage({
           agents={agents}
         />
       )}
+
+      <Pagination
+        params={params}
+        state={pageState}
+        total={total}
+        noun="listings"
+        unfilteredTotal={siloRows.length}
+      />
     </div>
   );
 }

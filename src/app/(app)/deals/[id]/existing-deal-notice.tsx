@@ -10,7 +10,14 @@ import { Info, X } from "lucide-react";
  * duplicating it. Dismissing also strips the query param so a refresh
  * doesn't resurrect the banner.
  */
-export function ExistingDealNotice({ dealId }: { dealId: string }) {
+export function ExistingDealNotice({
+  dealId,
+  renamed = false,
+}: {
+  dealId: string;
+  /** True when the title typed into the modal was applied to this deal. */
+  renamed?: boolean;
+}) {
   const router = useRouter();
   const [hidden, setHidden] = React.useState(false);
   if (hidden) return null;
@@ -27,7 +34,9 @@ export function ExistingDealNotice({ dealId }: { dealId: string }) {
     >
       <span className="flex items-start gap-2">
         <Info className="mt-0.5 h-4 w-4 shrink-0" />
-        A deal for this pairing already existed — you&apos;ve been brought to it.
+        {renamed
+          ? "A deal for this pairing already existed — you've been brought to it, and renamed it to the title you typed."
+          : "A deal for this pairing already existed — you've been brought to it."}
       </span>
       <button
         type="button"

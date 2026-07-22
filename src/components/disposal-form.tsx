@@ -65,6 +65,7 @@ export function DisposalForm({
   additionalAgentIds,
   companies = [],
   contacts = [],
+  companyTypes,
   defaultCompanyId,
   defaultContactId,
 }: {
@@ -74,6 +75,8 @@ export function DisposalForm({
   additionalAgentIds?: string[];
   companies?: PickOption[];
   contacts?: PickOption[];
+  /** Editable company_types list — feeds the "+ New company" quick-create modal. */
+  companyTypes?: { slug: string; label: string }[];
   defaultCompanyId?: string;
   defaultContactId?: string;
 }) {
@@ -260,6 +263,7 @@ export function DisposalForm({
           <CompanyCreatableSelect
             options={companies}
             defaultValue={d?.company_id ?? defaultCompanyId ?? ""}
+            types={companyTypes}
             hint="Landlord / vendor / marketing company — optional"
           />
           <ContactCreatableSelect

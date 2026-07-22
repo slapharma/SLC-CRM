@@ -98,15 +98,23 @@ export async function sendMessage(
   };
 }
 
-/** Mark one received message as read. */
+/**
+ * Mark one received message as read. The `recipient_id` filter is
+ * defence-in-depth — RLS already restricts this, but scoping the query means a
+ * tampered id simply matches nothing instead of relying on the policy alone.
+ */
 export async function markMessageRead(formData: FormData): Promise<void> {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   const id = String(formData.get("id") ?? "");
-  if (id) {
+  if (id && user) {
     await supabase
       .from("messages")
       .update({ read_at: new Date().toISOString() })
-      .eq("id", id);
+      .eq("id", id)
+      .eq("recipient_id", user.id);
     revalidatePath("/messages");
   }
 }
@@ -114,12 +122,36 @@ export async function markMessageRead(formData: FormData): Promise<void> {
 /** Mark one notification as read (used by the My Messages page). */
 export async function markNotificationRead(formData: FormData): Promise<void> {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   const id = String(formData.get("id") ?? "");
-  if (id) {
+  if (id && user) {
     await supabase
       .from("notifications")
       .update({ read_at: new Date().toISOString() })
-      .eq("id", id);
+      .eq("id", id)
+      .eq("user_id", user.id);
     revalidatePath("/messages");
   }
+}
+
+/**
+ * Delete one message from your own view. Either party may delete (migration
+ * 0019), so this removes the row for both — matching how the inbox presents it
+ * as "delete this message", not "hide it from me".
+ */
+export async function deleteMessage(formData: FormData): Promise<void> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const id = String(formData.get("id") ?? "");
+  if (!id || !user) return;
+  await supabase
+    .from("messages")
+    .delete()
+    .eq("id", id)
+    .or(`recipient_id.eq.${user.id},sender_id.eq.${user.id}`);
+  revalidatePath("/messages");
 }

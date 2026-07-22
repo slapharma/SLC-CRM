@@ -8,6 +8,7 @@ import { FilterBar, FilterSelect } from "@/components/filter-bar";
 import { FilterTiles } from "@/components/filter-tiles";
 import { Heatmap } from "@/components/heatmap";
 import { PageHeader } from "@/components/page-header";
+import { Pagination, resolvePage } from "@/components/pagination";
 import { SortHeader } from "@/components/sort-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,6 +32,10 @@ import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Contacts" };
 
+// Table rows per page. The tiles/heatmap/facets keep describing the whole
+// filtered set — only the table below them is paginated.
+const PAGE_SIZE = 25;
+
 export default async function ContactsPage({
   searchParams,
 }: {
@@ -41,9 +46,10 @@ export default async function ContactsPage({
     role?: string;
     town?: string;
     county?: string;
+    page?: string;
   }>;
 }) {
-  const { q, sort, dir, role, town, county } = await searchParams;
+  const { q, sort, dir, role, town, county, page: pageParam } = await searchParams;
   const supabase = await createClient();
 
   const { column, ascending } = resolveSort(
@@ -53,9 +59,12 @@ export default async function ContactsPage({
     { column: "first_name", ascending: true },
   );
 
+  // Aggregate pass: only the columns the tiles, heatmap and facet dropdowns
+  // need (plus the id, which is what the paginated row fetch keys off). Ordered
+  // here so the page slice below is taken from the fully sorted set.
   let query = supabase
     .from("contacts")
-    .select("id, first_name, last_name, role, email, phone, company_id, city, postcode, county")
+    .select("id, role, city, postcode, county")
     .order(column, { ascending });
   if (q) {
     const term = ilikeTerm(q);
@@ -134,8 +143,26 @@ export default async function ContactsPage({
     heatRoles.map((rSlug) => cellCounts.get(`${t}|${rSlug}`) ?? 0),
   );
 
+  // Pagination: the facets above are computed from the full filtered set, so
+  // the page total is exact; only the current page's rows are fetched in full.
+  const total = listRows.length;
+  const pageState = resolvePage(pageParam, total, PAGE_SIZE);
+  const pageIds = listRows.slice(pageState.from, pageState.to).map((c) => c.id);
+
+  const { data: detail } = pageIds.length
+    ? await supabase
+        .from("contacts")
+        .select("id, first_name, last_name, role, email, phone, company_id")
+        .in("id", pageIds)
+    : { data: [] };
+  // `.in()` does not preserve the requested order — re-apply the sorted slice.
+  const byId = new Map((detail ?? []).map((c) => [c.id, c]));
+  const pageRows = pageIds
+    .map((id) => byId.get(id))
+    .filter((c): c is NonNullable<typeof c> => c != null);
+
   const ids = [
-    ...new Set(rows.map((r) => r.company_id).filter((v): v is string => Boolean(v))),
+    ...new Set(pageRows.map((r) => r.company_id).filter((v): v is string => Boolean(v))),
   ];
   const names = new Map<string, string>();
   if (ids.length) {
@@ -222,12 +249,6 @@ export default async function ContactsPage({
         </div>
       ) : null}
 
-      {listRows.length > 0 && listRows.length < rows.length ? (
-        <p className="mb-2 text-xs text-muted-foreground">
-          Showing {listRows.length} of {rows.length}
-        </p>
-      ) : null}
-
       {listRows.length === 0 ? (
         <EmptyState
           icon={Users}
@@ -257,7 +278,7 @@ export default async function ContactsPage({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {listRows.map((c) => {
+            {pageRows.map((c) => {
               const r = contactRoleBadge(c.role, roleLabel(roles, c.role));
               return (
                 <TableRow key={c.id}>
@@ -287,6 +308,14 @@ export default async function ContactsPage({
           </TableBody>
         </Table>
       )}
+
+      <Pagination
+        params={params}
+        state={pageState}
+        total={total}
+        noun="contacts"
+        unfilteredTotal={rows.length}
+      />
     </div>
   );
 }

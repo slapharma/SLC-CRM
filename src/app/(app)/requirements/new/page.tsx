@@ -4,6 +4,7 @@ import { RequirementForm } from "@/components/requirement-form";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { createRequirement } from "@/lib/actions/requirements";
+import { getCompanyTypes } from "@/lib/company-types";
 import { currentAgencyId, getAgencyMembers } from "@/lib/supabase/agency";
 import { getContactOptions } from "@/lib/supabase/pickers";
 import { createClient } from "@/lib/supabase/server";
@@ -24,6 +25,7 @@ export default async function NewRequirementPage({
   const agencyId = await currentAgencyId(supabase);
   const agents = agencyId ? await getAgencyMembers(supabase, agencyId) : [];
   const contacts = agencyId ? await getContactOptions(supabase, agencyId) : [];
+  const companyTypes = await getCompanyTypes();
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -37,6 +39,7 @@ export default async function NewRequirementPage({
             action={createRequirement}
             companies={companies ?? []}
             contacts={contacts}
+            companyTypes={companyTypes}
             defaultCompanyId={company}
             agents={agents}
           />

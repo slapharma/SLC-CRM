@@ -70,7 +70,7 @@ export default async function ContactDetailPage({
 
   const { data: activities } = await supabase
     .from("activities")
-    .select("id, type, subject, body, occurred_at")
+    .select("id, type, subject, body, occurred_at, created_by")
     .eq("entity_type", "contact")
     .eq("entity_id", id)
     .order("occurred_at", { ascending: false })
@@ -174,6 +174,18 @@ export default async function ContactDetailPage({
               {contact.marketing_opt_in ? "Yes" : "No"}
             </Badge>
           </Row>
+          {/* KYC runs against the company, so this only appears once the
+              contact is linked to one. */}
+          {contact.company_id ? (
+            <Row label="KYC">
+              <Link
+                href={`/kyc?company=${contact.company_id}`}
+                className="text-info hover:underline"
+              >
+                Run KYC report on {companyName ?? "their company"}
+              </Link>
+            </Row>
+          ) : null}
           <Row label="Notes">
             <span className="whitespace-pre-wrap">{contact.notes ?? "—"}</span>
           </Row>
@@ -197,7 +209,10 @@ export default async function ContactDetailPage({
         </CardHeader>
         <CardContent className="space-y-5">
           <LogActivityForm entityType="contact" entityId={contact.id} />
-          <ActivityTimeline activities={activities ?? []} />
+          <ActivityTimeline
+            activities={activities ?? []}
+            actorNames={Object.fromEntries(nameOf)}
+          />
         </CardContent>
       </Card>
     </div>

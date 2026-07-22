@@ -18,6 +18,7 @@ import { ExistingDealNotice } from "./existing-deal-notice";
 import { dealStageBadge } from "@/lib/badges";
 import { deleteDeal } from "@/lib/actions/deals";
 import { isPast } from "@/lib/time";
+import { getCompanyTypes } from "@/lib/company-types";
 import { getAgencyMembers } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
 
@@ -41,10 +42,10 @@ export default async function DealDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ existing?: string }>;
+  searchParams: Promise<{ existing?: string; renamed?: string }>;
 }) {
   const { id } = await params;
-  const { existing } = await searchParams;
+  const { existing, renamed } = await searchParams;
   const supabase = await createClient();
 
   const { data: deal } = await supabase
@@ -58,6 +59,7 @@ export default async function DealDetailPage({
     data: { user },
   } = await supabase.auth.getUser();
   const members = await getAgencyMembers(supabase, deal.agency_id);
+  const memberNames = Object.fromEntries(members.map((m) => [m.id, m.name]));
 
   const [{ data: listing }, { data: requirement }, { data: company }] =
     await Promise.all([
@@ -134,7 +136,7 @@ export default async function DealDetailPage({
 
   const { data: activities } = await supabase
     .from("activities")
-    .select("id, type, subject, body, occurred_at")
+    .select("id, type, subject, body, occurred_at, created_by")
     .eq("entity_type", "deal")
     .eq("entity_id", id)
     .order("occurred_at", { ascending: false })
@@ -143,12 +145,13 @@ export default async function DealDetailPage({
   // Pickers for the Send Deal wizard's external step — only needed when the
   // deal is linked to a requirement and/or listing (otherwise nothing to send).
   const canSendDeal = Boolean(deal.requirement_id || deal.listing_id);
-  const [{ data: companyRows }, { data: contactRows }] = canSendDeal
+  const [{ data: companyRows }, { data: contactRows }, companyTypes] = canSendDeal
     ? await Promise.all([
         supabase.from("companies").select("id, name").order("name"),
         supabase.from("contacts").select("id, first_name, last_name").order("first_name"),
+        getCompanyTypes(),
       ])
-    : [{ data: null }, { data: null }];
+    : [{ data: null }, { data: null }, []];
   const companyOptions = companyRows ?? [];
   const contactOptions = (contactRows ?? []).map((c) => ({
     id: c.id,
@@ -165,7 +168,9 @@ export default async function DealDetailPage({
         Back to pipeline
       </Link>
 
-      {existing === "1" ? <ExistingDealNotice dealId={deal.id} /> : null}
+      {existing === "1" ? (
+        <ExistingDealNotice dealId={deal.id} renamed={renamed === "1"} />
+      ) : null}
 
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
@@ -202,6 +207,7 @@ export default async function DealDetailPage({
               meId={user?.id}
               companies={companyOptions}
               contacts={contactOptions}
+              companyTypes={companyTypes}
               dealId={deal.id}
               requirementId={deal.requirement_id ?? undefined}
               listingId={deal.listing_id ?? undefined}
@@ -358,7 +364,7 @@ export default async function DealDetailPage({
         </CardHeader>
         <CardContent className="space-y-5">
           <LogActivityForm entityType="deal" entityId={deal.id} />
-          <ActivityTimeline activities={activities ?? []} />
+          <ActivityTimeline activities={activities ?? []} actorNames={memberNames} />
         </CardContent>
       </Card>
     </div>

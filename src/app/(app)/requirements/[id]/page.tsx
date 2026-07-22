@@ -26,6 +26,7 @@ import { SendDealModal } from "@/components/send-deal-modal";
 import { SendHistoryCard } from "@/components/send-history-card";
 import { SendToTeam } from "@/components/send-to-team";
 import { getSendHistory } from "@/lib/send-history";
+import { getCompanyTypes } from "@/lib/company-types";
 import { getAgencyMembers } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
@@ -140,9 +141,10 @@ export default async function RequirementDetailPage({
     .slice(0, 10);
 
   // Pickers for the Send Deal wizard's external step.
-  const [{ data: companyRows }, { data: contactRows }] = await Promise.all([
+  const [{ data: companyRows }, { data: contactRows }, companyTypes] = await Promise.all([
     supabase.from("companies").select("id, name").order("name"),
     supabase.from("contacts").select("id, first_name, last_name").order("first_name"),
+    getCompanyTypes(),
   ]);
   const companyOptions = companyRows ?? [];
   const contactOptions = (contactRows ?? []).map((c) => ({
@@ -387,6 +389,7 @@ export default async function RequirementDetailPage({
                           meId={user?.id}
                           companies={companyOptions}
                           contacts={contactOptions}
+                          companyTypes={companyTypes}
                           requirementId={r.id}
                           listingId={d.id}
                           requirementTitle={r.title}

@@ -6,7 +6,12 @@ import { ComposeMessage } from "@/components/compose-message";
 import { EmptyState } from "@/components/empty-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
-import { markMessageRead, markNotificationRead } from "@/lib/actions/messages";
+import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
+import {
+  deleteMessage,
+  markMessageRead,
+  markNotificationRead,
+} from "@/lib/actions/messages";
 import { currentAgencyId, getAgencyMembers } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
 import { isPast } from "@/lib/time";
@@ -193,17 +198,27 @@ export default async function MessagesPage({
                         {m.read_at ? " · read" : ""}
                       </p>
                     </div>
-                    {m.link ? (
-                      <Link
-                        href={m.link}
-                        className={cn(
-                          "shrink-0",
-                          buttonVariants({ variant: "secondary", size: "sm" }),
-                        )}
-                      >
-                        Open
-                      </Link>
-                    ) : null}
+                    <div className="flex shrink-0 items-center gap-2">
+                      {m.link ? (
+                        <Link
+                          href={m.link}
+                          className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}
+                        >
+                          Open
+                        </Link>
+                      ) : null}
+                      <form action={deleteMessage}>
+                        <input type="hidden" name="id" value={m.id} />
+                        <ConfirmSubmitButton
+                          variant="ghost"
+                          size="sm"
+                          confirmMessage="Delete this message? It disappears for both you and the recipient."
+                          className="text-xs text-muted-foreground hover:text-destructive"
+                        >
+                          Delete
+                        </ConfirmSubmitButton>
+                      </form>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -272,6 +287,17 @@ export default async function MessagesPage({
                         </button>
                       </form>
                     ) : null}
+                    <form action={deleteMessage}>
+                      <input type="hidden" name="id" value={m.id} />
+                      <ConfirmSubmitButton
+                        variant="ghost"
+                        size="sm"
+                        confirmMessage="Delete this message? It disappears for both you and the other person."
+                        className="text-xs text-muted-foreground hover:text-destructive"
+                      >
+                        Delete
+                      </ConfirmSubmitButton>
+                    </form>
                   </div>
                 </li>
               ))}

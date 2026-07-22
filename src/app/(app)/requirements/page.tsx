@@ -6,10 +6,12 @@ import { EmptyState } from "@/components/empty-state";
 import { FilterBar, FilterSelect } from "@/components/filter-bar";
 import { FilterTiles } from "@/components/filter-tiles";
 import { PageHeader } from "@/components/page-header";
+import { Pagination, resolvePage } from "@/components/pagination";
 import { RequirementsTable } from "@/components/requirements-table";
 import { StatsBar } from "@/components/stats-bar";
 import { buttonVariants } from "@/components/ui/button";
 import { propertyUseBadge } from "@/lib/badges";
+import { getCompanyTypes } from "@/lib/company-types";
 import { HOME_COUNTIES } from "@/lib/locations";
 import { filterHref, resolveSort } from "@/lib/sort";
 import { currentAgencyId, getAgencyMembers } from "@/lib/supabase/agency";
@@ -17,6 +19,10 @@ import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Requirements" };
+
+// Table rows per page. The status tiles and the key-stats bar keep describing
+// the whole filtered set — only the table below them is paginated.
+const PAGE_SIZE = 25;
 
 export default async function RequirementsPage({
   searchParams,
@@ -27,9 +33,10 @@ export default async function RequirementsPage({
     dir?: string;
     status?: string;
     loc?: string;
+    page?: string;
   }>;
 }) {
-  const { q, sort, dir, status, loc } = await searchParams;
+  const { q, sort, dir, status, loc, page: pageParam } = await searchParams;
   const supabase = await createClient();
 
   const { column, ascending } = resolveSort(
@@ -39,10 +46,13 @@ export default async function RequirementsPage({
     { column: "title", ascending: true },
   );
 
+  // Aggregate pass: only the columns the status tiles, the stats bar and the
+  // target-location facet need (plus the id, which the paginated row fetch
+  // keys off). Ordered here so the page slice below comes from the sorted set.
   let query = supabase
     .from("requirements")
     .select(
-      "id, title, status, target_towns, target_regions, target_counties, target_postcode_districts, max_rent, company_id, created_at, property_types, use_classes",
+      "id, status, target_towns, target_regions, target_counties, target_postcode_districts, created_at, property_types, use_classes",
     )
     .order(column, { ascending });
   if (q) query = query.ilike("title", `%${q}%`);
@@ -120,16 +130,36 @@ export default async function RequirementsPage({
     },
   ];
 
+  // Pagination: the tiles and stats above are computed from the full filtered
+  // set, so the page total is exact; only this page's rows are fetched in full.
+  const total = listRows.length;
+  const pageState = resolvePage(pageParam, total, PAGE_SIZE);
+  const pageIds = listRows.slice(pageState.from, pageState.to).map((r) => r.id);
+
+  const { data: detail } = pageIds.length
+    ? await supabase
+        .from("requirements")
+        .select("id, title, status, target_towns, max_rent, company_id")
+        .in("id", pageIds)
+    : { data: [] };
+  // `.in()` does not preserve the requested order — re-apply the sorted slice.
+  const byId = new Map((detail ?? []).map((r) => [r.id, r]));
+  const pageRows = pageIds
+    .map((id) => byId.get(id))
+    .filter((r): r is NonNullable<typeof r> => r != null);
+
   // Companies double as the operator-name lookup and the Send Deal company picker.
   const {
     data: { user },
   } = await supabase.auth.getUser();
   const agencyId = await currentAgencyId(supabase);
-  const [members, { data: companyRows }, { data: contactRows }] = await Promise.all([
-    agencyId ? getAgencyMembers(supabase, agencyId) : Promise.resolve([]),
-    supabase.from("companies").select("id, name").order("name"),
-    supabase.from("contacts").select("id, first_name, last_name").order("first_name"),
-  ]);
+  const [members, { data: companyRows }, { data: contactRows }, companyTypes] =
+    await Promise.all([
+      agencyId ? getAgencyMembers(supabase, agencyId) : Promise.resolve([]),
+      supabase.from("companies").select("id, name").order("name"),
+      supabase.from("contacts").select("id, first_name, last_name").order("first_name"),
+      getCompanyTypes(),
+    ]);
   const companies = companyRows ?? [];
   const names = new Map(companies.map((c) => [c.id, c.name]));
   const contacts = (contactRows ?? []).map((c) => ({
@@ -187,12 +217,6 @@ export default async function RequirementsPage({
 
       {rows.length > 0 ? <StatsBar stats={stats} className="mb-5" /> : null}
 
-      {listRows.length > 0 && listRows.length < rows.length ? (
-        <p className="mb-2 text-xs text-muted-foreground">
-          Showing {listRows.length} of {rows.length}
-        </p>
-      ) : null}
-
       {listRows.length === 0 ? (
         <EmptyState
           icon={Target}
@@ -215,7 +239,7 @@ export default async function RequirementsPage({
         />
       ) : (
         <RequirementsTable
-          rows={listRows.map((r) => ({
+          rows={pageRows.map((r) => ({
             id: r.id,
             title: r.title,
             status: r.status,
@@ -228,8 +252,17 @@ export default async function RequirementsPage({
           meId={user?.id}
           companies={companies}
           contacts={contacts}
+          companyTypes={companyTypes}
         />
       )}
+
+      <Pagination
+        params={params}
+        state={pageState}
+        total={total}
+        noun="requirements"
+        unfilteredTotal={rows.length}
+      />
     </div>
   );
 }

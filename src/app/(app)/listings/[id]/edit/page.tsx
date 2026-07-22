@@ -4,6 +4,7 @@ import { DisposalForm } from "@/components/disposal-form";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { updateDisposal } from "@/lib/actions/disposals";
+import { getCompanyTypes } from "@/lib/company-types";
 import { getAgencyMembers } from "@/lib/supabase/agency";
 import { getCompanyOptions, getContactOptions } from "@/lib/supabase/pickers";
 import { createClient } from "@/lib/supabase/server";
@@ -27,10 +28,11 @@ export default async function EditListingPage({
     .from("disposal_agents")
     .select("user_id")
     .eq("disposal_id", id);
-  const [agents, companies, contacts] = await Promise.all([
+  const [agents, companies, contacts, companyTypes] = await Promise.all([
     getAgencyMembers(supabase, disposal.agency_id),
     getCompanyOptions(supabase, disposal.agency_id),
     getContactOptions(supabase, disposal.agency_id),
+    getCompanyTypes(),
   ]);
   const additionalAgentIds = (agentRows ?? []).map((r) => r.user_id);
 
@@ -46,6 +48,7 @@ export default async function EditListingPage({
             additionalAgentIds={additionalAgentIds}
             companies={companies}
             contacts={contacts}
+            companyTypes={companyTypes}
           />
         </CardContent>
       </Card>

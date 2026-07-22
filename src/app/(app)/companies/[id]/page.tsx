@@ -88,7 +88,7 @@ export default async function CompanyDetailPage({
 
   const { data: activities } = await supabase
     .from("activities")
-    .select("id, type, subject, body, occurred_at")
+    .select("id, type, subject, body, occurred_at, created_by")
     .eq("entity_type", "company")
     .eq("entity_id", id)
     .order("occurred_at", { ascending: false })
@@ -414,7 +414,10 @@ export default async function CompanyDetailPage({
         </CardHeader>
         <CardContent className="space-y-5">
           <LogActivityForm entityType="company" entityId={company.id} />
-          <ActivityTimeline activities={activities ?? []} />
+          <ActivityTimeline
+            activities={activities ?? []}
+            actorNames={Object.fromEntries(nameOf)}
+          />
         </CardContent>
       </Card>
     </div>

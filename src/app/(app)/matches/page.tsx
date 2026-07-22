@@ -18,6 +18,7 @@ import { setMatchStatus } from "@/lib/actions/matches";
 import { isListingMatchable, listingTypeBadge, matchScoreBadge } from "@/lib/badges";
 import type { Database } from "@/lib/database.types";
 import { DEFAULT_LOCATION_FLEX, scoreMatch } from "@/lib/matching/score";
+import { getCompanyTypes } from "@/lib/company-types";
 import { getPairSendHistory } from "@/lib/send-history";
 import { filterHref } from "@/lib/sort";
 import { currentAgencyId, getAgencyMembers } from "@/lib/supabase/agency";
@@ -117,11 +118,13 @@ export default async function MatchesPage({
   };
 
   const agencyId = await currentAgencyId(supabase);
-  const [members, { data: companyRows }, { data: contactRows }] = await Promise.all([
-    agencyId ? getAgencyMembers(supabase, agencyId) : Promise.resolve([]),
-    supabase.from("companies").select("id, name").order("name"),
-    supabase.from("contacts").select("id, first_name, last_name").order("first_name"),
-  ]);
+  const [members, { data: companyRows }, { data: contactRows }, companyTypes] =
+    await Promise.all([
+      agencyId ? getAgencyMembers(supabase, agencyId) : Promise.resolve([]),
+      supabase.from("companies").select("id, name").order("name"),
+      supabase.from("contacts").select("id, first_name, last_name").order("first_name"),
+      getCompanyTypes(),
+    ]);
   const companies = companyRows ?? [];
   const operatorName = new Map(companies.map((c) => [c.id, c.name]));
   const contacts = (contactRows ?? []).map((c) => ({
@@ -441,6 +444,7 @@ export default async function MatchesPage({
                           meId={user?.id}
                           companies={companies}
                           contacts={contacts}
+                          companyTypes={companyTypes}
                           requirementId={rq.id}
                           listingId={d.id}
                           requirementTitle={rq.title}

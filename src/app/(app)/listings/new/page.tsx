@@ -4,6 +4,7 @@ import { DisposalForm } from "@/components/disposal-form";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { createDisposal } from "@/lib/actions/disposals";
+import { getCompanyTypes } from "@/lib/company-types";
 import { currentAgencyId, getAgencyMembers } from "@/lib/supabase/agency";
 import { getCompanyOptions, getContactOptions } from "@/lib/supabase/pickers";
 import { createClient } from "@/lib/supabase/server";
@@ -25,6 +26,7 @@ export default async function NewListingPage({
         getContactOptions(supabase, agencyId),
       ])
     : [[], [], []];
+  const companyTypes = await getCompanyTypes();
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -39,6 +41,7 @@ export default async function NewListingPage({
             agents={agents}
             companies={companies}
             contacts={contacts}
+            companyTypes={companyTypes}
             defaultCompanyId={defaultCompanyId}
           />
         </CardContent>

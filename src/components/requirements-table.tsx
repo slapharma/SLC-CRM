@@ -40,6 +40,7 @@ export function RequirementsTable({
   meId,
   companies,
   contacts,
+  companyTypes,
 }: {
   rows: RequirementRow[];
   params: Record<string, string | undefined>;
@@ -47,6 +48,7 @@ export function RequirementsTable({
   meId?: string;
   companies: EntityOption[];
   contacts: EntityOption[];
+  companyTypes?: { slug: string; label: string }[];
 }) {
   const [selected, setSelected] = React.useState<Set<string>>(new Set());
   const allRef = React.useRef<HTMLInputElement>(null);
@@ -88,6 +90,7 @@ export function RequirementsTable({
               meId={meId}
               companies={companies}
               contacts={contacts}
+              companyTypes={companyTypes}
               requirements={selectedRows.map((r) => ({ id: r.id, title: r.title }))}
             />
             <Button

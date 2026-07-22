@@ -8,6 +8,7 @@ import { FilterBar, FilterSelect } from "@/components/filter-bar";
 import { FilterTiles } from "@/components/filter-tiles";
 import { Heatmap } from "@/components/heatmap";
 import { PageHeader } from "@/components/page-header";
+import { Pagination, resolvePage } from "@/components/pagination";
 import { SortHeader } from "@/components/sort-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,6 +32,10 @@ import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Companies" };
 
+// Table rows per page. The stats tiles/heatmap/facets keep describing the whole
+// filtered set — only the table below them is paginated.
+const PAGE_SIZE = 25;
+
 export default async function CompaniesPage({
   searchParams,
 }: {
@@ -42,9 +47,10 @@ export default async function CompaniesPage({
     tag?: string;
     town?: string;
     county?: string;
+    page?: string;
   }>;
 }) {
-  const { q, sort, dir, type, tag, town, county } = await searchParams;
+  const { q, sort, dir, type, tag, town, county, page: pageParam } = await searchParams;
   const supabase = await createClient();
 
   const { column, ascending } = resolveSort(
@@ -54,9 +60,12 @@ export default async function CompaniesPage({
     { column: "name", ascending: true },
   );
 
+  // Aggregate pass: only the columns the tiles, heatmap and facet dropdowns
+  // need (plus the id, which the paginated row fetch keys off). Ordered here so
+  // the page slice below is taken from the fully sorted set.
   let query = supabase
     .from("companies")
-    .select("id, name, type, sector_tags, website, city, postcode, county")
+    .select("id, type, sector_tags, city, postcode, county")
     .order(column, { ascending });
   if (q) query = query.ilike("name", `%${escapeLike(q)}%`);
   const { data } = await query;
@@ -124,6 +133,24 @@ export default async function CompaniesPage({
   const heatMatrix = heatTags.map((tag) =>
     heatTypes.map((ty) => cellCounts.get(`${tag}|${ty.value}`) ?? 0),
   );
+
+  // Pagination: the facets above are computed from the full filtered set, so
+  // the page total is exact; only the current page's rows are fetched in full.
+  const total = listRows.length;
+  const pageState = resolvePage(pageParam, total, PAGE_SIZE);
+  const pageIds = listRows.slice(pageState.from, pageState.to).map((c) => c.id);
+
+  const { data: detail } = pageIds.length
+    ? await supabase
+        .from("companies")
+        .select("id, name, type, sector_tags, website")
+        .in("id", pageIds)
+    : { data: [] };
+  // `.in()` does not preserve the requested order — re-apply the sorted slice.
+  const byId = new Map((detail ?? []).map((c) => [c.id, c]));
+  const pageRows = pageIds
+    .map((id) => byId.get(id))
+    .filter((c): c is NonNullable<typeof c> => c != null);
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -202,12 +229,6 @@ export default async function CompaniesPage({
         </div>
       ) : null}
 
-      {listRows.length > 0 && listRows.length < rows.length ? (
-        <p className="mb-2 text-xs text-muted-foreground">
-          Showing {listRows.length} of {rows.length}
-        </p>
-      ) : null}
-
       {listRows.length === 0 ? (
         <EmptyState
           icon={Building2}
@@ -239,7 +260,7 @@ export default async function CompaniesPage({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {listRows.map((c) => {
+            {pageRows.map((c) => {
               const t = companyTypeBadge(c.type, typeLabel(companyTypes, c.type));
               return (
                 <TableRow key={c.id}>
@@ -266,6 +287,14 @@ export default async function CompaniesPage({
           </TableBody>
         </Table>
       )}
+
+      <Pagination
+        params={params}
+        state={pageState}
+        total={total}
+        noun="companies"
+        unfilteredTotal={rows.length}
+      />
     </div>
   );
 }

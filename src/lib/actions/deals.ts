@@ -198,15 +198,30 @@ export async function createDealFromMatch(
   const agencyId = await currentAgencyId(supabase);
   if (!agencyId) return { error: "No agency is linked to your account." };
 
-  // Reuse an existing deal for this pair rather than duplicating it.
+  // Reuse an existing deal for this pair rather than duplicating it. A title
+  // typed into the modal isn't thrown away — it renames the deal we land on,
+  // so the user's input still means something.
   const { data: existing } = await supabase
     .from("deals")
-    .select("id")
+    .select("id, title")
     .eq("agency_id", agencyId)
     .eq("requirement_id", requirementId)
     .eq("listing_id", listingId)
     .maybeSingle();
-  if (existing) redirect(`/deals/${existing.id}?existing=1`);
+  if (existing) {
+    const typed = str(formData, "title");
+    const renamed = Boolean(typed) && typed !== existing.title;
+    if (renamed) {
+      await supabase
+        .from("deals")
+        .update({ title: typed })
+        .eq("id", existing.id)
+        .eq("agency_id", agencyId);
+      revalidatePath(`/deals/${existing.id}`);
+      revalidatePath("/deals");
+    }
+    redirect(`/deals/${existing.id}?existing=1${renamed ? "&renamed=1" : ""}`);
+  }
 
   const [{ data: req }, { data: listing }] = await Promise.all([
     supabase

@@ -56,6 +56,7 @@ export function RequirementForm({
   requirement,
   companies,
   contacts = [],
+  companyTypes,
   defaultCompanyId,
   agents = [],
   additionalAgentIds,
@@ -64,6 +65,8 @@ export function RequirementForm({
   requirement?: Tables<"requirements">;
   companies: { id: string; name: string }[];
   contacts?: { id: string; name: string }[];
+  /** Editable company_types list — feeds the "+ New company" quick-create modal. */
+  companyTypes?: { slug: string; label: string }[];
   defaultCompanyId?: string;
   agents?: AgentOption[];
   additionalAgentIds?: string[];
@@ -93,6 +96,7 @@ export function RequirementForm({
             label="Operator (company)"
             options={companies}
             defaultValue={r?.company_id ?? defaultCompanyId ?? ""}
+            types={companyTypes}
           />
           <Field label="Status" htmlFor="status">
             <Select id="status" name="status" defaultValue={r?.status ?? "active"}>
