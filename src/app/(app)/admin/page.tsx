@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 
 import { AdminPanel, type Member } from "@/components/admin-panel";
 import { DataImport } from "@/components/data-import";
+import { MarketIntelAdmin, type IntelSourceStatus } from "@/components/market-intel-admin";
 import { getContactRoles } from "@/lib/contact-roles";
 import { getCompanyTypes } from "@/lib/company-types";
+import { INTEL_SOURCES } from "@/lib/intel/sources";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { CollapsibleCard } from "@/components/ui/collapsible-card";
@@ -11,6 +13,10 @@ import { currentAgencyId } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Admin" };
+
+// The Market Intel resync action scrapes a partner site live (20+ page
+// fetches) — give it more than the default function budget.
+export const maxDuration = 120;
 
 export default async function AdminPage() {
   const supabase = await createClient();
@@ -62,6 +68,27 @@ export default async function AdminPage() {
   const contactRoles = await getContactRoles();
   const companyTypes = await getCompanyTypes();
 
+  // Market Intel per-source stats: row count + newest created_at per source.
+  const { data: intelRows } = await supabase
+    .from("disposals")
+    .select("source, created_at")
+    .eq("agency_id", agencyId)
+    .eq("listing_type", "intel");
+  const intelSources: IntelSourceStatus[] = INTEL_SOURCES.map((s) => {
+    const rows = (intelRows ?? []).filter((r) => r.source === s.id);
+    const lastSynced = rows.length
+      ? rows.map((r) => r.created_at).sort().at(-1)!
+      : null;
+    return {
+      id: s.id,
+      label: s.label,
+      website: s.website,
+      hasScraper: s.scraper !== null,
+      count: rows.length,
+      lastSynced,
+    };
+  });
+
   const members: Member[] = (memberRows ?? [])
     .map((m) => {
       const p = profileOf.get(m.user_id);
@@ -100,6 +127,15 @@ export default async function AdminPage() {
         contactRoles={contactRoles}
         companyTypes={companyTypes}
       />
+
+      <div className="mt-4">
+        <CollapsibleCard
+          title="Market Intel"
+          description="Partner-agent stock: resync live or delete per source."
+        >
+          <MarketIntelAdmin sources={intelSources} />
+        </CollapsibleCard>
+      </div>
 
       <div className="mt-4">
         <CollapsibleCard

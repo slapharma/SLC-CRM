@@ -23,6 +23,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { listingStatusBadge, listingTypeBadge } from "@/lib/badges";
+import { intelSourceLabel } from "@/lib/intel/sources";
 import { deriveCounty, HOME_COUNTIES } from "@/lib/locations";
 import { filterHref, resolveSort } from "@/lib/sort";
 import { createClient } from "@/lib/supabase/server";
@@ -57,6 +58,7 @@ export default async function ListingsPage({
       title: "title",
       city: "city",
       use_class: "use_class",
+      source: "source",
       size_sqft: "size_sqft",
       rent_pa: "rent_pa",
       status: "status",
@@ -67,7 +69,7 @@ export default async function ListingsPage({
   let query = supabase
     .from("disposals")
     .select(
-      "id, title, city, postcode, county, status, use_class, disposal_type, listing_type, size_sqft, rent_pa, premium",
+      "id, title, city, postcode, county, status, use_class, disposal_type, listing_type, source, size_sqft, rent_pa, premium",
     )
     .order(column, { ascending });
   if (q) query = query.or(`title.ilike.%${q}%,city.ilike.%${q}%`);
@@ -294,6 +296,12 @@ export default async function ListingsPage({
                 className="hidden md:table-cell"
               />
               <SortHeader
+                column="source"
+                label="Source"
+                params={params}
+                className="hidden lg:table-cell"
+              />
+              <SortHeader
                 column="size_sqft"
                 label="Size (sq ft)"
                 params={params}
@@ -333,6 +341,11 @@ export default async function ListingsPage({
                   </TableCell>
                   <TableCell className="hidden text-muted-foreground md:table-cell">
                     {d.use_class ?? "—"}
+                  </TableCell>
+                  <TableCell className="hidden text-muted-foreground lg:table-cell">
+                    {d.listing_type === "intel"
+                      ? (intelSourceLabel(d.source) ?? "—")
+                      : "CDG Leisure"}
                   </TableCell>
                   <TableCell className="hidden text-right font-mono tabular-nums text-muted-foreground md:table-cell">
                     {d.size_sqft != null
