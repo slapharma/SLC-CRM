@@ -438,3 +438,18 @@ RESIDUAL (honest limitations, not closed):
 - Paginated tables' "select all" now selects the current page only (conventional, but a behaviour change).
 - Match rejection remains agency-wide, not per-user.
 - Verified: tsc CLEAN · eslint CLEAN · `next build` GREEN · deployed and spot-checked on prod.
+
+## 2026-07-22 - Page-to-page navigation slowness
+
+Root cause: Vercel functions ran in the default iad1 (Washington DC) region while Supabase lives in eu-west-2 (London), so every auth/DB round trip crossed the Atlantic (~80ms each) - and each navigation makes several. On top of that the proxy called auth.getUser() (an Auth-server network round trip) on EVERY request, and the (app) layout called it again.
+
+- [x] vercel.json: pin functions to lhr1 (London) next to Supabase and the UK users - the dominant fix.
+- [x] proxy (updateSession): getUser() -> getClaims(): local ES256 JWT verification (JWKS confirmed published for the project), zero network on the hot path; still refreshes expired sessions via setAll cookies.
+- [x] (app) layout auth boundary: getUser() -> getClaims() (claims.sub / claims.email) - one less Auth round trip per hard load; equally trustworthy (cryptographic verification).
+- [x] .claude/launch.json: added "prod" config (next start -p 3999) for verifying prod builds when another dev server holds the Next 16 dev lock.
+
+Verified: next build GREEN (tsc clean) - sign-up -> Dashboard -> Listings -> Contacts exercised in the browser against the prod build; layout admin flag + notifications queries work off claims.sub; no console errors; RSC nav requests 200.
+
+NOT changed: the ~60 other auth.getUser() call sites in pages/actions - once functions are in-region each costs ~10ms, not worth the churn. Page query waterfalls (e.g. listings agents->detail, dashboard membership->profiles) similarly become negligible in-region.
+
+NOTE: region pin takes effect on the next Vercel deploy.

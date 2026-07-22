@@ -27,11 +27,14 @@ export default async function AppLayout({
   // Before Supabase is provisioned we render a demo shell instead of locking people out.
   if (isSupabaseConfigured) {
     const supabase = await createClient();
-    const {
-      data: { user: authedUser },
-    } = await supabase.auth.getUser();
-    if (!authedUser) redirect("/login");
-    user = { email: authedUser.email };
+    // getClaims() verifies the session JWT locally against the project's ES256
+    // signing key — cryptographically as trustworthy as getUser(), without the
+    // per-navigation round trip to the Auth server.
+    const { data: claimsData } = await supabase.auth.getClaims();
+    const claims = claimsData?.claims;
+    if (!claims) redirect("/login");
+    const userId = claims.sub;
+    user = { email: claims.email };
 
     // Scope to the caller's OWN membership — agency_members RLS can surface
     // co-members, so an unscoped role=admin check would leak the Admin nav to
@@ -41,7 +44,7 @@ export default async function AppLayout({
         supabase
           .from("agency_members")
           .select("agency_id")
-          .eq("user_id", authedUser.id)
+          .eq("user_id", userId)
           .eq("role", "admin")
           .limit(1)
           .maybeSingle(),
@@ -53,7 +56,7 @@ export default async function AppLayout({
         supabase
           .from("messages")
           .select("id", { count: "exact", head: true })
-          .eq("recipient_id", authedUser.id)
+          .eq("recipient_id", userId)
           .is("read_at", null),
       ]);
     isAdmin = Boolean(adminRow);

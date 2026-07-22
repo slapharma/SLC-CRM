@@ -37,9 +37,12 @@ export async function updateSession(request: NextRequest) {
     },
   });
 
-  // IMPORTANT: do not run code between createServerClient and getUser().
-  // getUser() revalidates the token with Supabase Auth on every request.
-  await supabase.auth.getUser();
+  // IMPORTANT: do not run code between createServerClient and getClaims().
+  // getClaims() verifies the JWT locally against the project's asymmetric
+  // (ES256) signing key — no Auth-server round trip on the hot path — and
+  // still refreshes the session (writing new cookies via setAll) when the
+  // access token has expired.
+  await supabase.auth.getClaims();
 
   return response;
 }
