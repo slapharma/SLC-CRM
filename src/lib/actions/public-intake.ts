@@ -9,7 +9,7 @@ import type { FormState } from "@/lib/actions/types";
 // CliftonAi admin who is cc'd on the notification. Both resolved by email at
 // submit time (no hardcoded UUIDs).
 const DEFAULT_AGENT_EMAIL = "morris@cdgleisure.com";
-const ADMIN_EMAIL = "cflack@slapharmagroup.com";
+const ADMIN_EMAIL = "cliftonflack@gmail.com";
 
 const str = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim();
 const num = (fd: FormData, k: string) => {
