@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
  */
 export function ExpandableInsights({
   label = "portfolio insights",
-  defaultOpen = true,
+  defaultOpen = false,
   children,
 }: {
   label?: string;
