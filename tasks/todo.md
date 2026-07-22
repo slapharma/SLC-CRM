@@ -401,7 +401,23 @@ Source: docs/employee-flow-test-2026-07-22.md. Migration numbers assigned centra
 - [ ] G — Dashboard/Reports: KPI fix (exclude closed), activity feed, my tasks/overdue tile, unread tile, /reports for admin+manager (funnel, time-in-stage, per-agent, aging), activity timeline actor names everywhere
 
 ## Phase 5 (me)
-- [ ] Integration: tsc + eslint + build clean, apply migrations 0028+ in order, regenerate DB types, commit + push, live smoke test, report
+- [x] Integration: wired refreshMatchesForListing into disposals create/update/status + bulk + intel resync; swapped the matches page onto the targeted getPairSendHistory (killed the limit(500) cap); passed dealId to SendDealModal on the deal page; moved Date.now out of render into lib/time daysSince (react-hooks/purity)
+- [x] tsc CLEAN · eslint CLEAN (--max-warnings=0) · `next build` GREEN (new routes: /tasks, /intake, /reports, /api/cron/due, /api/webhooks/resend)
+- [x] Migrations 0028–0032 APPLIED to live slc-crm (akxortffkrknoxysgeei); all made idempotent (if not exists + duplicate_object guards) before applying; security advisors show no new findings
+- [x] database.types.ts REGENERATED from the live schema — caught a real mismatch: intake_submissions company_name/first_name/email are nullable, so approveSubmission now guards and the card renders gracefully
+- [x] Committed 1661ea6 + pushed to main; Vercel deployed
+- [x] Live verified on prod: dashboard KPIs scoped ("open deals only", "excludes completed & fell through") + Won tile + My-work strip + activity feed with actor names; /reports funnel + time-in-stage + win rate; /matches Shortlist/Reject + "Deal created" badge; /tasks + /intake render; matches table now being written (6 suggested rows post-deploy)
 
 ## Review
-(to fill at the end)
+Shipped every finding from docs/employee-flow-test-2026-07-22.md except the money model (fees/invoicing), which the user explicitly deferred.
+
+P0s fixed: dashboard counted closed deals as open pipeline; intel resync delete+reinsert severed deals/send-history (now upserts on source_ref, marks missing Withdrawn, geocodes); a comma broke list-page search; un-completing a deal never reactivated its requirement (now does, and closing stages confirm first); public intake created live records with wildcard-mergeable ilike (now a pending triage queue at /intake with escaped lookups + env-var owners); message links were unvalidated (allowlisted); PDFs showed stale scraped rents after edits; deal action errors were swallowed by redirects.
+
+New capability: tasks with assignees/due dates + a 15-min cron that actually fires due reminders and tasks (the system previously never fired anything); persisted matches with proactive bell alerts on listing/requirement change plus shortlist/reject; /reports gated to admin+manager (funnel, time-in-stage, per-agent, aging) which finally gives the manager role meaning; listing photos, quick status popover, bulk status/assign, lease & statutory fields, message threading + Sent view, contact activity log, duplicate warnings, CSV import v2, Resend delivery tracking.
+
+KNOWN FOLLOW-UPS (not blockers):
+- Env vars to set in Vercel: CRON_SECRET (required for /api/cron/due to run — returns 503 until set), RESEND_WEBHOOK_SECRET (webhook unverified until set), optional INTAKE_DEFAULT_AGENT_EMAIL / INTAKE_ADMIN_EMAIL (fallbacks preserve current behaviour).
+- Match rejection is agency-wide, not per-user (the matches table has no per-user column) — per-user dismissal would need a new table.
+- Requirement detail's own match list has no shortlist/reject UI (scoped to /matches).
+- County proximity is a centroid+bonus approximation; true border distance needs polygon data.
+- Browser-pane clicks landed at (0,0) during verification (pane not compositing), so Shortlist/Reject were verified by DB state + rendered markup rather than a live click.
