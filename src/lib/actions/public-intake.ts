@@ -1,15 +1,18 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { Resend } from "resend";
 
 import { createServiceClient } from "@/lib/supabase/service";
 import type { FormState } from "@/lib/actions/types";
 
 // The CDG agent who owns every publicly-submitted requirement, plus the
 // CliftonAi admin who is cc'd on the notification. Both resolved by email at
-// submit time (no hardcoded UUIDs).
-const DEFAULT_AGENT_EMAIL = "morris@cdgleisure.com";
-const ADMIN_EMAIL = "cliftonflack@gmail.com";
+// submit time (no hardcoded UUIDs); overridable per-environment, with the
+// original values as fallbacks so nothing breaks when the vars are unset.
+const defaultAgentEmail = () =>
+  process.env.INTAKE_DEFAULT_AGENT_EMAIL || "morris@cdgleisure.com";
+const adminEmail = () => process.env.INTAKE_ADMIN_EMAIL || "cliftonflack@gmail.com";
 
 const str = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim();
 const num = (fd: FormData, k: string) => {
@@ -18,16 +21,17 @@ const num = (fd: FormData, k: string) => {
   const n = Number(v.replace(/[£,\s]/g, ""));
   return Number.isFinite(n) ? n : null;
 };
-const commaArr = (v: string) =>
-  v
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
+
+const UNAVAILABLE =
+  "Submissions are temporarily unavailable — please email your requirement instead.";
 
 /**
- * Public requirement intake — no session. Writes via the service-role client
- * into the default CDG agent's agency, then pings the agent (and the admin)
- * through the in-app notification bell.
+ * Public requirement intake — no session. Writes a *pending* row into
+ * `intake_submissions` via the service-role client (never a live company /
+ * contact / requirement: anonymous input is triaged at /intake first), then
+ * pings the default agent and the admin through the notification bell and, when
+ * Resend is configured, by email. Notification/email failures are non-fatal —
+ * the submission is already safely recorded.
  */
 export async function submitPublicRequirement(
   _prev: FormState,
@@ -55,143 +59,121 @@ export async function submitPublicRequirement(
   }
 
   const propertyType = str(formData, "property_type");
-  const towns = commaArr(str(formData, "target_towns"));
+  // The locations combobox posts one comma-joined value; `target_towns` is the
+  // legacy free-text field name, still accepted.
+  const targetLocations =
+    str(formData, "target_locations") || str(formData, "target_towns");
   const notes = str(formData, "notes");
 
   const supabase = createServiceClient();
-  if (!supabase) {
-    return {
-      error:
-        "Submissions are temporarily unavailable — please email your requirement instead.",
-    };
-  }
+  if (!supabase) return { error: UNAVAILABLE };
 
   // Resolve the default agent → their user id + agency (the target tenant).
   const { data: agentProfile } = await supabase
     .from("profiles")
-    .select("id")
-    .eq("email", DEFAULT_AGENT_EMAIL)
+    .select("id, email, full_name")
+    .eq("email", defaultAgentEmail())
     .maybeSingle();
-  if (!agentProfile) {
-    return {
-      error:
-        "Submissions are temporarily unavailable — please email your requirement instead.",
-    };
-  }
+  if (!agentProfile) return { error: UNAVAILABLE };
+
   const { data: membership } = await supabase
     .from("agency_members")
     .select("agency_id")
     .eq("user_id", agentProfile.id)
     .limit(1)
     .maybeSingle();
-  if (!membership) {
-    return {
-      error:
-        "Submissions are temporarily unavailable — please email your requirement instead.",
-    };
-  }
+  if (!membership) return { error: UNAVAILABLE };
+
   const agencyId = membership.agency_id;
   const agentId = agentProfile.id;
 
-  // Find-or-create the operator company (by name, within the agency).
-  const { data: existingCompany } = await supabase
-    .from("companies")
-    .select("id")
-    .eq("agency_id", agencyId)
-    .ilike("name", companyName)
-    .limit(1)
-    .maybeSingle();
-  let companyId = existingCompany?.id ?? null;
-  if (!companyId) {
-    const { data: newCompany, error: companyError } = await supabase
-      .from("companies")
-      .insert({
-        agency_id: agencyId,
-        name: companyName,
-        type: "operator",
-        created_by: agentId,
-      })
-      .select("id")
-      .single();
-    if (companyError) return { error: "Something went wrong — please try again." };
-    companyId = newCompany.id;
-  }
-
-  // Find-or-create the submitting contact (by email, within the agency).
-  const { data: existingContact } = await supabase
-    .from("contacts")
-    .select("id")
-    .eq("agency_id", agencyId)
-    .ilike("email", email)
-    .limit(1)
-    .maybeSingle();
-  let contactId = existingContact?.id ?? null;
-  if (!contactId) {
-    const { data: newContact, error: contactError } = await supabase
-      .from("contacts")
-      .insert({
-        agency_id: agencyId,
-        company_id: companyId,
-        first_name: firstName,
-        last_name: lastName || null,
-        email,
-        phone: phone || null,
-      })
-      .select("id")
-      .single();
-    if (contactError) return { error: "Something went wrong — please try again." };
-    contactId = newContact.id;
-  }
-
-  const title = `${companyName} — ${propertyType || "property"} requirement`;
-  const { data: requirement, error: reqError } = await supabase
-    .from("requirements")
+  const { data: submission, error: insertError } = await supabase
+    .from("intake_submissions")
     .insert({
       agency_id: agencyId,
-      created_by: agentId,
-      lead_agent_id: agentId,
-      company_id: companyId,
-      contact_id: contactId,
-      title,
-      status: "active",
-      target_towns: towns,
-      property_types: propertyType ? [propertyType] : [],
+      status: "pending",
+      company_name: companyName,
+      first_name: firstName,
+      last_name: lastName || null,
+      email,
+      phone: phone || null,
+      property_type: propertyType || null,
+      target_locations: targetLocations || null,
       min_sqft: num(formData, "min_sqft"),
       max_sqft: num(formData, "max_sqft"),
       min_covers: num(formData, "min_covers"),
       max_covers: num(formData, "max_covers"),
       max_rent: num(formData, "max_rent"),
       max_premium: num(formData, "max_premium"),
-      notes: [
-        notes || null,
-        `Submitted via the public requirement form by ${firstName} ${lastName}`.trim() +
-          ` (${email}${phone ? `, ${phone}` : ""}).`,
-      ]
-        .filter(Boolean)
-        .join("\n\n"),
+      notes: notes || null,
     })
     .select("id")
     .single();
-  if (reqError) return { error: "Something went wrong — please try again." };
+  if (insertError || !submission) {
+    return { error: "Something went wrong — please try again." };
+  }
 
-  // Ping the default agent's bell, and the CliftonAi admin's (best-effort).
-  const recipients = [agentId];
+  const who = [firstName, lastName].filter(Boolean).join(" ");
+  const summary = [
+    `${companyName} — ${propertyType || "property"} requirement`,
+    targetLocations ? `Locations: ${targetLocations}` : null,
+    `From ${who} (${email}${phone ? `, ${phone}` : ""})`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  // ── Notify: bell for the agent + admin, then email (both best-effort) ──────
+  const recipients = [{ id: agentId, email: agentProfile.email }];
   const { data: adminProfile } = await supabase
     .from("profiles")
-    .select("id")
-    .eq("email", ADMIN_EMAIL)
+    .select("id, email")
+    .eq("email", adminEmail())
     .maybeSingle();
-  if (adminProfile && adminProfile.id !== agentId) recipients.push(adminProfile.id);
+  if (adminProfile && adminProfile.id !== agentId) {
+    recipients.push({ id: adminProfile.id, email: adminProfile.email });
+  }
 
   await supabase.from("notifications").insert(
-    recipients.map((user_id) => ({
+    recipients.map((r) => ({
       agency_id: agencyId,
-      user_id,
+      user_id: r.id,
       title: "New property requirement submitted",
-      body: `${title} — from ${firstName} ${lastName} (${email})`.trim(),
-      link: `/requirements/${requirement.id}`,
+      body: `${companyName} — from ${who} (${email}). Review it in the intake queue.`,
+      link: "/intake",
     })),
   );
 
+  await notifyByEmail(
+    recipients.map((r) => r.email).filter((e): e is string => Boolean(e)),
+    `New requirement submitted — ${companyName}`,
+    [
+      "A new property requirement was submitted through the public form.",
+      "",
+      summary,
+      notes ? `\nNotes:\n${notes}` : null,
+      "",
+      "Review and approve it in the CRM under Intake.",
+    ]
+      .filter((l): l is string => l != null)
+      .join("\n"),
+  );
+
   redirect("/submit-requirement/thank-you");
+}
+
+/**
+ * Best-effort plain-text notification email (mirrors deal-send.ts's Resend
+ * usage). Silently does nothing when RESEND_API_KEY / EMAIL_FROM are unset, and
+ * never throws — the in-app notification is the source of truth.
+ */
+async function notifyByEmail(to: string[], subject: string, text: string) {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.EMAIL_FROM;
+  if (!apiKey || !from || to.length === 0) return;
+  try {
+    const resend = new Resend(apiKey);
+    await resend.emails.send({ from, to, subject, text });
+  } catch {
+    // Non-fatal — the submission and the bell notification already landed.
+  }
 }

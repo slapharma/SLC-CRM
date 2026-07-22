@@ -26,6 +26,7 @@ export function ContactForm({
   agents,
   additionalAgentIds,
   roles,
+  companyTypes,
 }: {
   action: (state: FormState, formData: FormData) => Promise<FormState>;
   contact?: Tables<"contacts">;
@@ -34,12 +35,14 @@ export function ContactForm({
   agents: AgentOption[];
   additionalAgentIds?: string[];
   roles: { slug: string; label: string }[];
+  companyTypes?: { slug: string; label: string }[];
 }) {
   const [state, formAction, pending] = useActionState<FormState, FormData>(
     action,
     {},
   );
   const c = contact;
+  const duplicateBlocked = state.error?.includes('Tick "Create anyway"') ?? false;
 
   return (
     <form action={formAction} className="space-y-5">
@@ -72,6 +75,7 @@ export function ContactForm({
         <CompanyCreatableSelect
           options={companies}
           defaultValue={c?.company_id ?? defaultCompanyId ?? ""}
+          types={companyTypes}
         />
       </div>
 
@@ -92,7 +96,7 @@ export function ContactForm({
           defaultValue={c?.address_line ?? ""}
         />
       </Field>
-      <div className="grid gap-5 sm:grid-cols-2">
+      <div className="grid gap-5 sm:grid-cols-3">
         <LocationSelect
           name="city"
           label="Town / city"
@@ -135,6 +139,16 @@ export function ContactForm({
       />
 
       {state.error ? <Alert tone="error">{state.error}</Alert> : null}
+      {duplicateBlocked ? (
+        <label className="flex cursor-pointer items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            name="allow_duplicate"
+            className="h-4 w-4 rounded border-input accent-primary"
+          />
+          Create anyway (duplicate check override)
+        </label>
+      ) : null}
 
       <div className="flex items-center gap-2">
         <Button type="submit" disabled={pending}>

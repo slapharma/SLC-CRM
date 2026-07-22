@@ -7,6 +7,7 @@ import { currentAgencyId } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
 import { deriveCounty } from "@/lib/locations";
 import { geocodeForSave } from "@/lib/maps/geocode";
+import { refreshMatchesForListing, refreshMatchesForListings } from "@/lib/actions/matches";
 import type { TablesInsert } from "@/lib/database.types";
 import type { FormState } from "@/lib/actions/types";
 
@@ -23,6 +24,18 @@ const textOrNull = (fd: FormData, k: string) => str(fd, k) || null;
 const DISPOSAL_TYPES = ["freehold", "new_lease", "lease_assignment", "sublease", "unknown"];
 const FIT_OUT_STATES = ["fully_fitted", "part_fitted", "shell"];
 const LISTING_TYPES = ["cdg", "intel"];
+// Must match the disposals.price_qualifier check constraint (migration 0004).
+const PRICE_QUALIFIERS = ["fixed", "offers_in_region", "offers_in_excess", "on_application"];
+// The five canonical listing statuses the UI drives (scrapes may carry others).
+// Not exported: a "use server" module may only export async functions — client
+// components keep their own copy (see listing-status-select.tsx).
+const CANONICAL_LISTING_STATUSES = [
+  "Available",
+  "Under Offer",
+  "Let",
+  "Sold",
+  "Withdrawn",
+];
 
 /** Map the disposal form fields onto an insert/update payload (shared by create + edit). */
 function disposalFieldsFromForm(fd: FormData): Omit<TablesInsert<"disposals">, "agency_id"> {
@@ -69,6 +82,24 @@ function disposalFieldsFromForm(fd: FormData): Omit<TablesInsert<"disposals">, "
     // #1/#4: optional links to a Company (landlord/vendor) and a point-of-contact.
     company_id: textOrNull(fd, "company_id"),
     contact_id: textOrNull(fd, "contact_id"),
+    // "Lease & statutory" section — previously unreachable DB columns.
+    summary: textOrNull(fd, "summary"),
+    location_description: textOrNull(fd, "location_description"),
+    licensing_notes: textOrNull(fd, "licensing_notes"),
+    vat_applicable: boolOf(fd, "vat_applicable"),
+    business_rates: numOrNull(fd, "business_rates"),
+    estate_charge: numOrNull(fd, "estate_charge"),
+    parking_charge: numOrNull(fd, "parking_charge"),
+    lease_term_years: numOrNull(fd, "lease_term_years"),
+    lease_expiry: textOrNull(fd, "lease_expiry"),
+    rent_review_basis: textOrNull(fd, "rent_review_basis"),
+    next_rent_review: numOrNull(fd, "next_rent_review"),
+    inside_1954_act: boolOf(fd, "inside_1954_act"),
+    rent_period: textOrNull(fd, "rent_period"),
+    price_qualifier: PRICE_QUALIFIERS.includes(str(fd, "price_qualifier"))
+      ? str(fd, "price_qualifier")
+      : null,
+    brochure_url: textOrNull(fd, "brochure_url"),
   };
 }
 
@@ -130,6 +161,7 @@ export async function createDisposal(
   if (error || !data) return { error: error?.message ?? "Could not create the listing." };
 
   await syncDisposalAgents(supabase, agencyId, data.id, fields.lead_agent_id ?? null, formData);
+  await refreshMatchesForListing(data.id);
 
   revalidatePath("/listings");
   redirect(`/listings/${data.id}`);
@@ -152,22 +184,42 @@ export async function updateDisposal(
   const id = str(formData, "id");
   if (!id) return { error: "Missing listing id." };
   if (!str(formData, "title")) return { error: "Title is required." };
-  if (!str(formData, "contact_id"))
-    return { error: "A contact is required for every listing." };
 
   const fields = disposalFieldsFromForm(formData);
-  // Re-geocode only when the address changed or coords are missing.
+  // Existing row: drives re-geocoding, the manual-only contact rule and the
+  // stale-scrape-text cleanup below.
   const { data: existing } = await supabase
     .from("disposals")
-    .select("address_line, city, postcode, lat, lng, updated_at")
+    .select(
+      "address_line, city, postcode, lat, lng, updated_at, source, rent_pa, rent_period, premium",
+    )
     .eq("id", id)
     .maybeSingle();
   if (!existing) return { error: "This listing no longer exists." };
 
+  // A contact is only mandatory for CDG's own manual entries — scraped/intel
+  // rows must stay editable without attaching an irrelevant CRM contact.
+  if (existing.source === "manual" && !str(formData, "contact_id"))
+    return { error: "A contact is required for every listing." };
+
+  // When the numeric commercials change, drop the raw scraped text so the PDF
+  // stops preferring the stale "£X pa" string over the edited figure.
+  const clearRaw: { rent_raw?: null; rent_period?: null; premium_raw?: null } = {};
+  if ((fields.rent_pa ?? null) !== (existing.rent_pa ?? null)) {
+    clearRaw.rent_raw = null;
+    // Keep a rent_period the user deliberately changed in this same edit.
+    if ((fields.rent_period ?? null) === (existing.rent_period ?? null)) {
+      clearRaw.rent_period = null;
+    }
+  }
+  if ((fields.premium ?? null) !== (existing.premium ?? null)) {
+    clearRaw.premium_raw = null;
+  }
+
   const geo = await geocodeForSave(fields, existing);
   const { data: updated, error } = await supabase
     .from("disposals")
-    .update({ ...fields, ...(geo ?? {}) })
+    .update({ ...fields, ...clearRaw, ...(geo ?? {}) })
     .eq("id", id)
     .eq("agency_id", agencyId)
     .eq("updated_at", existing.updated_at)
@@ -181,6 +233,7 @@ export async function updateDisposal(
   }
 
   await syncDisposalAgents(supabase, agencyId, id, fields.lead_agent_id ?? null, formData);
+  await refreshMatchesForListing(id);
 
   revalidatePath("/listings");
   revalidatePath(`/listings/${id}`);
@@ -246,4 +299,115 @@ export async function updateDisposalAssignment(
   revalidatePath("/listings");
   revalidatePath(`/listings/${id}`);
   return { message: "Assignment saved." };
+}
+
+/**
+ * Narrow one-click status mover for the listing status popover — no full edit
+ * form round-trip. Mirrors `updateDealStage` (deals.ts).
+ */
+export async function updateDisposalStatus(formData: FormData): Promise<void> {
+  const id = str(formData, "id");
+  const status = str(formData, "status");
+  if (!id || !CANONICAL_LISTING_STATUSES.includes(status)) return;
+
+  const supabase = await createClient();
+  const agencyId = await currentAgencyId(supabase);
+  if (!agencyId) return;
+
+  await supabase
+    .from("disposals")
+    .update({ status })
+    .eq("id", id)
+    .eq("agency_id", agencyId);
+
+  // Stock coming back to market re-enters matching (and leaving it prunes the
+  // suggestions) — refresh is best-effort and never blocks the status change.
+  await refreshMatchesForListing(id);
+
+  revalidatePath("/listings");
+  revalidatePath(`/listings/${id}`);
+}
+
+const cleanIds = (ids: unknown): string[] =>
+  Array.isArray(ids)
+    ? [...new Set(ids.filter((v): v is string => typeof v === "string" && v.length > 0))].slice(
+        0,
+        500,
+      )
+    : [];
+
+/** Bulk status change from the listings table's floating select bar. */
+export async function bulkUpdateDisposalStatus(
+  ids: string[],
+  status: string,
+): Promise<FormState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "You must be signed in." };
+
+  const agencyId = await currentAgencyId(supabase);
+  if (!agencyId) return { error: "No agency is linked to your account." };
+
+  const targets = cleanIds(ids);
+  if (targets.length === 0) return { error: "No listings selected." };
+  if (!CANONICAL_LISTING_STATUSES.includes(status))
+    return { error: "Unknown listing status." };
+
+  const { error, count } = await supabase
+    .from("disposals")
+    .update({ status }, { count: "exact" })
+    .in("id", targets)
+    .eq("agency_id", agencyId);
+  if (error) return { error: error.message };
+
+  await refreshMatchesForListings(targets);
+
+  revalidatePath("/listings");
+  return {
+    message: `Set ${count ?? targets.length} listing${(count ?? targets.length) === 1 ? "" : "s"} to ${status}.`,
+  };
+}
+
+/** Bulk lead-agent assignment from the listings table's floating select bar. */
+export async function bulkAssignDisposalLead(
+  ids: string[],
+  leadAgentId: string,
+): Promise<FormState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "You must be signed in." };
+
+  const agencyId = await currentAgencyId(supabase);
+  if (!agencyId) return { error: "No agency is linked to your account." };
+
+  const targets = cleanIds(ids);
+  if (targets.length === 0) return { error: "No listings selected." };
+
+  const lead = String(leadAgentId ?? "").trim();
+  if (!lead) return { error: "Pick an agent to assign." };
+
+  // The new lead must be a member of the caller's agency.
+  const { data: member } = await supabase
+    .from("agency_members")
+    .select("user_id")
+    .eq("agency_id", agencyId)
+    .eq("user_id", lead)
+    .maybeSingle();
+  if (!member) return { error: "That agent isn't a member of your agency." };
+
+  const { error, count } = await supabase
+    .from("disposals")
+    .update({ lead_agent_id: lead }, { count: "exact" })
+    .in("id", targets)
+    .eq("agency_id", agencyId);
+  if (error) return { error: error.message };
+
+  revalidatePath("/listings");
+  return {
+    message: `Assigned ${count ?? targets.length} listing${(count ?? targets.length) === 1 ? "" : "s"}.`,
+  };
 }

@@ -24,6 +24,7 @@ import {
 import { companyTypeBadge } from "@/lib/badges";
 import { deriveCounty, HOME_COUNTIES } from "@/lib/locations";
 import { getCompanyTypes, typeLabel } from "@/lib/company-types";
+import { escapeLike } from "@/lib/search";
 import { filterHref, resolveSort } from "@/lib/sort";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
@@ -57,7 +58,7 @@ export default async function CompaniesPage({
     .from("companies")
     .select("id, name, type, sector_tags, website, city, postcode, county")
     .order(column, { ascending });
-  if (q) query = query.ilike("name", `%${q}%`);
+  if (q) query = query.ilike("name", `%${escapeLike(q)}%`);
   const { data } = await query;
   const mapLayers = await getMapLayers(supabase, { include: ["company"] });
   const companyTypes = await getCompanyTypes();

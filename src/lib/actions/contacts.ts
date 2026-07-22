@@ -7,6 +7,7 @@ import { currentAgencyId } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
 import { deriveCounty } from "@/lib/locations";
 import { geocodeForSave } from "@/lib/maps/geocode";
+import { escapeLike } from "@/lib/search";
 import type { FormState } from "@/lib/actions/types";
 
 const str = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim();
@@ -54,6 +55,27 @@ async function validRole(supabase: Supabase, value: string): Promise<string> {
   return data ? value : "other";
 }
 
+/**
+ * Case-insensitive pre-insert duplicate lookup on email. Returns the existing
+ * contact's display name, or null when there is no duplicate (or no email).
+ */
+async function findDuplicateContact(
+  supabase: Supabase,
+  agencyId: string,
+  email: string | null,
+): Promise<string | null> {
+  if (!email) return null;
+  const { data } = await supabase
+    .from("contacts")
+    .select("first_name, last_name")
+    .eq("agency_id", agencyId)
+    .ilike("email", escapeLike(email))
+    .limit(1)
+    .maybeSingle();
+  if (!data) return null;
+  return [data.first_name, data.last_name].filter(Boolean).join(" ") || "Unnamed contact";
+}
+
 /** Replace a contact's additional-agent rows. */
 async function syncContactAgents(
   supabase: Supabase,
@@ -93,6 +115,15 @@ export async function createContact(
   const data = payload(formData);
   if (!data.first_name) return { error: "A first name is required." };
   data.role = await validRole(supabase, data.role);
+
+  if (formData.get("allow_duplicate") == null) {
+    const dup = await findDuplicateContact(supabase, agencyId, data.email);
+    if (dup) {
+      return {
+        error: `A contact with this email already exists: ${dup}. Tick "Create anyway" to proceed.`,
+      };
+    }
+  }
 
   const geo = await geocodeForSave(data);
   const { data: row, error } = await supabase
@@ -173,6 +204,9 @@ export async function quickCreateContact(
 
   const first = str(formData, "first_name");
   if (!first) return { error: "A first name is required." };
+
+  const dup = await findDuplicateContact(supabase, agencyId, nullable(formData, "email"));
+  if (dup) return { error: `A contact with this email already exists: ${dup}.` };
 
   const { data, error } = await supabase
     .from("contacts")

@@ -11,6 +11,7 @@ import {
 } from "@/components/creatable-select";
 import { Alert } from "@/components/ui/alert";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { CollapsibleCard } from "@/components/ui/collapsible-card";
 import { Input } from "@/components/ui/input";
 import { LocationSelect } from "@/components/location-select";
 import { Label } from "@/components/ui/label";
@@ -46,6 +47,13 @@ const FIT_OUTS: Option[] = [
 const LISTING_TYPES: Option[] = [
   ["cdg", "CDG — our instruction"],
   ["intel", "INTEL — market intelligence"],
+];
+const PRICE_QUALIFIERS: Option[] = [
+  ["", "—"],
+  ["fixed", "Fixed"],
+  ["offers_in_region", "Offers in the region of"],
+  ["offers_in_excess", "Offers in excess of"],
+  ["on_application", "On application"],
 ];
 
 type PickOption = { id: string; name: string };
@@ -232,6 +240,8 @@ export function DisposalForm({
         </div>
       </Section>
 
+      <LeaseStatutorySection d={d} />
+
       <Section title="Detail">
         <Field label="Key features" htmlFor="key_features" hint="Comma-separated">
           <Input
@@ -286,6 +296,169 @@ export function DisposalForm({
         </Link>
       </div>
     </form>
+  );
+}
+
+/**
+ * "Lease & statutory" — collapsible section exposing the DB columns that were
+ * previously only reachable via scrapes (lease terms, 1954 Act, VAT, rates,
+ * licensing, marketing extras). Opens automatically when any field has data.
+ */
+function LeaseStatutorySection({ d }: { d?: Tables<"disposals"> }) {
+  const hasData = Boolean(
+    d &&
+      (d.summary ||
+        d.location_description ||
+        d.licensing_notes ||
+        d.vat_applicable ||
+        d.business_rates != null ||
+        d.estate_charge != null ||
+        d.parking_charge != null ||
+        d.lease_term_years != null ||
+        d.lease_expiry ||
+        d.rent_review_basis ||
+        d.next_rent_review != null ||
+        d.inside_1954_act ||
+        d.rent_period ||
+        d.price_qualifier ||
+        d.brochure_url),
+  );
+  return (
+    <CollapsibleCard
+      title="Lease & statutory"
+      description="Lease terms, statutory notes, charges and marketing extras — all optional."
+      defaultOpen={hasData}
+    >
+      <div className="space-y-5">
+        <Field
+          label="Summary"
+          htmlFor="summary"
+          hint="One-line marketing strapline — the teal headline on the PDF."
+        >
+          <Input id="summary" name="summary" defaultValue={d?.summary ?? ""} />
+        </Field>
+        <Field label="Location description" htmlFor="location_description">
+          <Textarea
+            id="location_description"
+            name="location_description"
+            defaultValue={d?.location_description ?? ""}
+          />
+        </Field>
+        <Field label="Licensing notes" htmlFor="licensing_notes">
+          <Textarea
+            id="licensing_notes"
+            name="licensing_notes"
+            defaultValue={d?.licensing_notes ?? ""}
+          />
+        </Field>
+        <div className="grid gap-5 sm:grid-cols-2">
+          <Field label="Lease term (years)" htmlFor="lease_term_years">
+            <Input
+              id="lease_term_years"
+              name="lease_term_years"
+              type="number"
+              inputMode="numeric"
+              defaultValue={d?.lease_term_years ?? ""}
+            />
+          </Field>
+          <Field label="Lease expiry" htmlFor="lease_expiry">
+            <Input
+              id="lease_expiry"
+              name="lease_expiry"
+              type="date"
+              defaultValue={d?.lease_expiry ?? ""}
+            />
+          </Field>
+          <Field label="Rent review basis" htmlFor="rent_review_basis">
+            <Input
+              id="rent_review_basis"
+              name="rent_review_basis"
+              placeholder="e.g. Open market, 5-yearly"
+              defaultValue={d?.rent_review_basis ?? ""}
+            />
+          </Field>
+          <Field label="Next rent review (year)" htmlFor="next_rent_review">
+            <Input
+              id="next_rent_review"
+              name="next_rent_review"
+              type="number"
+              inputMode="numeric"
+              placeholder="e.g. 2029"
+              defaultValue={d?.next_rent_review ?? ""}
+            />
+          </Field>
+          <Field label="Rent period" htmlFor="rent_period">
+            <Input
+              id="rent_period"
+              name="rent_period"
+              placeholder="e.g. per annum exclusive"
+              defaultValue={d?.rent_period ?? ""}
+            />
+          </Field>
+          <Field label="Price qualifier" htmlFor="price_qualifier">
+            <Select
+              id="price_qualifier"
+              name="price_qualifier"
+              defaultValue={d?.price_qualifier ?? ""}
+            >
+              {PRICE_QUALIFIERS.map(([v, l]) => (
+                <option key={v} value={v}>
+                  {l}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Business rates (£ pa)" htmlFor="business_rates">
+            <Input
+              id="business_rates"
+              name="business_rates"
+              type="number"
+              inputMode="numeric"
+              defaultValue={d?.business_rates ?? ""}
+            />
+          </Field>
+          <Field label="Estate charge (£ pa)" htmlFor="estate_charge">
+            <Input
+              id="estate_charge"
+              name="estate_charge"
+              type="number"
+              inputMode="numeric"
+              defaultValue={d?.estate_charge ?? ""}
+            />
+          </Field>
+          <Field label="Parking charge (£ pa)" htmlFor="parking_charge">
+            <Input
+              id="parking_charge"
+              name="parking_charge"
+              type="number"
+              inputMode="numeric"
+              defaultValue={d?.parking_charge ?? ""}
+            />
+          </Field>
+          <Field label="Brochure URL" htmlFor="brochure_url">
+            <Input
+              id="brochure_url"
+              name="brochure_url"
+              type="url"
+              placeholder="https://…"
+              defaultValue={d?.brochure_url ?? ""}
+            />
+          </Field>
+        </div>
+        <div className="flex flex-wrap gap-x-6 gap-y-2">
+          <Checkbox
+            name="vat_applicable"
+            label="VAT applicable"
+            defaultChecked={d?.vat_applicable ?? false}
+          />
+          <Checkbox
+            name="inside_1954_act"
+            label="Inside the 1954 Act (security of tenure)"
+            defaultChecked={d?.inside_1954_act ?? false}
+          />
+        </div>
+      </div>
+    </CollapsibleCard>
   );
 }
 

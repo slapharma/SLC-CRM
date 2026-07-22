@@ -1,4 +1,5 @@
 import * as React from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ExternalLink, FileDown, Pencil } from "lucide-react";
@@ -11,7 +12,6 @@ import {
   companyTypeBadge,
   contactRoleBadge,
   dealStageBadge,
-  listingStatusBadge,
   listingTypeBadge,
   matchScoreBadge,
 } from "@/lib/badges";
@@ -26,6 +26,8 @@ import { SendHistoryCard } from "@/components/send-history-card";
 import { getSendHistory } from "@/lib/send-history";
 import { DisposalDocuments, type DisposalDoc } from "@/components/disposal-documents";
 import { DisposalAreas } from "@/components/disposal-areas";
+import { DisposalImages } from "@/components/disposal-images";
+import { ListingStatusSelect } from "@/components/listing-status-select";
 import { ListingShareActions } from "@/components/listing-share-actions";
 import { LocationMap } from "@/components/location-map";
 import { SendToTeam } from "@/components/send-to-team";
@@ -53,6 +55,22 @@ const FIT_OUT_LABELS: Record<string, string> = {
 type ImageItem = { url: string; alt?: string | null };
 type SectionItem = { title: string; content: string };
 
+/** Per-record tab title (was the generic marketing `<title>` before). */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("disposals")
+    .select("title")
+    .eq("id", id)
+    .maybeSingle();
+  return { title: data?.title ?? "Listing" };
+}
+
 export default async function ListingDetailPage({
   params,
   searchParams,
@@ -78,7 +96,6 @@ export default async function ListingDetailPage({
     .maybeSingle();
   if (!d) notFound();
 
-  const s = listingStatusBadge(d.status);
   const lt = listingTypeBadge(d.listing_type);
   const images = (Array.isArray(d.images) ? d.images : []) as ImageItem[];
   const sections = (Array.isArray(d.sections) ? d.sections : []) as SectionItem[];
@@ -98,11 +115,14 @@ export default async function ListingDetailPage({
     { data: leadAgent },
     companyTypes,
   ] = await Promise.all([
+    // Active briefs only — a satisfied/withdrawn requirement is not an
+    // opportunity, and offering a "Create deal" button against one is wrong.
     supabase
       .from("requirements")
       .select(
         "id, title, target_towns, target_regions, target_counties, target_postcode_districts, min_sqft, max_sqft, min_covers, max_covers, use_classes, property_types, tenure_prefs, max_rent, max_premium, max_guide_price, fit_out_prefs",
-      ),
+      )
+      .eq("status", "active"),
     // Deals already created from this listing ("under offer to X").
     supabase
       .from("deals")
@@ -189,7 +209,7 @@ export default async function ListingDetailPage({
             <h1 className="text-2xl font-semibold tracking-tight">
               {d.title ?? "Untitled listing"}
             </h1>
-            <Badge tone={s.tone}>{s.label}</Badge>
+            <ListingStatusSelect id={d.id} status={d.status} />
             <Badge tone={lt.tone}>{lt.label}</Badge>
           </div>
           {location ? (
@@ -340,6 +360,15 @@ export default async function ListingDetailPage({
         </CardHeader>
         <CardContent>
           <DisposalAreas disposalId={d.id} areas={areas} />
+        </CardContent>
+      </Card>
+
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle>Images</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <DisposalImages disposalId={d.id} images={images} />
         </CardContent>
       </Card>
 

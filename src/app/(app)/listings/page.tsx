@@ -1,38 +1,30 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Pencil, Plus, Store } from "lucide-react";
+import { Plus, Store } from "lucide-react";
 
 import { ConcentrationMap } from "@/components/concentration-map-lazy";
 import { EmptyState } from "@/components/empty-state";
 import { FilterBar, FilterSelect } from "@/components/filter-bar";
 import { FilterTiles } from "@/components/filter-tiles";
 import { Heatmap } from "@/components/heatmap";
+import { ListingsTable, type ListingTableRow } from "@/components/listings-table";
 import { PageHeader } from "@/components/page-header";
 import { SiloTabs } from "@/components/silo-tabs";
-import { SortHeader } from "@/components/sort-header";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { getMapLayers } from "@/lib/supabase/map-points";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { listingStatusBadge, listingTypeBadge } from "@/lib/badges";
-import { intelSourceLabel } from "@/lib/intel/sources";
+import { intelSourceById } from "@/lib/intel/sources";
 import { deriveCounty, HOME_COUNTIES } from "@/lib/locations";
+import { ilikeTerm } from "@/lib/search";
 import { filterHref, resolveSort } from "@/lib/sort";
+import { currentAgencyId, getAgencyMembers } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Listings" };
 
-const fmtMoney = (v: number | null) =>
-  v != null ? `£${Number(v).toLocaleString("en-GB")}` : "—";
+// Filter value for the "Other" catch-all tile (statuses outside the canonical five).
+const OTHER_STATUS = "__other__";
 
 export default async function ListingsPage({
   searchParams,
@@ -72,17 +64,29 @@ export default async function ListingsPage({
       "id, title, city, postcode, county, status, use_class, disposal_type, listing_type, source, size_sqft, rent_pa, premium",
     )
     .order(column, { ascending });
-  if (q) query = query.or(`title.ilike.%${q}%,city.ilike.%${q}%`);
+  if (q) {
+    // Sanitised: commas/parens are structural in `.or()` and would break the query.
+    const term = ilikeTerm(q);
+    if (term) query = query.or(`title.ilike.%${term}%,city.ilike.%${term}%`);
+  }
   if (disposal_type) query = query.eq("disposal_type", disposal_type);
-  const { data } = await query;
-  const mapLayers = await getMapLayers(supabase, { include: ["listing"] });
+  const [{ data }, mapLayers, agencyId] = await Promise.all([
+    query,
+    getMapLayers(supabase, { include: ["listing"] }),
+    currentAgencyId(supabase),
+  ]);
+  // Agency roster for the bulk "Assign lead agent…" action.
+  const agents = agencyId ? await getAgencyMembers(supabase, agencyId) : [];
   // `rows` is the heatmap base (q + type filtered). The town/status facets that
   // the heatmap controls are applied to the table in memory, so the grid keeps
   // showing the full distribution for re-slicing.
   // County is stored on new saves and derived from postcode/town for legacy rows.
+  // Source label: only registered intel partners get their own label — every
+  // other source (manual entries, our own CDG scrape) is CDG Leisure's book.
   const rows = (data ?? []).map((r) => ({
     ...r,
     county: r.county ?? deriveCounty({ postcode: r.postcode, city: r.city }),
+    source_label: intelSourceById.get(r.source)?.label ?? "CDG Leisure",
   }));
   const matchesCounty = (rowCounty: string | null) =>
     !county ||
@@ -98,12 +102,28 @@ export default async function ListingsPage({
     intel: rows.filter((r) => r.listing_type === "intel").length,
   };
 
+  const CANONICAL_STATUSES = ["Available", "Under Offer", "Let", "Sold", "Withdrawn"];
+  const matchesStatus = (rowStatus: string | null) =>
+    !status ||
+    (status === OTHER_STATUS
+      ? !CANONICAL_STATUSES.includes(rowStatus ?? "")
+      : (rowStatus ?? "—") === status);
+
   const listRows = siloRows.filter(
     (r) =>
       (!town || (r.city ?? "—") === town) &&
-      (!status || (r.status ?? "—") === status) &&
+      matchesStatus(r.status) &&
       matchesCounty(r.county),
   );
+  // `sort=source` sorts by the displayed label (CDG Leisure / partner name),
+  // not the raw slug — the DB order on `source` is meaningless to users.
+  if (column === "source") {
+    listRows.sort((a, b) =>
+      ascending
+        ? a.source_label.localeCompare(b.source_label)
+        : b.source_label.localeCompare(a.source_label),
+    );
+  }
 
   const params = { q, sort, dir, status, disposal_type, town, county, silo };
 
@@ -126,12 +146,20 @@ export default async function ListingsPage({
     { value: "Sold", label: "Sold" },
     { value: "Withdrawn", label: "Withdrawn" },
   ];
+  // Catch-all for scraped statuses outside the canonical five ("Sold STC",
+  // "Let Agreed", blank, …) so they're countable and selectable, not invisible.
+  const otherCount = siloRows.filter(
+    (r) => !CANONICAL_STATUSES.includes(r.status ?? ""),
+  ).length;
   const statusTiles = [
     { value: "", label: "All", count: siloRows.length },
     ...STATUS_TILES.map((t) => ({
       ...t,
       count: siloRows.filter((r) => (r.status ?? "") === t.value).length,
     })),
+    ...(otherCount > 0
+      ? [{ value: OTHER_STATUS, label: "Other", count: otherCount }]
+      : []),
   ];
 
   // Heatmap: town × status — click a cell/label to filter the table below.
@@ -203,6 +231,7 @@ export default async function ListingsPage({
             { value: "Let", label: "Let" },
             { value: "Sold", label: "Sold" },
             { value: "Withdrawn", label: "Withdrawn" },
+            { value: OTHER_STATUS, label: "Other" },
           ]}
         />
         <FilterSelect
@@ -279,103 +308,24 @@ export default async function ListingsPage({
           }
         />
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <SortHeader column="title" label="Title" params={params} />
-              <SortHeader
-                column="city"
-                label="Town"
-                params={params}
-                className="hidden md:table-cell"
-              />
-              <SortHeader
-                column="use_class"
-                label="Use class"
-                params={params}
-                className="hidden md:table-cell"
-              />
-              <SortHeader
-                column="source"
-                label="Source"
-                params={params}
-                className="hidden lg:table-cell"
-              />
-              <SortHeader
-                column="size_sqft"
-                label="Size (sq ft)"
-                params={params}
-                className="hidden text-right md:table-cell"
-              />
-              <SortHeader
-                column="rent_pa"
-                label="Rent / Premium"
-                params={params}
-                className="hidden text-right md:table-cell"
-              />
-              <SortHeader column="status" label="Status" params={params} />
-              <TableHead className="w-10">
-                <span className="sr-only">Edit</span>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {listRows.map((d) => {
-              const s = listingStatusBadge(d.status);
-              const t = listingTypeBadge(d.listing_type);
-              return (
-                <TableRow key={d.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Link
-                        href={`/listings/${d.id}`}
-                        className="font-medium text-foreground hover:text-info hover:underline"
-                      >
-                        {d.title ?? "Untitled listing"}
-                      </Link>
-                      <Badge tone={t.tone}>{t.label}</Badge>
-                    </div>
-                  </TableCell>
-                  <TableCell className="hidden text-muted-foreground md:table-cell">
-                    {d.city ?? "—"}
-                  </TableCell>
-                  <TableCell className="hidden text-muted-foreground md:table-cell">
-                    {d.use_class ?? "—"}
-                  </TableCell>
-                  <TableCell className="hidden text-muted-foreground lg:table-cell">
-                    {d.listing_type === "intel"
-                      ? (intelSourceLabel(d.source) ?? "—")
-                      : "CDG Leisure"}
-                  </TableCell>
-                  <TableCell className="hidden text-right font-mono tabular-nums text-muted-foreground md:table-cell">
-                    {d.size_sqft != null
-                      ? Number(d.size_sqft).toLocaleString("en-GB")
-                      : "—"}
-                  </TableCell>
-                  <TableCell className="hidden text-right font-mono tabular-nums text-muted-foreground md:table-cell">
-                    {d.rent_pa != null
-                      ? `${fmtMoney(d.rent_pa)} pa`
-                      : d.premium != null
-                        ? fmtMoney(d.premium)
-                        : "—"}
-                  </TableCell>
-                  <TableCell>
-                    <Badge tone={s.tone}>{s.label}</Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Link
-                      href={`/listings/${d.id}/edit`}
-                      aria-label={`Edit ${d.title ?? "listing"}`}
-                      className="inline-flex text-muted-foreground hover:text-foreground"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Link>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+        <ListingsTable
+          rows={listRows.map(
+            (d): ListingTableRow => ({
+              id: d.id,
+              title: d.title,
+              city: d.city,
+              use_class: d.use_class,
+              source_label: d.source_label,
+              size_sqft: d.size_sqft,
+              rent_pa: d.rent_pa,
+              premium: d.premium,
+              status: d.status,
+              listing_type: d.listing_type,
+            }),
+          )}
+          params={params}
+          agents={agents}
+        />
       )}
     </div>
   );

@@ -6,6 +6,7 @@ import {
   districtMatches,
   expandRegions,
   extractDistrict,
+  getCounty,
   getTown,
   regionOfCounty,
   type LatLng,
@@ -68,6 +69,13 @@ export const DEFAULT_LOCATION_FLEX = 50;
 const MAX_RADIUS_MILES = 25;
 /** Proximity credit is capped below 1 so a nearby miss never beats a direct hit. */
 const PROXIMITY_CAP = 0.8;
+/**
+ * Extra search radius allowed around a COUNTY centroid. A county centroid can
+ * sit 20–30 miles from its own border, so a listing "just over the line" from a
+ * targeted county would otherwise never come within the town-sized radius. The
+ * bonus only applies when flex > 0 (flex 0 still means exact matches only).
+ */
+const COUNTY_RADIUS_BONUS_MILES = 15;
 
 const lc = (s: string) => s.toLowerCase();
 const gbp = (n: number) => `£${Number(n).toLocaleString("en-GB")}`;
@@ -107,8 +115,26 @@ function matchesUseClass(reqClasses: readonly string[], use: string | null): boo
 
 const DISTRICT_RE = /^[A-Za-z]{1,2}\d[A-Za-z\d]?$/;
 
+/**
+ * Collapse punctuation to single spaces and pad with a space either side, so a
+ * plain `includes()` on the result is a whole-word test: " ash " is not found
+ * in " ashford road ", but " st albans " is found in " 12 st. albans way ".
+ * Multi-word and hyphenated targets survive ("stoke-on-trent" → "stoke on
+ * trent"); the caller lowercases both sides first.
+ */
+function wordPad(s: string): string {
+  return ` ${s.replace(/[^a-z0-9]+/g, " ").trim()} `;
+}
+
+/** Whole-word containment — see {@link wordPad}. Empty targets never match. */
+function containsWord(haystack: string, needle: string): boolean {
+  const n = wordPad(needle);
+  if (n.trim() === "") return false;
+  return wordPad(haystack).includes(n);
+}
+
 type ResolvedTargets = {
-  /** Lowercased free-text targets for the legacy substring containment pass. */
+  /** Lowercased free-text targets for the whole-word containment pass. */
   text: string[];
   /** Lowercased county targets (incl. Home Counties expansion). */
   counties: string[];
@@ -116,8 +142,11 @@ type ResolvedTargets = {
   regions: string[];
   /** Uppercased district codes (from the district column + district-shaped towns). */
   districts: string[];
-  /** Named coordinates (towns + district centroids) for the proximity pass. */
-  points: { name: string; at: LatLng }[];
+  /**
+   * Named coordinates (towns + district centroids + county centroids) for the
+   * proximity pass. `bonus` widens the search radius around coarse points.
+   */
+  points: { name: string; at: LatLng; bonus: number }[];
   any: boolean;
 };
 
@@ -139,15 +168,30 @@ function resolveTargets(req: Requirement): ResolvedTargets {
     ...towns.filter((t) => DISTRICT_RE.test(t.trim())),
   ].map((t) => t.trim().toUpperCase());
 
-  const points: { name: string; at: LatLng }[] = [];
+  const points: { name: string; at: LatLng; bonus: number }[] = [];
   for (const t of towns) {
     if (DISTRICT_RE.test(t.trim())) continue;
     const town = getTown(t);
-    if (town) points.push({ name: town.name, at: { lat: town.lat, lng: town.lng } });
+    if (town)
+      points.push({ name: town.name, at: { lat: town.lat, lng: town.lng }, bonus: 0 });
   }
   for (const code of districts) {
     const at = districtCentroid(code);
-    if (at) points.push({ name: code, at });
+    if (at) points.push({ name: code, at, bonus: 0 });
+  }
+  // County targets get proximity credit too (#18): a listing a couple of miles
+  // the wrong side of a county line used to score a flat zero while an
+  // equivalent town brief scored ~0.7. Measured from the county centroid, so it
+  // carries a wider radius (see COUNTY_RADIUS_BONUS_MILES).
+  for (const c of counties) {
+    const county = getCounty(c);
+    if (county?.lat != null && county.lng != null) {
+      points.push({
+        name: county.name,
+        at: { lat: county.lat, lng: county.lng },
+        bonus: COUNTY_RADIUS_BONUS_MILES,
+      });
+    }
   }
 
   const resolved: ResolvedTargets = {
@@ -178,7 +222,7 @@ function disposalCoords(d: Disposal): LatLng | null {
 /**
  * Location factor 0–1: 1 for a direct hit (targeted town/county/region text or
  * postcode district); otherwise, when flex > 0, partial credit fading linearly
- * with distance from the nearest targeted town/district.
+ * with distance from the nearest targeted town, district or county centroid.
  */
 function locationFactor(
   t: ResolvedTargets,
@@ -191,7 +235,10 @@ function locationFactor(
     .join(" ");
   const fallback = `Location: ${d.city ?? "—"}`;
 
-  if (t.text.some((target) => place.includes(target))) return { factor: 1, label: fallback };
+  // Whole-word containment, not raw substring: target "Ash" must not score a
+  // direct hit on "Ashford" or "Ashley Road" (#18).
+  if (t.text.some((target) => containsWord(place, target)))
+    return { factor: 1, label: fallback };
 
   const disposalDistrict = extractDistrict(d.postcode);
   if (
@@ -214,15 +261,20 @@ function locationFactor(
   if (radius > 0 && t.points.length > 0) {
     const at = disposalCoords(d);
     if (at) {
-      let best: { name: string; dist: number } | null = null;
+      // Best = strongest credit, not merely nearest: a coarse county centroid
+      // carries a wider radius, so 20 mi from a county can beat 20 mi from a
+      // town (which earns nothing at all).
+      let best: { name: string; dist: number; factor: number } | null = null;
       for (const p of t.points) {
+        const reach = radius + p.bonus;
         const dist = distanceMiles(p.at, at);
-        if (!best || dist < best.dist) best = { name: p.name, dist };
+        if (dist > reach) continue;
+        const factor = PROXIMITY_CAP * (1 - dist / reach);
+        if (!best || factor > best.factor) best = { name: p.name, dist, factor };
       }
-      if (best && best.dist <= radius) {
-        const factor = PROXIMITY_CAP * (1 - best.dist / radius);
+      if (best) {
         return {
-          factor,
+          factor: best.factor,
           label: `Location: ${best.dist < 0.95 ? "under a mile" : `~${Math.round(best.dist)} mi`} from ${best.name}`,
         };
       }

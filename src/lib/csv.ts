@@ -79,24 +79,49 @@ export const IMPORT_TEMPLATES: Record<
 > = {
   companies: {
     label: "Companies",
-    headers: ["name", "type", "sector_tags", "website", "phone", "notes"],
+    // county is derived from postcode/town when left blank. Rows whose name
+    // already exists (case-insensitively) are skipped on import.
+    headers: [
+      "name",
+      "type",
+      "sector_tags",
+      "website",
+      "phone",
+      "address_line",
+      "city",
+      "postcode",
+      "county",
+      "notes",
+    ],
     example: [
       "Riverside Taverns Ltd",
       "operator",
       "pub;bar",
       "https://example.co.uk",
       "+44 20 7123 4567",
+      "12 Riverside Walk",
+      "London",
+      "SE1 9PP",
+      "",
       "Key operator",
     ],
   },
   contacts: {
     label: "Contacts",
+    // company_name links (or creates) the contact's company; county is derived
+    // from postcode/town when left blank. Rows whose email already exists
+    // (case-insensitively) are skipped on import.
     headers: [
       "first_name",
       "last_name",
       "email",
       "phone",
       "role",
+      "company_name",
+      "address_line",
+      "city",
+      "postcode",
+      "county",
       "marketing_opt_in",
       "notes",
     ],
@@ -106,6 +131,11 @@ export const IMPORT_TEMPLATES: Record<
       "james@example.co.uk",
       "+44 7700 900000",
       "acquisitions",
+      "Riverside Taverns Ltd",
+      "12 Riverside Walk",
+      "London",
+      "SE1 9PP",
+      "",
       "true",
       "Met at expo",
     ],

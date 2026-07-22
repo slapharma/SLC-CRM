@@ -1,8 +1,10 @@
 import * as React from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Pencil } from "lucide-react";
 
+import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -42,15 +44,31 @@ function band(min: number | null, max: number | null, unit = "") {
 }
 const money = (v: number | null) => (v != null ? `£${v.toLocaleString("en-GB")}` : "—");
 
+/** Per-record tab title (was the generic marketing `<title>` before). */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("requirements")
+    .select("title")
+    .eq("id", id)
+    .maybeSingle();
+  return { title: data?.title ?? "Requirement" };
+}
+
 export default async function RequirementDetailPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ flex?: string }>;
+  searchParams: Promise<{ flex?: string; error?: string }>;
 }) {
   const { id } = await params;
-  const { flex } = await searchParams;
+  const { flex, error: actionError } = await searchParams;
   const flexParsed = Number(flex ?? DEFAULT_LOCATION_FLEX);
   const locationFlex = Math.min(
     100,
@@ -106,7 +124,14 @@ export default async function RequirementDetailPage({
     name: nameOf.get(row.user_id) ?? "Unknown agent",
   }));
 
-  const { data: disposals } = await supabase.from("disposals").select("*");
+  // Only the columns the scorer + the match rows below actually read — a
+  // `select("*")` here dragged every scraped description and image blob across
+  // the wire for every listing in the agency.
+  const { data: disposals } = await supabase
+    .from("disposals")
+    .select(
+      "id, title, status, listing_type, city, area, postcode, address_line, county, lat, lng, size_sqft, covers_internal, use_class, property_type, disposal_type, rent_pa, premium, guide_price, fit_out_state",
+    );
   const matches = (disposals ?? [])
     .filter((d) => isListingMatchable(d.status))
     .map((d) => ({ d, ...scoreMatch(r, d, { locationFlex }) }))
@@ -147,6 +172,11 @@ export default async function RequirementDetailPage({
 
   return (
     <div className="mx-auto max-w-4xl">
+      {actionError ? (
+        <Alert tone="error" className="mb-4">
+          Couldn&apos;t delete this requirement: {actionError}
+        </Alert>
+      ) : null}
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-2.5">
@@ -211,7 +241,23 @@ export default async function RequirementDetailPage({
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
             <Row label="Towns">{r.target_towns.join(", ") || "—"}</Row>
+            <Row label="Counties">{r.target_counties.join(", ") || "—"}</Row>
             <Row label="Regions">{r.target_regions.join(", ") || "—"}</Row>
+            {/* Districts are a first-class target (a W1-only brief has nothing
+                else), so they must not be invisible on the record. */}
+            <Row label="Districts">
+              {r.target_postcode_districts.length > 0 ? (
+                <span className="flex flex-wrap gap-1.5">
+                  {r.target_postcode_districts.map((d) => (
+                    <Badge key={d} tone="sky">
+                      {d}
+                    </Badge>
+                  ))}
+                </span>
+              ) : (
+                "—"
+              )}
+            </Row>
           </CardContent>
         </Card>
 

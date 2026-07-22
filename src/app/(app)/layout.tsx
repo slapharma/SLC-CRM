@@ -21,6 +21,7 @@ export default async function AppLayout({
   let user: { email?: string } | null = null;
   let isAdmin = false;
   let notifications: Note[] = [];
+  let unreadMessages = 0;
 
   // Real auth boundary lives here (the proxy only does optimistic session refresh).
   // Before Supabase is provisioned we render a demo shell instead of locking people out.
@@ -35,27 +36,34 @@ export default async function AppLayout({
     // Scope to the caller's OWN membership — agency_members RLS can surface
     // co-members, so an unscoped role=admin check would leak the Admin nav to
     // any non-admin whose agency has an admin.
-    const [{ data: adminRow }, { data: noteRows }] = await Promise.all([
-      supabase
-        .from("agency_members")
-        .select("agency_id")
-        .eq("user_id", authedUser.id)
-        .eq("role", "admin")
-        .limit(1)
-        .maybeSingle(),
-      supabase
-        .from("notifications")
-        .select("id, title, body, link, read_at, created_at")
-        .order("created_at", { ascending: false })
-        .limit(20),
-    ]);
+    const [{ data: adminRow }, { data: noteRows }, { count: unreadCount }] =
+      await Promise.all([
+        supabase
+          .from("agency_members")
+          .select("agency_id")
+          .eq("user_id", authedUser.id)
+          .eq("role", "admin")
+          .limit(1)
+          .maybeSingle(),
+        supabase
+          .from("notifications")
+          .select("id, title, body, link, read_at, created_at")
+          .order("created_at", { ascending: false })
+          .limit(20),
+        supabase
+          .from("messages")
+          .select("id", { count: "exact", head: true })
+          .eq("recipient_id", authedUser.id)
+          .is("read_at", null),
+      ]);
     isAdmin = Boolean(adminRow);
     notifications = noteRows ?? [];
+    unreadMessages = unreadCount ?? 0;
   }
 
   return (
     <div className="flex min-h-screen">
-      <AppSidebar isAdmin={isAdmin} />
+      <AppSidebar isAdmin={isAdmin} unreadMessages={unreadMessages} />
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar
           user={user}

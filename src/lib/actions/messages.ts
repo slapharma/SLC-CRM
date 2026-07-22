@@ -9,9 +9,18 @@ import type { FormState } from "@/lib/actions/types";
 const str = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim();
 
 /**
+ * Allowlist for message/notification links: app-relative paths into known
+ * sections only. Anything else (external URLs, protocol-relative //host,
+ * javascript: …) is dropped so a member can't send teammates a button that
+ * leaves the app.
+ */
+const APP_LINK_RE =
+  /^\/(deals|listings|requirements|companies|contacts|messages|kyc|matches|tasks)(\/|$)/;
+
+/**
  * "Send to team" — deliver an internal message to one or more agency members and
  * ping each recipient's notification bell. `link` points back at the record the
- * message is about.
+ * message is about. Optionally threads under `parent_id` (a reply).
  */
 export async function sendMessage(
   _prev: FormState,
@@ -34,7 +43,21 @@ export async function sendMessage(
   const body = str(formData, "body");
   if (!body) return { error: "Write a short message." };
   const subject = str(formData, "subject") || null;
-  const link = str(formData, "link") || null;
+  const rawLink = str(formData, "link");
+  const link = rawLink && APP_LINK_RE.test(rawLink) ? rawLink : null;
+
+  // Optional threading: only accept a parent the sender can actually see
+  // (RLS scopes messages to sender/recipient, so a stray id resolves to null).
+  const rawParentId = str(formData, "parent_id");
+  let parentId: string | null = null;
+  if (rawParentId) {
+    const { data: parent } = await supabase
+      .from("messages")
+      .select("id")
+      .eq("id", rawParentId)
+      .maybeSingle();
+    parentId = parent?.id ?? null;
+  }
 
   const { data: me } = await supabase
     .from("profiles")
@@ -51,12 +74,13 @@ export async function sendMessage(
       subject,
       body,
       link,
+      parent_id: parentId,
     })),
   );
   if (error) return { error: error.message };
 
   // Ping the existing notification bell for each recipient.
-  await supabase.from("notifications").insert(
+  const { error: noteError } = await supabase.from("notifications").insert(
     recipients.map((recipient_id) => ({
       agency_id: agencyId,
       user_id: recipient_id,
@@ -68,7 +92,9 @@ export async function sendMessage(
 
   revalidatePath("/messages");
   return {
-    message: `Sent to ${recipients.length} teammate${recipients.length === 1 ? "" : "s"}.`,
+    message:
+      `Sent to ${recipients.length} teammate${recipients.length === 1 ? "" : "s"}.` +
+      (noteError ? ` (Bell notification failed: ${noteError.message})` : ""),
   };
 }
 

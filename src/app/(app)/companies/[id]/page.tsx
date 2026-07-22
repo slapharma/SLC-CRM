@@ -1,4 +1,5 @@
 import * as React from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Pencil, Plus } from "lucide-react";
@@ -31,6 +32,21 @@ import { getCompanyTypes, typeLabel } from "@/lib/company-types";
 import { getAgencyMembers } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("companies")
+    .select("name")
+    .eq("id", id)
+    .maybeSingle();
+  return { title: data?.name || "Company" };
+}
 
 export default async function CompanyDetailPage({
   params,

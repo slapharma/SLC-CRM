@@ -10,6 +10,23 @@ import type { FormState } from "@/lib/actions/types";
 const str = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim();
 
 /**
+ * Email addresses for the agency's contacts (RLS-scoped), so the Send Deal
+ * wizard can hide contacts it could never email — the "that contact has no
+ * email address" failure now surfaces before the send, not after.
+ */
+export async function listContactEmails(): Promise<
+  { id: string; email: string | null }[]
+> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+  const { data } = await supabase.from("contacts").select("id, email").limit(5000);
+  return data ?? [];
+}
+
+/**
  * "Send Deal → External" — email a matched opportunity (or a batch of
  * requirement briefs) to a company contact, attaching the listing particulars
  * PDF when a listing is involved (branded for CDG stock, unbranded for intel).
@@ -41,6 +58,9 @@ export async function sendDealExternal(
   if (!contactId) return { error: "Pick a contact to send to." };
   const companyId = str(formData, "company_id") || null;
   const listingId = str(formData, "listing_id") || null;
+  // Optional — set when the wizard is opened from a deal, so the deal can show
+  // its own outbound history.
+  const dealId = str(formData, "deal_id") || null;
   const requirementIds = Array.from(
     new Set(formData.getAll("requirement_ids").map((v) => String(v)).filter(Boolean)),
   );
@@ -106,23 +126,34 @@ export async function sendDealExternal(
     .eq("id", user.id)
     .maybeSingle();
 
+  // A network/SDK fault throws rather than returning `error` — catch it so the
+  // agent sees why the send failed instead of a crashed action.
   const resend = new Resend(apiKey);
-  const { data: sent, error: sendError } = await resend.emails.send({
-    from,
-    to: contact.email,
-    replyTo: me?.email ?? undefined,
-    subject,
-    text,
-    attachments: attachment
-      ? [{ filename: attachment.filename, content: attachment.content }]
-      : undefined,
-  });
-  if (sendError) return { error: `Email failed: ${sendError.message}` };
+  let sent: { id: string } | null = null;
+  try {
+    const { data, error: sendError } = await resend.emails.send({
+      from,
+      to: contact.email,
+      replyTo: me?.email ?? undefined,
+      subject,
+      text,
+      attachments: attachment
+        ? [{ filename: attachment.filename, content: attachment.content }]
+        : undefined,
+    });
+    if (sendError) return { error: `Email failed: ${sendError.message}` };
+    sent = data;
+  } catch (e) {
+    return {
+      error: `Email failed: ${e instanceof Error ? e.message : "unknown error"}`,
+    };
+  }
 
   // Log the send — one row per requirement when bulk, else a single row.
   const baseRow = {
     agency_id: agencyId,
     listing_id: listingId,
+    deal_id: dealId,
     company_id: companyId,
     contact_id: contactId,
     recipient_email: contact.email,

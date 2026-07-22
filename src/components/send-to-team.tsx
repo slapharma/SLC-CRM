@@ -16,6 +16,8 @@ import type { AgentOption } from "@/lib/supabase/agency";
 /**
  * "Send to team" — opens a modal to message one or more teammates about the
  * current record. The message links back here and pings each recipient's bell.
+ * `link` must be an app-relative path into a known section — `sendMessage`
+ * drops anything that fails its allowlist (see APP_LINK_RE in actions/messages).
  */
 export function SendToTeam({
   link,

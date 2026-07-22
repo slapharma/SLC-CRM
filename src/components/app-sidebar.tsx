@@ -3,9 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  BarChart3,
   Building2,
   Handshake,
+  Inbox,
   LayoutDashboard,
+  ListTodo,
   LogOut,
   Map as MapIcon,
   MessageSquare,
@@ -36,6 +39,8 @@ export const NAV: NavGroup[] = [
     items: [
       { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
       { href: "/messages", label: "My Messages", icon: MessageSquare },
+      { href: "/tasks", label: "Tasks", icon: ListTodo },
+      { href: "/intake", label: "Intake", icon: Inbox },
     ],
   },
   {
@@ -54,6 +59,10 @@ export const NAV: NavGroup[] = [
       { href: "/requirements", label: "Requirements", icon: Target },
       { href: "/matches", label: "MatchMaker", icon: Sparkles },
       { href: "/deals", label: "Pipeline", icon: Handshake },
+      // Admin + manager only, but the sidebar is only told about `isAdmin` —
+      // rendering it unconditionally keeps it reachable for managers, and
+      // /reports gates itself (non-elevated users get a friendly notice).
+      { href: "/reports", label: "Reports", icon: BarChart3 },
     ],
   },
   {
@@ -70,7 +79,14 @@ export function visibleItems(items: NavItem[], isAdmin: boolean): NavItem[] {
   return items.filter((i) => !i.adminOnly || isAdmin);
 }
 
-export function AppSidebar({ isAdmin = false }: { isAdmin?: boolean }) {
+export function AppSidebar({
+  isAdmin = false,
+  unreadMessages = 0,
+}: {
+  isAdmin?: boolean;
+  /** Unread inbox count — rendered as a pill on the "My Messages" item. */
+  unreadMessages?: number;
+}) {
   const pathname = usePathname();
 
   return (
@@ -122,7 +138,12 @@ export function AppSidebar({ isAdmin = false }: { isAdmin?: boolean }) {
                         )}
                       >
                         <Icon className="h-[18px] w-[18px] shrink-0" />
-                        {item.label}
+                        <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                        {item.href === "/messages" && unreadMessages > 0 ? (
+                          <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-medium text-primary-foreground">
+                            {unreadMessages > 99 ? "99+" : unreadMessages}
+                          </span>
+                        ) : null}
                       </Link>
                     </li>
                   );

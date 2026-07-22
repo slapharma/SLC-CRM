@@ -4,6 +4,7 @@ import { ContactForm } from "@/components/contact-form";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { createContact } from "@/lib/actions/contacts";
+import { getCompanyTypes } from "@/lib/company-types";
 import { getContactRoles } from "@/lib/contact-roles";
 import { currentAgencyId, getAgencyMembers } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
@@ -18,10 +19,11 @@ export default async function NewContactPage({
   const { company } = await searchParams;
   const supabase = await createClient();
   const agencyId = await currentAgencyId(supabase);
-  const [{ data: companies }, agents, roles] = await Promise.all([
+  const [{ data: companies }, agents, roles, companyTypes] = await Promise.all([
     supabase.from("companies").select("id, name").order("name"),
     agencyId ? getAgencyMembers(supabase, agencyId) : Promise.resolve([]),
     getContactRoles(),
+    getCompanyTypes(),
   ]);
 
   return (
@@ -35,6 +37,7 @@ export default async function NewContactPage({
             defaultCompanyId={company}
             agents={agents}
             roles={roles}
+            companyTypes={companyTypes}
           />
         </CardContent>
       </Card>

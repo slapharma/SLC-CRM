@@ -1,6 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CheckCircle2, Handshake, Layers, PoundSterling } from "lucide-react";
+import {
+  CalendarClock,
+  CheckCircle2,
+  Handshake,
+  Layers,
+  PoundSterling,
+} from "lucide-react";
 
 import { EditableDealTitle } from "@/components/editable-deal-title";
 import { EmptyState } from "@/components/empty-state";
@@ -12,6 +18,7 @@ import { DealStageSelect } from "@/components/deal-stage-select";
 import { NewDealButton } from "@/components/new-deal-button";
 import { dealStageBadge } from "@/lib/badges";
 import { createClient } from "@/lib/supabase/server";
+import { daysSince, isPast } from "@/lib/time";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Pipeline" };
@@ -26,6 +33,9 @@ const STAGE_ORDER = [
   "fell_through",
 ] as const;
 
+const CLOSED = new Set<string>(["completed", "fell_through"]);
+const STUCK_AFTER_DAYS = 14;
+
 const money = (v: number | null) =>
   v != null ? `£${v.toLocaleString("en-GB")}` : null;
 
@@ -35,7 +45,10 @@ type DealRow = {
   stage: string;
   value: number | null;
   created_at: string;
+  updated_at: string;
   created_by: string | null;
+  lead_agent_id: string | null;
+  expected_close: string | null;
   listing_id: string | null;
   requirement_id: string | null;
   company_id: string | null;
@@ -54,15 +67,31 @@ export default async function DealsPage({
   const { data } = await supabase
     .from("deals")
     .select(
-      "id, title, stage, value, created_at, created_by, listing_id, requirement_id, company_id, listing:disposals(title, city), requirement:requirements(title), company:companies(name)",
+      "id, title, stage, value, created_at, updated_at, created_by, lead_agent_id, expected_close, listing_id, requirement_id, company_id, listing:disposals(title, city), requirement:requirements(title), company:companies(name)",
     )
     .order("updated_at", { ascending: false });
 
   const allDeals = (data ?? []) as unknown as DealRow[];
 
+  // Additional-agent collaborators (deal_agents) — the agent filter matches a
+  // deal when the agent created it, leads it, OR collaborates on it.
+  const { data: dealAgentRows } = await supabase
+    .from("deal_agents")
+    .select("deal_id, user_id");
+  const collaboratorsByDeal = new Map<string, Set<string>>();
+  for (const r of dealAgentRows ?? []) {
+    const set = collaboratorsByDeal.get(r.deal_id) ?? new Set<string>();
+    set.add(r.user_id);
+    collaboratorsByDeal.set(r.deal_id, set);
+  }
+
   const agentIds = [
-    ...new Set(allDeals.map((d) => d.created_by).filter((v): v is string => Boolean(v))),
-  ];
+    ...new Set([
+      ...allDeals.map((d) => d.created_by),
+      ...allDeals.map((d) => d.lead_agent_id),
+      ...(dealAgentRows ?? []).map((r) => r.user_id),
+    ]),
+  ].filter((v): v is string => Boolean(v));
   const agentName = new Map<string, string>();
   if (agentIds.length) {
     const { data: profs } = await supabase
@@ -90,17 +119,32 @@ export default async function DealsPage({
     );
   }
 
-  const agentOptions = agentIds.map((id) => ({
-    value: id,
-    label: agentName.get(id) ?? "Agent",
-  }));
+  const agentOptions = agentIds
+    .map((id) => ({ value: id, label: agentName.get(id) ?? "Agent" }))
+    .sort((a, b) => a.label.localeCompare(b.label));
 
   const deals = agent
-    ? allDeals.filter((d) => d.created_by === agent)
+    ? allDeals.filter(
+        (d) =>
+          d.created_by === agent ||
+          d.lead_agent_id === agent ||
+          collaboratorsByDeal.get(d.id)?.has(agent),
+      )
     : allDeals;
 
+  // Latest stage event per deal → "in stage Xd" + Stuck badges. Falls back to
+  // updated_at for deals created before stage history existed.
+  const { data: stageEvents } = await supabase
+    .from("deal_stage_events")
+    .select("deal_id, created_at")
+    .order("created_at", { ascending: false });
+  const stageSince = new Map<string, string>();
+  for (const e of stageEvents ?? []) {
+    if (!stageSince.has(e.deal_id)) stageSince.set(e.deal_id, e.created_at);
+  }
+  const daysInStage = (d: DealRow) => daysSince(stageSince.get(d.id) ?? d.updated_at);
+
   // Key pipeline stats (respect the agent filter).
-  const CLOSED = new Set(["completed", "fell_through"]);
   const openDeals = deals.filter((d) => !CLOSED.has(d.stage));
   const pipelineValue = openDeals.reduce((sum, d) => sum + (d.value ?? 0), 0);
   const wonCount = deals.filter((d) => d.stage === "completed").length;
@@ -183,54 +227,86 @@ export default async function DealsPage({
                   </span>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {col.map((d) => (
-                    <article
-                      key={d.id}
-                      className="flex flex-col rounded-lg border bg-card p-3 transition-colors hover:border-primary/40"
-                    >
-                      <EditableDealTitle
-                        dealId={d.id}
-                        title={d.title}
-                        href={`/deals/${d.id}`}
-                        className="text-sm font-medium leading-snug text-foreground hover:text-info hover:underline"
-                      />
-                      <dl className="mt-2 space-y-1 text-xs text-muted-foreground">
-                        {d.company?.name ? (
-                          <div className="truncate">{d.company.name}</div>
-                        ) : null}
-                        {money(d.value) ? (
-                          <div className="font-mono tabular-nums text-foreground">
-                            {money(d.value)}
-                          </div>
-                        ) : null}
-                      </dl>
-                      <div className="mt-2 flex items-center justify-between gap-2">
-                        <span className="truncate text-[11px] text-muted-foreground">
-                          {new Date(d.created_at).toLocaleDateString("en-GB")}
-                          {d.created_by && agentName.get(d.created_by)
-                            ? ` · ${agentName.get(d.created_by)}`
-                            : ""}
-                        </span>
-                        <Link
+                  {col.map((d) => {
+                    const days = daysInStage(d);
+                    const stuck = !CLOSED.has(d.stage) && days > STUCK_AFTER_DAYS;
+                    // Red once the whole expected-close day has passed (date-only column).
+                    const closePast =
+                      d.expected_close != null &&
+                      !CLOSED.has(d.stage) &&
+                      isPast(`${d.expected_close}T23:59:59`);
+                    return (
+                      <article
+                        key={d.id}
+                        className="flex flex-col rounded-lg border bg-card p-3 transition-colors hover:border-primary/40"
+                      >
+                        <EditableDealTitle
+                          dealId={d.id}
+                          title={d.title}
                           href={`/deals/${d.id}`}
-                          className={cn(
-                            buttonVariants({ variant: "secondary", size: "sm" }),
-                            "h-7 shrink-0 px-2 text-xs",
-                          )}
-                        >
-                          View deal
-                        </Link>
-                      </div>
-                      <div className="mt-2.5">
-                        <DealStageSelect
-                          id={d.id}
-                          stage={d.stage}
-                          className="h-8 text-xs"
-                          aria-label={`Move “${d.title}” to another stage`}
+                          className="text-sm font-medium leading-snug text-foreground hover:text-info hover:underline"
                         />
-                      </div>
-                    </article>
-                  ))}
+                        <dl className="mt-2 space-y-1 text-xs text-muted-foreground">
+                          {d.company?.name ? (
+                            <div className="truncate">{d.company.name}</div>
+                          ) : null}
+                          {money(d.value) ? (
+                            <div className="font-mono tabular-nums text-foreground">
+                              {money(d.value)}
+                            </div>
+                          ) : null}
+                        </dl>
+                        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                          <span className="text-[11px] text-muted-foreground">
+                            in stage {days}d
+                          </span>
+                          {stuck ? <Badge tone="amber">Stuck</Badge> : null}
+                          {d.expected_close ? (
+                            <span
+                              className={cn(
+                                "inline-flex items-center gap-1 text-[11px]",
+                                closePast
+                                  ? "font-medium text-red-600 dark:text-red-400"
+                                  : "text-muted-foreground",
+                              )}
+                              title="Expected close"
+                            >
+                              <CalendarClock className="h-3 w-3" />
+                              {new Date(d.expected_close).toLocaleDateString("en-GB")}
+                            </span>
+                          ) : null}
+                        </div>
+                        <div className="mt-2 flex items-center justify-between gap-2">
+                          <span className="truncate text-[11px] text-muted-foreground">
+                            {new Date(d.created_at).toLocaleDateString("en-GB")}
+                            {(() => {
+                              const owner = d.lead_agent_id ?? d.created_by;
+                              return owner && agentName.get(owner)
+                                ? ` · ${agentName.get(owner)}`
+                                : "";
+                            })()}
+                          </span>
+                          <Link
+                            href={`/deals/${d.id}`}
+                            className={cn(
+                              buttonVariants({ variant: "secondary", size: "sm" }),
+                              "h-7 shrink-0 px-2 text-xs",
+                            )}
+                          >
+                            View deal
+                          </Link>
+                        </div>
+                        <div className="mt-2.5">
+                          <DealStageSelect
+                            id={d.id}
+                            stage={d.stage}
+                            className="h-8 text-xs"
+                            aria-label={`Move “${d.title}” to another stage`}
+                          />
+                        </div>
+                      </article>
+                    );
+                  })}
                 </div>
               </section>
             );

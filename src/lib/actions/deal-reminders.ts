@@ -38,16 +38,18 @@ export async function addDealReminder(
   });
   if (error) return { error: error.message };
 
-  // Notify the deal owner (if someone else set the reminder).
+  // Notify whoever owns the deal today — the lead agent, falling back to the
+  // creator (if someone else set the reminder).
   const { data: deal } = await supabase
     .from("deals")
-    .select("title, created_by")
+    .select("title, created_by, lead_agent_id")
     .eq("id", dealId)
     .maybeSingle();
-  if (deal?.created_by && deal.created_by !== user.id) {
+  const owner = deal?.lead_agent_id ?? deal?.created_by ?? null;
+  if (deal && owner && owner !== user.id) {
     await supabase.from("notifications").insert({
       agency_id: agencyId,
-      user_id: deal.created_by,
+      user_id: owner,
       title: `Reminder set on “${deal.title}”`,
       body: `${title} — due ${new Date(dueAt).toLocaleString("en-GB")}`,
       link: `/deals/${dealId}`,
@@ -58,17 +60,22 @@ export async function addDealReminder(
   return { message: "Reminder added." };
 }
 
-/** Toggle a reminder's done state. */
+/**
+ * Set a reminder's done state by explicit intent ("mark_done" / "mark_open").
+ * The client submits the state it wants, not a negation of a possibly-stale
+ * current value — so two people clicking "done" can't re-open it.
+ */
 export async function toggleDealReminder(formData: FormData): Promise<void> {
   const supabase = await createClient();
   const agencyId = await currentAgencyId(supabase);
   const id = str(formData, "id");
   const dealId = str(formData, "deal_id");
-  const done = str(formData, "done") === "true";
+  const intent = str(formData, "intent");
   if (!id || !agencyId) return;
+  if (intent !== "mark_done" && intent !== "mark_open") return;
   await supabase
     .from("deal_reminders")
-    .update({ done: !done })
+    .update({ done: intent === "mark_done" })
     .eq("id", id)
     .eq("agency_id", agencyId);
   if (dealId) revalidatePath(`/deals/${dealId}`);

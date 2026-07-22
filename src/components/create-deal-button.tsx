@@ -1,41 +1,84 @@
 "use client";
 
 import * as React from "react";
-import { useFormStatus } from "react-dom";
+import { useActionState } from "react";
 import { Handshake } from "lucide-react";
 
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Modal } from "@/components/ui/modal";
+import { Select } from "@/components/ui/select";
+import { createClient } from "@/lib/supabase/client";
 import { createDealFromMatch } from "@/lib/actions/deals";
-
-function Submit() {
-  const { pending } = useFormStatus();
-  return (
-    <Button type="submit" disabled={pending}>
-      {pending ? "Creating…" : "Create deal"}
-    </Button>
-  );
-}
+import type { FormState } from "@/lib/actions/types";
+import type { AgentOption } from "@/lib/supabase/agency";
 
 /**
  * "Create a deal" from a requirement ↔ listing match. Opens a popup to name the
- * deal first (#6); the name (plus both ids) posts to the server action, which
- * de-dupes on the pair and redirects to the deal.
+ * deal and pick its lead agent (defaults to you); the form posts to the server
+ * action, which de-dupes on the pair and redirects to the deal. Insert failures
+ * come back as a FormState error rendered in the modal instead of a silent
+ * redirect.
  */
 export function CreateDealButton({
   requirementId,
   listingId,
   label = "Create deal",
   defaultTitle = "",
+  agents,
+  meId,
 }: {
   requirementId: string;
   listingId: string;
   label?: string;
   defaultTitle?: string;
+  /** Agency roster for the lead-agent picker; fetched on open when omitted. */
+  agents?: AgentOption[];
+  meId?: string;
 }) {
   const [open, setOpen] = React.useState(false);
+  const [state, formAction, pending] = useActionState<FormState, FormData>(
+    createDealFromMatch,
+    {},
+  );
+
+  // Roster + current user for the lead-agent select. The pages that render this
+  // button don't all pass the roster down, so fetch it (RLS-scoped) on open —
+  // same client-side pattern as the notifications bell.
+  const supabase = React.useMemo(() => createClient(), []);
+  const [roster, setRoster] = React.useState<AgentOption[] | null>(agents ?? null);
+  const [lead, setLead] = React.useState<string>(meId ?? "");
+
+  React.useEffect(() => {
+    if (!open || roster !== null) return;
+    let cancelled = false;
+    (async () => {
+      const [{ data: auth }, { data: members }] = await Promise.all([
+        supabase.auth.getUser(),
+        supabase.from("agency_members").select("user_id"),
+      ]);
+      const ids = [...new Set((members ?? []).map((m) => m.user_id))];
+      const { data: profiles } = ids.length
+        ? await supabase.from("profiles").select("id, full_name, email").in("id", ids)
+        : { data: [] };
+      if (cancelled) return;
+      setRoster(
+        (profiles ?? [])
+          .map((p) => ({
+            id: p.id,
+            name: p.full_name ?? p.email ?? "Unknown agent",
+            email: p.email,
+          }))
+          .sort((a, b) => a.name.localeCompare(b.name)),
+      );
+      setLead((prev) => prev || auth.user?.id || "");
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, roster, supabase]);
 
   return (
     <>
@@ -50,7 +93,7 @@ export function CreateDealButton({
       </Button>
 
       <Modal open={open} onClose={() => setOpen(false)} title="Name the deal">
-        <form action={createDealFromMatch} className="space-y-4">
+        <form action={formAction} className="space-y-4">
           <input type="hidden" name="requirement_id" value={requirementId} />
           <input type="hidden" name="listing_id" value={listingId} />
           <div className="space-y-1.5">
@@ -66,11 +109,33 @@ export function CreateDealButton({
               Leave blank to auto-name it from the listing and requirement.
             </p>
           </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="deal-lead-agent">Lead agent</Label>
+            <Select
+              id="deal-lead-agent"
+              name="lead_agent_id"
+              value={lead}
+              onChange={(e) => setLead(e.target.value)}
+            >
+              <option value="">— Unassigned —</option>
+              {(roster ?? []).map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Defaults to you — they&apos;ll be notified if it&apos;s someone else.
+            </p>
+          </div>
+          {state.error ? <Alert tone="error">{state.error}</Alert> : null}
           <div className="flex items-center justify-end gap-2">
             <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Submit />
+            <Button type="submit" disabled={pending}>
+              {pending ? "Creating…" : "Create deal"}
+            </Button>
           </div>
         </form>
       </Modal>

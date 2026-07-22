@@ -117,7 +117,9 @@ export function listingStatusBadge(status: string | null | undefined): BadgeSpec
   const k = s.toLowerCase();
   if (!k) return { tone: "slate", label: "—" };
   if (/avail/.test(k)) return { tone: "emerald", label: s };
-  if (/under\s*offer|u\.?o\.?\b|sale\s*agreed|let\s*agreed/.test(k))
+  // "Sold STC" / "Let STC" (subject to contract) are in-play like Under Offer,
+  // not terminal — test before the bare sold/let branches below.
+  if (/under\s*offer|u\.?o\.?\b|sale\s*agreed|let\s*agreed|\bstc\b/.test(k))
     return { tone: "amber", label: s };
   if (/\blet\b/.test(k)) return { tone: "sky", label: s };
   if (/sold|completed/.test(k)) return { tone: "violet", label: s };
@@ -133,6 +135,7 @@ export function listingStatusBadge(status: string | null | undefined): BadgeSpec
 export function isListingMatchable(status: string | null | undefined): boolean {
   const k = (status ?? "").trim().toLowerCase();
   if (!k) return true; // unknown — keep, don't hide supply on missing data
+  if (/\bstc\b/.test(k)) return true; // subject to contract — still in play
   return !/\blet\b|sold|completed|withdrawn|unavailable/.test(k);
 }
 

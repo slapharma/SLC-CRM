@@ -15,12 +15,19 @@ import {
   ContactCreatableSelect,
   type EntityOption,
 } from "@/components/creatable-select";
-import { sendDealExternal } from "@/lib/actions/deal-send";
+import { listContactEmails, sendDealExternal } from "@/lib/actions/deal-send";
 import { sendMessage } from "@/lib/actions/messages";
 import type { FormState } from "@/lib/actions/types";
 import type { AgentOption } from "@/lib/supabase/agency";
 
 type Step = "choose" | "internal" | "external";
+
+/**
+ * Contact option, optionally carrying the address the email would go to.
+ * Callers that already select `email` can pass it; otherwise the wizard looks
+ * the addresses up itself when the external step opens.
+ */
+export type ContactSendOption = EntityOption & { email?: string | null };
 
 /**
  * "Send Deal" — a two-step wizard: pick Internal (teammates, via the existing
@@ -37,6 +44,7 @@ export function SendDealModal({
   contacts,
   requirementId,
   listingId,
+  dealId,
   requirementTitle,
   listingTitle,
   requirements,
@@ -47,10 +55,12 @@ export function SendDealModal({
   agents: AgentOption[];
   meId?: string;
   companies: EntityOption[];
-  contacts: EntityOption[];
+  contacts: ContactSendOption[];
   /** Opportunity mode — one matched pair. */
   requirementId?: string;
   listingId?: string;
+  /** Set when the wizard is opened from a deal — logged on the send. */
+  dealId?: string;
   requirementTitle?: string;
   listingTitle?: string;
   /** Bulk mode — a set of requirements (no listing attached). */
@@ -158,6 +168,7 @@ export function SendDealModal({
             companies={companies}
             contacts={contacts}
             listingId={listingId}
+            dealId={dealId}
             requirementIds={requirementIds}
             defaultSubject={subject}
             defaultBody={isBulk ? defaultBody : ""}
@@ -279,6 +290,7 @@ function ExternalStep({
   companies,
   contacts,
   listingId,
+  dealId,
   requirementIds,
   defaultSubject,
   defaultBody,
@@ -287,8 +299,9 @@ function ExternalStep({
   onDone,
 }: {
   companies: EntityOption[];
-  contacts: EntityOption[];
+  contacts: ContactSendOption[];
   listingId?: string;
+  dealId?: string;
   requirementIds: string[];
   defaultSubject: string;
   defaultBody: string;
@@ -301,6 +314,34 @@ function ExternalStep({
     {},
   );
 
+  // Contacts with no email address can't be sent to — hide them rather than
+  // failing after submit. Addresses come from the caller when it selected them,
+  // otherwise they're looked up once, here.
+  const callerKnowsEmails = contacts.some((c) => c.email !== undefined);
+  const [lookedUp, setLookedUp] = React.useState<Map<string, string | null> | null>(
+    null,
+  );
+  React.useEffect(() => {
+    if (callerKnowsEmails) return;
+    let cancelled = false;
+    listContactEmails()
+      .then((rows) => {
+        if (!cancelled) setLookedUp(new Map(rows.map((r) => [r.id, r.email])));
+      })
+      .catch(() => {
+        // Lookup failed — fall back to showing every contact (previous behaviour).
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [callerKnowsEmails]);
+
+  const emailsKnown = callerKnowsEmails || lookedUp != null;
+  const sendable = emailsKnown
+    ? contacts.filter((c) => Boolean(c.email !== undefined ? c.email : lookedUp?.get(c.id)))
+    : contacts;
+  const hidden = contacts.length - sendable.length;
+
   React.useEffect(() => {
     if (!state.message) return;
     const t = setTimeout(onDone, 1200);
@@ -311,6 +352,7 @@ function ExternalStep({
     <form action={formAction} className="space-y-4">
       <PreviousSendsNote previousSends={previousSends} />
       {listingId ? <input type="hidden" name="listing_id" value={listingId} /> : null}
+      {dealId ? <input type="hidden" name="deal_id" value={dealId} /> : null}
       {requirementIds.map((id) => (
         <input key={id} type="hidden" name="requirement_ids" value={id} />
       ))}
@@ -326,8 +368,12 @@ function ExternalStep({
         label="Contact"
         required
         placeholder="Select a contact…"
-        options={contacts}
-        hint="The email goes to this contact — they need an email address on file."
+        options={sendable}
+        hint={
+          hidden > 0
+            ? `Only contacts with an email address are listed — ${hidden} hidden. Add an address to their record to email them.`
+            : "The email goes to this contact — they need an email address on file."
+        }
       />
 
       <div className="space-y-2">

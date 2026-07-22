@@ -122,6 +122,18 @@ export function CreatableSelect({
   );
 }
 
+/**
+ * Fallback for callers that don't pass the editable `company_types` list —
+ * mirrors the seeded system types so the modal keeps working everywhere.
+ */
+const DEFAULT_COMPANY_TYPES: { slug: string; label: string }[] = [
+  { slug: "operator", label: "Operator" },
+  { slug: "landlord", label: "Landlord" },
+  { slug: "agent", label: "Agent" },
+  { slug: "vendor", label: "Vendor" },
+  { slug: "other", label: "Other" },
+];
+
 /** Company picker with inline "+ New company" modal (#12, #14). */
 export function CompanyCreatableSelect({
   name = "company_id",
@@ -131,6 +143,7 @@ export function CompanyCreatableSelect({
   required,
   hint,
   placeholder,
+  types,
 }: {
   name?: string;
   label?: string;
@@ -139,7 +152,10 @@ export function CompanyCreatableSelect({
   required?: boolean;
   hint?: string;
   placeholder?: string;
+  /** Editable company-type list; falls back to the seeded system types. */
+  types?: { slug: string; label: string }[];
 }) {
+  const typeOptions = types && types.length > 0 ? types : DEFAULT_COMPANY_TYPES;
   return (
     <CreatableSelect
       name={name}
@@ -161,12 +177,16 @@ export function CompanyCreatableSelect({
       </div>
       <div className="space-y-2">
         <Label htmlFor="qc-company-type">Type</Label>
-        <Select id="qc-company-type" name="type" defaultValue="operator">
-          <option value="operator">Operator</option>
-          <option value="landlord">Landlord</option>
-          <option value="agent">Agent</option>
-          <option value="vendor">Vendor</option>
-          <option value="other">Other</option>
+        <Select
+          id="qc-company-type"
+          name="type"
+          defaultValue={typeOptions[0]?.slug ?? "other"}
+        >
+          {typeOptions.map((t) => (
+            <option key={t.slug} value={t.slug}>
+              {t.label}
+            </option>
+          ))}
         </Select>
       </div>
     </CreatableSelect>

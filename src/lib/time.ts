@@ -5,3 +5,9 @@
 export function isPast(iso: string): boolean {
   return new Date(iso).getTime() < Date.now();
 }
+
+/** Whole days elapsed since the ISO timestamp (never negative). */
+export function daysSince(iso: string): number {
+  const ms = Date.now() - new Date(iso).getTime();
+  return Math.max(0, Math.floor(ms / 86_400_000));
+}

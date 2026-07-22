@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Building2, Target } from "lucide-react";
@@ -11,19 +12,39 @@ import { DealReminders } from "@/components/deal-reminders";
 import { DealShareActions } from "@/components/deal-share-actions";
 import { ActivityTimeline } from "@/components/activity-timeline";
 import { LogActivityForm } from "@/components/log-activity-form";
+import { SendDealModal } from "@/components/send-deal-modal";
 import { SendToTeam } from "@/components/send-to-team";
+import { ExistingDealNotice } from "./existing-deal-notice";
 import { dealStageBadge } from "@/lib/badges";
 import { deleteDeal } from "@/lib/actions/deals";
 import { isPast } from "@/lib/time";
 import { getAgencyMembers } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
 
-export default async function DealDetailPage({
+export async function generateMetadata({
   params,
 }: {
   params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const supabase = await createClient();
+  const { data: deal } = await supabase
+    .from("deals")
+    .select("title")
+    .eq("id", id)
+    .maybeSingle();
+  return { title: deal?.title ?? "Deal" };
+}
+
+export default async function DealDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ existing?: string }>;
 }) {
   const { id } = await params;
+  const { existing } = await searchParams;
   const supabase = await createClient();
 
   const { data: deal } = await supabase
@@ -119,6 +140,21 @@ export default async function DealDetailPage({
     .order("occurred_at", { ascending: false })
     .limit(30);
 
+  // Pickers for the Send Deal wizard's external step — only needed when the
+  // deal is linked to a requirement and/or listing (otherwise nothing to send).
+  const canSendDeal = Boolean(deal.requirement_id || deal.listing_id);
+  const [{ data: companyRows }, { data: contactRows }] = canSendDeal
+    ? await Promise.all([
+        supabase.from("companies").select("id, name").order("name"),
+        supabase.from("contacts").select("id, first_name, last_name").order("first_name"),
+      ])
+    : [{ data: null }, { data: null }];
+  const companyOptions = companyRows ?? [];
+  const contactOptions = (contactRows ?? []).map((c) => ({
+    id: c.id,
+    name: [c.first_name, c.last_name].filter(Boolean).join(" ") || "Unnamed contact",
+  }));
+
   return (
     <div className="mx-auto max-w-4xl">
       <Link
@@ -128,6 +164,8 @@ export default async function DealDetailPage({
         <ArrowLeft className="h-4 w-4" />
         Back to pipeline
       </Link>
+
+      {existing === "1" ? <ExistingDealNotice dealId={deal.id} /> : null}
 
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
@@ -158,6 +196,19 @@ export default async function DealDetailPage({
             agents={members}
             meId={user?.id}
           />
+          {canSendDeal ? (
+            <SendDealModal
+              agents={members}
+              meId={user?.id}
+              companies={companyOptions}
+              contacts={contactOptions}
+              dealId={deal.id}
+              requirementId={deal.requirement_id ?? undefined}
+              listingId={deal.listing_id ?? undefined}
+              requirementTitle={requirement?.title}
+              listingTitle={listing?.title ?? undefined}
+            />
+          ) : null}
           <DealShareActions
             dealId={deal.id}
             title={deal.title}
@@ -284,6 +335,7 @@ export default async function DealDetailPage({
               hot_terms: deal.hot_terms,
               notes: deal.notes,
               lead_agent_id: deal.lead_agent_id,
+              expected_close: deal.expected_close,
             }}
             agents={members}
             additionalAgentIds={additionalAgentIds}

@@ -65,7 +65,11 @@ export function DealReminders({
                   <form action={toggleDealReminder}>
                     <input type="hidden" name="id" value={r.id} />
                     <input type="hidden" name="deal_id" value={dealId} />
-                    <input type="hidden" name="done" value={String(r.done)} />
+                    <input
+                      type="hidden"
+                      name="intent"
+                      value={r.done ? "mark_open" : "mark_done"}
+                    />
                     <button
                       type="submit"
                       aria-label={r.done ? "Mark not done" : "Mark done"}

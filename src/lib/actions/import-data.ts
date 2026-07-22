@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { currentAgencyId } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
 import { deriveCounty } from "@/lib/locations";
+import { addressQuery, geocodeAddress } from "@/lib/maps/geocode";
 import { Constants } from "@/lib/database.types";
 import { parseCsv, type ImportEntity } from "@/lib/csv";
 import type { FormState } from "@/lib/actions/types";
@@ -75,9 +76,25 @@ export async function importEntityCsv(
   const resolveContact = (email: string) =>
     email ? contactByEmail.get(email.trim().toLowerCase()) : undefined;
 
+  // Existing companies (RLS-scoped to the agency) — used to dedupe company
+  // imports and to resolve contacts' `company_name` links.
+  const companyIdByName = new Map<string, string>();
+  if (entity === "companies" || entity === "contacts") {
+    const { data: companyRows } = await supabase.from("companies").select("id, name");
+    for (const c of companyRows ?? []) {
+      companyIdByName.set(c.name.trim().toLowerCase(), c.id);
+    }
+  }
+
   const base = { agency_id: agencyId, created_by: user.id };
   const records: Record<string, unknown>[] = [];
   const errors: string[] = [];
+  // Case-insensitive dedupe keys (contact emails / company names) seen earlier
+  // in this file, so a row duplicated within the CSV itself is skipped too.
+  const seenInFile = new Set<string>();
+  // Contacts only: raw company_name per record (parallel to `records`), resolved
+  // to a company_id — creating minimal companies where needed — after parsing.
+  const pendingCompanyNames: (string | null)[] = [];
 
   rows.slice(1).forEach((r, n) => {
     const get = (name: string) => {
@@ -86,28 +103,57 @@ export async function importEntityCsv(
     };
     try {
       if (entity === "companies") {
-        if (!get("name")) throw new Error("name is required");
+        const name = get("name");
+        if (!name) throw new Error("name is required");
+        const key = name.toLowerCase();
+        if (companyIdByName.has(key))
+          throw new Error(`skipped — company "${name}" already exists`);
+        if (seenInFile.has(key))
+          throw new Error(`skipped — duplicate of an earlier row in this file`);
+        seenInFile.add(key);
         records.push({
           ...base,
-          name: get("name"),
+          name,
           type: oneOf(get("type"), typeSlugs, "other"),
           sector_tags: list(get("sector_tags")),
           website: get("website") || null,
           phone: get("phone") || null,
+          address_line: get("address_line") || null,
+          city: get("city") || null,
+          postcode: get("postcode") || null,
+          county:
+            get("county") ||
+            deriveCounty({ postcode: get("postcode"), city: get("city") }),
           notes: get("notes") || null,
         });
       } else if (entity === "contacts") {
         if (!get("first_name")) throw new Error("first_name is required");
+        const email = emailOrNull(get("email"));
+        if (email) {
+          const key = email.toLowerCase();
+          if (contactByEmail.has(key))
+            throw new Error(`skipped — a contact with email ${email} already exists`);
+          if (seenInFile.has(key))
+            throw new Error(`skipped — duplicate of an earlier row in this file`);
+          seenInFile.add(key);
+        }
         records.push({
           ...base,
           first_name: get("first_name"),
           last_name: get("last_name") || null,
-          email: emailOrNull(get("email")),
+          email,
           phone: get("phone") || null,
           role: oneOf(get("role"), roleSlugs, "other"),
+          address_line: get("address_line") || null,
+          city: get("city") || null,
+          postcode: get("postcode") || null,
+          county:
+            get("county") ||
+            deriveCounty({ postcode: get("postcode"), city: get("city") }),
           marketing_opt_in: boolOf(get("marketing_opt_in")),
           notes: get("notes") || null,
         });
+        pendingCompanyNames.push(get("company_name") || null);
       } else if (entity === "requirements") {
         if (!get("title")) throw new Error("title is required");
         const contactId = resolveContact(get("contact_email"));
@@ -159,13 +205,92 @@ export async function importEntityCsv(
     }
   });
 
+  // Contacts: resolve company_name → company_id, creating minimal companies
+  // (case-insensitively de-duped) for names not already in the agency.
+  if (entity === "contacts" && records.length) {
+    const newNames = new Map<string, string>();
+    for (const nm of pendingCompanyNames) {
+      if (!nm) continue;
+      const key = nm.toLowerCase();
+      if (!companyIdByName.has(key) && !newNames.has(key)) newNames.set(key, nm);
+    }
+    if (newNames.size > 0) {
+      const { data: createdCompanies, error } = await supabase
+        .from("companies")
+        .insert(
+          [...newNames.values()].map((name) => ({
+            ...base,
+            name,
+            type: "other",
+          })) as never,
+        )
+        .select("id, name");
+      if (error) {
+        return { error: `Could not create companies for company_name: ${error.message}` };
+      }
+      for (const c of (createdCompanies ?? []) as { id: string; name: string }[]) {
+        companyIdByName.set(c.name.trim().toLowerCase(), c.id);
+      }
+      revalidatePath("/companies");
+    }
+    records.forEach((rec, i) => {
+      const nm = pendingCompanyNames[i];
+      if (nm) rec.company_id = companyIdByName.get(nm.toLowerCase()) ?? null;
+    });
+  }
+
+  type InsertedRow = {
+    id: string;
+    address_line: string | null;
+    city: string | null;
+    postcode: string | null;
+  };
+
   let inserted = 0;
+  let insertedRows: InsertedRow[] = [];
   if (records.length) {
-    const { error } = await supabase
-      .from(TABLE[entity] as never)
-      .insert(records as never);
-    if (error) return { error: error.message };
+    if (entity === "companies" || entity === "contacts") {
+      // Return address parts so imported rows can be geocoded below.
+      const { data: ins, error } = await supabase
+        .from(TABLE[entity] as never)
+        .insert(records as never)
+        .select("id, address_line, city, postcode");
+      if (error) return { error: error.message };
+      insertedRows = (ins ?? []) as unknown as InsertedRow[];
+    } else {
+      const { error } = await supabase
+        .from(TABLE[entity] as never)
+        .insert(records as never);
+      if (error) return { error: error.message };
+    }
     inserted = records.length;
+  }
+
+  // Best-effort geocoding of imported companies/contacts that carry an address
+  // (≤5 concurrent lookups; failures are ignored — rows still import, they just
+  // won't appear on maps until edited).
+  const geoTargets = insertedRows.filter((row) => addressQuery(row));
+  if (geoTargets.length > 0) {
+    let next = 0;
+    const worker = async () => {
+      while (next < geoTargets.length) {
+        const row = geoTargets[next++];
+        try {
+          const geo = await geocodeAddress(row);
+          if (geo) {
+            await supabase
+              .from(TABLE[entity] as never)
+              .update(geo as never)
+              .eq("id", row.id);
+          }
+        } catch {
+          // best-effort only
+        }
+      }
+    };
+    await Promise.all(
+      Array.from({ length: Math.min(5, geoTargets.length) }, () => worker()),
+    );
   }
 
   const path = `/${entity}`;

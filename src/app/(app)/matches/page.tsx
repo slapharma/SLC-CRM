@@ -1,6 +1,7 @@
+import type * as React from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Gauge, Sparkles, Store, Target } from "lucide-react";
+import { Gauge, RotateCcw, Sparkles, Star, Store, Target, X } from "lucide-react";
 
 import { CreateDealButton } from "@/components/create-deal-button";
 import { EmptyState } from "@/components/empty-state";
@@ -10,14 +11,20 @@ import { PageHeader } from "@/components/page-header";
 import { SendDealModal } from "@/components/send-deal-modal";
 import { SiloTabs } from "@/components/silo-tabs";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { LocationFlexSlider } from "@/components/location-flex-slider";
+import { setMatchStatus } from "@/lib/actions/matches";
 import { isListingMatchable, listingTypeBadge, matchScoreBadge } from "@/lib/badges";
+import type { Database } from "@/lib/database.types";
 import { DEFAULT_LOCATION_FLEX, scoreMatch } from "@/lib/matching/score";
+import { getPairSendHistory } from "@/lib/send-history";
 import { filterHref } from "@/lib/sort";
 import { currentAgencyId, getAgencyMembers } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
+
+type MatchStatus = Database["public"]["Enums"]["match_status"];
 
 export const metadata: Metadata = { title: "MatchMaker Opportunities" };
 
@@ -62,9 +69,13 @@ export default async function MatchesPage({
     use_class?: string;
     flex?: string;
     silo?: string;
+    rejected?: string;
+    shortlisted?: string;
   }>;
 }) {
-  const { q, min, use_class, flex, silo } = await searchParams;
+  const { q, min, use_class, flex, silo, rejected, shortlisted } = await searchParams;
+  const showRejected = rejected === "1";
+  const shortlistedOnly = shortlisted === "1";
   const minScore = Math.min(95, Math.max(0, Number(min ?? "50") || 50));
   const flexParsed = Number(flex ?? DEFAULT_LOCATION_FLEX);
   const locationFlex = Math.min(
@@ -117,27 +128,25 @@ export default async function MatchesPage({
     id: c.id,
     name: [c.first_name, c.last_name].filter(Boolean).join(" ") || "Unnamed contact",
   }));
-  const contactName = new Map(contacts.map((c) => [c.id, c.name]));
 
-  // Prior external sends per requirement↔listing pair — powers the "Sent" chip
-  // and the double-send warning inside the wizard.
-  const { data: sendRows } = await supabase
-    .from("external_sends")
-    .select("requirement_id, listing_id, contact_id, recipient_email, created_at")
-    .not("listing_id", "is", null)
-    .not("requirement_id", "is", null)
-    .order("created_at", { ascending: false })
-    .limit(500);
-  const sentByPair = new Map<string, { name: string; at: string }[]>();
-  for (const s of sendRows ?? []) {
-    const key = `${s.requirement_id}:${s.listing_id}`;
-    const list = sentByPair.get(key) ?? [];
-    list.push({
-      name: (s.contact_id ? contactName.get(s.contact_id) : null) ?? s.recipient_email,
-      at: s.created_at,
-    });
-    sentByPair.set(key, list);
-  }
+  // Persisted decisions. Scores stay live (cheap and always current); the
+  // `matches` table only carries what a human decided about a pair. A pair that
+  // already has a deal counts as converted whether or not its row says so —
+  // deal creation lives in another action that doesn't write here.
+  const [{ data: matchRows }, { data: dealPairs }] = await Promise.all([
+    supabase.from("matches").select("requirement_id, listing_id, status"),
+    supabase
+      .from("deals")
+      .select("requirement_id, listing_id")
+      .not("requirement_id", "is", null)
+      .not("listing_id", "is", null),
+  ]);
+  const statusByPair = new Map<string, MatchStatus>(
+    (matchRows ?? []).map((m) => [`${m.requirement_id}:${m.listing_id}`, m.status]),
+  );
+  const convertedPairs = new Set(
+    (dealPairs ?? []).map((d) => `${d.requirement_id}:${d.listing_id}`),
+  );
 
   const term = (q ?? "").trim().toLowerCase();
   let pairs = requirements
@@ -155,14 +164,37 @@ export default async function MatchesPage({
   if (use_class) {
     pairs = pairs.filter((p) => p.rq.use_classes.includes(use_class as never));
   }
-  pairs.sort((a, b) => b.score - a.score);
+
+  // Decisions applied last, so the toggle counts describe the current filters.
+  const statusOf = (p: { rq: { id: string }; d: { id: string } }) =>
+    statusByPair.get(`${p.rq.id}:${p.d.id}`);
+  const rejectedCount = pairs.filter((p) => statusOf(p) === "rejected").length;
+  const shortlistedCount = pairs.filter((p) => statusOf(p) === "shortlisted").length;
+  pairs = pairs.filter((p) => {
+    const status = statusOf(p);
+    if (shortlistedOnly) return status === "shortlisted";
+    return status !== "rejected" || showRejected;
+  });
+  // Shortlisted pairs float to the top; everything else by score.
+  pairs.sort((a, b) => {
+    const rank = (p: typeof a) => (statusOf(p) === "shortlisted" ? 1 : 0);
+    return rank(b) - rank(a) || b.score - a.score;
+  });
 
   const avgScore = pairs.length
     ? Math.round(pairs.reduce((s, p) => s + p.score, 0) / pairs.length)
     : 0;
   const shown = pairs.slice(0, 50);
 
-  const params = { q, min, use_class, flex, silo };
+  // Prior external sends — powers the "Sent" chip and the wizard's double-send
+  // warning. Looked up for exactly the pairs on screen, so the counts stay
+  // correct however much send history the agency accumulates.
+  const sentByPair = await getPairSendHistory(
+    supabase,
+    shown.map((p) => ({ requirementId: p.rq.id, listingId: p.d.id })),
+  );
+
+  const params = { q, min, use_class, flex, silo, rejected, shortlisted };
 
   const stats = [
     { label: "Active requirements", value: requirements.length, icon: Target },
@@ -238,6 +270,32 @@ export default async function MatchesPage({
         />
       </FilterBar>
 
+      {/* Decision filters. Rejected pairs are hidden by default — dismissing a
+          bad suggestion has to stick, or the list never gets quieter. */}
+      <div className="mb-4 flex flex-wrap items-center gap-2 text-xs">
+        <ToggleLink
+          href={filterHref(params, {
+            shortlisted: shortlistedOnly ? null : "1",
+            rejected: null,
+          })}
+          active={shortlistedOnly}
+        >
+          <Star className="h-3.5 w-3.5" />
+          Shortlisted{shortlistedCount > 0 ? ` (${shortlistedCount})` : ""}
+        </ToggleLink>
+        <ToggleLink
+          href={filterHref(params, {
+            rejected: showRejected ? null : "1",
+            shortlisted: null,
+          })}
+          active={showRejected}
+        >
+          <X className="h-3.5 w-3.5" />
+          {showRejected ? "Hide rejected" : "Show rejected"}
+          {rejectedCount > 0 && !showRejected ? ` (${rejectedCount})` : ""}
+        </ToggleLink>
+      </div>
+
       {shown.length === 0 ? (
         <EmptyState
           icon={Sparkles}
@@ -249,11 +307,18 @@ export default async function MatchesPage({
           {shown.map(({ rq, d, score, reasons }) => {
             const ms = matchScoreBadge(score);
             const accent = SCORE_ACCENT[ms.tone] ?? SCORE_ACCENT.slate;
-            const previousSends = sentByPair.get(`${rq.id}:${d.id}`);
+            const pairKey = `${rq.id}:${d.id}`;
+            const previousSends = sentByPair.get(pairKey);
+            const converted = convertedPairs.has(pairKey);
+            const status = statusByPair.get(pairKey);
             return (
               <Card
                 key={`${rq.id}-${d.id}`}
-                className={cn("overflow-hidden border-l-4", accent.border)}
+                className={cn(
+                  "overflow-hidden border-l-4",
+                  accent.border,
+                  status === "rejected" && "opacity-60",
+                )}
               >
                 <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:p-4">
                   <div
@@ -311,6 +376,56 @@ export default async function MatchesPage({
                         </p>
                       </div>
                       <div className="flex shrink-0 flex-wrap items-center gap-2">
+                        {converted ? (
+                          <Badge tone="emerald">Deal created</Badge>
+                        ) : status === "shortlisted" ? (
+                          <>
+                            <Badge tone="sky">Shortlisted</Badge>
+                            <MatchStatusButton
+                              requirementId={rq.id}
+                              listingId={d.id}
+                              score={score}
+                              intent="reopen"
+                            >
+                              <RotateCcw />
+                              Unshortlist
+                            </MatchStatusButton>
+                          </>
+                        ) : status === "rejected" ? (
+                          <>
+                            <Badge tone="slate">Rejected</Badge>
+                            <MatchStatusButton
+                              requirementId={rq.id}
+                              listingId={d.id}
+                              score={score}
+                              intent="reopen"
+                            >
+                              <RotateCcw />
+                              Reopen
+                            </MatchStatusButton>
+                          </>
+                        ) : (
+                          <>
+                            <MatchStatusButton
+                              requirementId={rq.id}
+                              listingId={d.id}
+                              score={score}
+                              intent="shortlist"
+                            >
+                              <Star />
+                              Shortlist
+                            </MatchStatusButton>
+                            <MatchStatusButton
+                              requirementId={rq.id}
+                              listingId={d.id}
+                              score={score}
+                              intent="reject"
+                            >
+                              <X />
+                              Reject
+                            </MatchStatusButton>
+                          </>
+                        )}
                         {previousSends ? (
                           <Badge
                             tone="violet"
@@ -346,5 +461,62 @@ export default async function MatchesPage({
         </div>
       )}
     </div>
+  );
+}
+
+/** A filter pill that reads as pressed when its param is on. */
+function ToggleLink({
+  href,
+  active,
+  children,
+}: {
+  href: string;
+  active: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      aria-pressed={active}
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 font-medium transition-colors",
+        active
+          ? "border-primary bg-primary/10 text-primary"
+          : "border-input text-muted-foreground hover:bg-muted hover:text-foreground",
+      )}
+    >
+      {children}
+    </Link>
+  );
+}
+
+/**
+ * Shortlist / reject / reopen one pairing. A plain server-action form — the
+ * persisted row is created on first click (the pair may until then exist only
+ * as a live score), which is why the current score rides along.
+ */
+function MatchStatusButton({
+  requirementId,
+  listingId,
+  score,
+  intent,
+  children,
+}: {
+  requirementId: string;
+  listingId: string;
+  score: number;
+  intent: "shortlist" | "reject" | "reopen";
+  children: React.ReactNode;
+}) {
+  return (
+    <form action={setMatchStatus}>
+      <input type="hidden" name="requirement_id" value={requirementId} />
+      <input type="hidden" name="listing_id" value={listingId} />
+      <input type="hidden" name="score" value={score} />
+      <input type="hidden" name="intent" value={intent} />
+      <Button type="submit" variant="ghost" size="sm">
+        {children}
+      </Button>
+    </form>
   );
 }

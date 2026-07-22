@@ -4,6 +4,7 @@ import { ContactForm } from "@/components/contact-form";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { updateContact } from "@/lib/actions/contacts";
+import { getCompanyTypes } from "@/lib/company-types";
 import { getContactRoles } from "@/lib/contact-roles";
 import { getAgencyMembers } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
@@ -21,10 +22,11 @@ export default async function EditContactPage({
   ]);
   if (!contact) notFound();
 
-  const [agents, { data: agentRows }, roles] = await Promise.all([
+  const [agents, { data: agentRows }, roles, companyTypes] = await Promise.all([
     getAgencyMembers(supabase, contact.agency_id),
     supabase.from("contact_agents").select("user_id").eq("contact_id", id),
     getContactRoles(),
+    getCompanyTypes(),
   ]);
   const additionalAgentIds = (agentRows ?? []).map((r) => r.user_id);
 
@@ -42,6 +44,7 @@ export default async function EditContactPage({
             agents={agents}
             additionalAgentIds={additionalAgentIds}
             roles={roles}
+            companyTypes={companyTypes}
           />
         </CardContent>
       </Card>

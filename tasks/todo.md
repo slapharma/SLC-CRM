@@ -377,3 +377,31 @@ Columns confirmed live; 103 disposals intact. Live verification via throwaway QA
 - /matches?flex=50 → W2 + NW1 listings surface with "~1 mi from W1" partial (amber) chips ✓
 - Bug found & fixed during verification: formatValue function prop crossed the RSC boundary → new client wrapper `location-flex-slider.tsx` (used on /matches + both detail pages)
 - Harness note: the preview pane ran pages without paint/hydration — combobox interaction untestable there (native form POSTs fine); combobox visuals worth a quick manual click-through in a real browser.
+
+---
+
+# BATCH — employee-flow findings build-out (cflack, 2026-07-22) — everything except the money model
+
+Source: docs/employee-flow-test-2026-07-22.md. Migration numbers assigned centrally:
+0028 tasks + reminder firing columns · 0029 deal_stage_events + expected_close · 0030 message threading · 0031 intake triage · 0032 external_sends tracking · 0033 listing images (only if storage policy needed).
+
+## Phase 1 (parallel)
+- [ ] A — CRM records: search escape + email search, duplicate warnings, quick-create modal real company types, contact activity log + marketing badge, per-record page titles, CSV import v2 (address fields, company link, dupe skip, geocode)
+- [ ] D — Deals: stage-event history (0029) + expected close + stuck badges, surfaced errors, dedupe message + agency scope, un-complete reactivates requirement + confirm on closing stages, pipeline filter by lead/collaborator, lead picker in create modal, lead-change notification, SendDealModal + metadata on deal page, listing status auto-update from stage, await logDealShare
+
+## Phase 2 (parallel, after Phase 1)
+- [ ] B — Listings: search escape, status tile catch-all, source label fixes, quick status popover, relax contact for scraped rows, PDF raw-override + areas fallback, photo upload + gallery + PDF hero, bulk select (status/assign), "Lease & statutory" section, intel resync upsert + geocode + withdrawn-marking, listing page titles
+- [ ] E — Comms/Tasks: tasks table + UI (0028), message link allowlist, threading + reply (0030), sidebar unread badge, realtime bell, reminder toggle intent + lead notify + "mine" filter + overdue styling, cron route firing due reminders/tasks (vercel.json)
+
+## Phase 3 (parallel, after Phase 2)
+- [ ] C — Matching: wire dormant matches table + new-listing alerts, county-centroid proximity, word-boundary text match, requirement detail shows districts/counties, active-only on listing detail, requirement-agent notifications + error surfacing, requirement page titles
+- [ ] F — Intake/Sends: pending-review triage (0031) + approve/reject, ilike escaping, env-var emails, Resend email on submission, public form location combobox, external_sends deal_id + Resend webhook tracking (0032), wizard email-less contact filter, send-history cap fix
+
+## Phase 4
+- [ ] G — Dashboard/Reports: KPI fix (exclude closed), activity feed, my tasks/overdue tile, unread tile, /reports for admin+manager (funnel, time-in-stage, per-agent, aging), activity timeline actor names everywhere
+
+## Phase 5 (me)
+- [ ] Integration: tsc + eslint + build clean, apply migrations 0028+ in order, regenerate DB types, commit + push, live smoke test, report
+
+## Review
+(to fill at the end)

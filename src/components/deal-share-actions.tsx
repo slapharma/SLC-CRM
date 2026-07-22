@@ -34,22 +34,28 @@ export function DealShareActions({
       .join("\n");
   }
 
-  function log(channel: string) {
+  // Await the activity log BEFORE opening the composer — a mailto navigation
+  // can cancel an in-flight request, silently dropping the share record.
+  async function log(channel: string) {
     const fd = new FormData();
     fd.set("deal_id", dealId);
     fd.set("channel", channel);
-    void logDealShare({}, fd);
+    try {
+      await logDealShare({}, fd);
+    } catch {
+      // Best-effort — never block the share itself on logging.
+    }
   }
 
-  function email() {
-    log("email");
+  async function email() {
+    await log("email");
     const subject = encodeURIComponent(`Deal update: ${title}`);
     const body = encodeURIComponent(message());
     window.location.href = `mailto:?subject=${subject}&body=${body}`;
   }
 
-  function whatsapp() {
-    log("WhatsApp");
+  async function whatsapp() {
+    await log("WhatsApp");
     window.open(`https://wa.me/?text=${encodeURIComponent(message())}`, "_blank", "noopener");
   }
 

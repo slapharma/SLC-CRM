@@ -24,6 +24,7 @@ import {
 import { contactRoleBadge } from "@/lib/badges";
 import { getContactRoles, roleLabel } from "@/lib/contact-roles";
 import { deriveCounty, HOME_COUNTIES } from "@/lib/locations";
+import { ilikeTerm } from "@/lib/search";
 import { filterHref, resolveSort } from "@/lib/sort";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
@@ -56,7 +57,14 @@ export default async function ContactsPage({
     .from("contacts")
     .select("id, first_name, last_name, role, email, phone, company_id, city, postcode, county")
     .order(column, { ascending });
-  if (q) query = query.or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%`);
+  if (q) {
+    const term = ilikeTerm(q);
+    if (term) {
+      query = query.or(
+        `first_name.ilike.%${term}%,last_name.ilike.%${term}%,email.ilike.%${term}%`,
+      );
+    }
+  }
   const { data } = await query;
   const mapLayers = await getMapLayers(supabase, { include: ["contact"] });
   // `rows` is the tile base (q filtered). The role/town facets are applied to

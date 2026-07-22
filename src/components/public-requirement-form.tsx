@@ -7,6 +7,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { LocationMultiPicker } from "@/components/location-select";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { submitPublicRequirement } from "@/lib/actions/public-intake";
@@ -93,15 +94,16 @@ export function PublicRequirementForm() {
               ))}
             </Select>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="pr-towns">Target locations</Label>
-            <Input
-              id="pr-towns"
-              name="target_towns"
-              placeholder="e.g. Soho, Shoreditch, Camden"
-            />
-            <p className="text-xs text-muted-foreground">Separate with commas.</p>
-          </div>
+          {/* Dataset-validated picks (free text still allowed) — posted as one
+              comma-joined `target_locations` value the triage queue parses. */}
+          <LocationMultiPicker
+            idBase="pr-locations"
+            label="Target locations"
+            kinds={["town", "county", "region", "district"]}
+            name="target_locations"
+            placeholder="Search towns, counties, regions, postcodes…"
+            hint="Pick as many as you like — anything we don't list can be typed in."
+          />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">

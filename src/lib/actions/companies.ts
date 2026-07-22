@@ -7,6 +7,7 @@ import { currentAgencyId } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
 import { deriveCounty } from "@/lib/locations";
 import { geocodeForSave } from "@/lib/maps/geocode";
+import { escapeLike } from "@/lib/search";
 import type { FormState } from "@/lib/actions/types";
 
 const str = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim();
@@ -29,6 +30,25 @@ const agents = (fd: FormData) => {
 };
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
+
+/**
+ * Case-insensitive pre-insert duplicate lookup on exact company name. Returns
+ * the existing company's name, or null when there is no duplicate.
+ */
+async function findDuplicateCompany(
+  supabase: Supabase,
+  agencyId: string,
+  name: string,
+): Promise<string | null> {
+  const { data } = await supabase
+    .from("companies")
+    .select("name")
+    .eq("agency_id", agencyId)
+    .ilike("name", escapeLike(name))
+    .limit(1)
+    .maybeSingle();
+  return data?.name ?? null;
+}
 
 /** Replace a company's additional-agent rows. */
 async function syncCompanyAgents(
@@ -68,6 +88,15 @@ export async function createCompany(
 
   const name = str(formData, "name");
   if (!name) return { error: "Company name is required." };
+
+  if (formData.get("allow_duplicate") == null) {
+    const dup = await findDuplicateCompany(supabase, agencyId, name);
+    if (dup) {
+      return {
+        error: `A company with this name already exists: ${dup}. Tick "Create anyway" to proceed.`,
+      };
+    }
+  }
 
   const { lead, extra } = agents(formData);
   const address = {
@@ -140,6 +169,9 @@ export async function quickCreateCompany(
 
   const name = str(formData, "name");
   if (!name) return { error: "Company name is required." };
+
+  const dup = await findDuplicateCompany(supabase, agencyId, name);
+  if (dup) return { error: `A company with this name already exists: ${dup}.` };
 
   const { data, error } = await supabase
     .from("companies")

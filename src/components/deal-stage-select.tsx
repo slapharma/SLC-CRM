@@ -78,6 +78,20 @@ export function DealStageSelect({
   }, [open]);
 
   function choose(next: string) {
+    // Closing stages have side effects (requirement satisfied, listing status)
+    // and a misclick is easy — ask first.
+    if (next !== stage && (next === "completed" || next === "fell_through")) {
+      const label = dealStageBadge(next).label;
+      const ok = window.confirm(
+        next === "completed"
+          ? `Mark this deal as ${label}? Its linked requirement will be marked satisfied and the listing updated.`
+          : `Mark this deal as ${label}?`,
+      );
+      if (!ok) {
+        setOpen(false);
+        return;
+      }
+    }
     if (stageFieldRef.current) stageFieldRef.current.value = next;
     setOpen(false);
     formRef.current?.requestSubmit();

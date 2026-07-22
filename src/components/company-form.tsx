@@ -37,6 +37,7 @@ export function CompanyForm({
     action,
     {},
   );
+  const duplicateBlocked = state.error?.includes('Tick "Create anyway"') ?? false;
 
   return (
     <form action={formAction} className="space-y-5">
@@ -95,7 +96,7 @@ export function CompanyForm({
           defaultValue={company?.address_line ?? ""}
         />
       </Field>
-      <div className="grid gap-5 sm:grid-cols-2">
+      <div className="grid gap-5 sm:grid-cols-3">
         <LocationSelect
           name="city"
           label="Town / city"
@@ -155,6 +156,16 @@ export function CompanyForm({
       />
 
       {state.error ? <Alert tone="error">{state.error}</Alert> : null}
+      {duplicateBlocked ? (
+        <label className="flex cursor-pointer items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            name="allow_duplicate"
+            className="h-4 w-4 rounded border-input accent-primary"
+          />
+          Create anyway (duplicate check override)
+        </label>
+      ) : null}
 
       <div className="flex items-center gap-2">
         <Button type="submit" disabled={pending}>

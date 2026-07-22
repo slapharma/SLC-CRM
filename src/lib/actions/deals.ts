@@ -48,6 +48,31 @@ async function syncDealAgents(
 }
 
 /**
+ * Best-effort stage-history entry (deal_stage_events). Written on creation
+ * (from_stage null) and on every stage change — never fails the calling
+ * action if the insert errors.
+ */
+async function recordStageEvent(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  agencyId: string,
+  dealId: string,
+  fromStage: DealStage | null,
+  toStage: DealStage,
+  changedBy: string | null,
+) {
+  const { error } = await supabase.from("deal_stage_events").insert({
+    agency_id: agencyId,
+    deal_id: dealId,
+    from_stage: fromStage,
+    to_stage: toStage,
+    changed_by: changedBy,
+  });
+  if (error) {
+    console.error(`deal_stage_events insert failed for deal ${dealId}:`, error.message);
+  }
+}
+
+/**
  * Close the loop: when a deal reaches `completed`, mark its linked requirement
  * `satisfied` so it stops generating matches and leaves the active brief list.
  */
@@ -66,12 +91,101 @@ async function satisfyRequirementOnClose(
 }
 
 /**
+ * Mirror of satisfyRequirementOnClose: when a deal LEAVES `completed` (it was
+ * un-closed or moved to fell_through), put the linked requirement back in play
+ * — but only if it is still `satisfied` (don't stomp a manual withdraw/hold).
+ */
+async function reactivateRequirementOnReopen(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  requirementId: string | null,
+  fromStage: DealStage,
+  toStage: DealStage,
+  agencyId: string,
+) {
+  if (fromStage !== "completed" || toStage === "completed" || !requirementId) return;
+  await supabase
+    .from("requirements")
+    .update({ status: "active" as ReqStatus })
+    .eq("id", requirementId)
+    .eq("agency_id", agencyId)
+    .eq("status", "satisfied" as ReqStatus);
+}
+
+/**
+ * Keep the linked listing's status in step with the deal stage — forward-only,
+ * never downgrading a status by hand:
+ *   offer / heads_of_terms : Available → Under Offer
+ *   completed              : Available / Under Offer → Let (to_let) or Sold (for_sale)
+ */
+async function syncListingStatusForStage(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  agencyId: string,
+  listingId: string | null,
+  stage: DealStage,
+) {
+  if (!listingId) return;
+  if (stage !== "offer" && stage !== "heads_of_terms" && stage !== "completed") return;
+
+  const { data: listing } = await supabase
+    .from("disposals")
+    .select("id, status, to_let, for_sale")
+    .eq("id", listingId)
+    .eq("agency_id", agencyId)
+    .maybeSingle();
+  if (!listing) return;
+
+  const current = (listing.status ?? "").trim().toLowerCase();
+  let next: string | null = null;
+  if (stage === "completed") {
+    if (current === "available" || current === "under offer") {
+      next = listing.to_let ? "Let" : listing.for_sale ? "Sold" : "Let";
+    }
+  } else if (current === "available") {
+    next = "Under Offer";
+  }
+  if (!next) return;
+
+  await supabase
+    .from("disposals")
+    .update({ status: next })
+    .eq("id", listingId)
+    .eq("agency_id", agencyId);
+  revalidatePath("/listings");
+  revalidatePath(`/listings/${listingId}`);
+}
+
+/**
+ * Tell the new lead agent they own the deal now (skipped when they made the
+ * change themselves). Mirrors the reminder-notification pattern.
+ */
+async function notifyLeadAssignment(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  agencyId: string,
+  dealId: string,
+  dealTitle: string,
+  leadId: string | null,
+  actorId: string | null,
+) {
+  if (!leadId || leadId === actorId) return;
+  await supabase.from("notifications").insert({
+    agency_id: agencyId,
+    user_id: leadId,
+    title: `You are now lead agent on “${dealTitle}”`,
+    body: "You've been assigned as the lead agent for this deal.",
+    link: `/deals/${dealId}`,
+  });
+}
+
+/**
  * Create a deal from a requirement ↔ listing match. Derives the title, links
  * both records + the requirement's operator company, and seeds an indicative
  * value from the listing's guide price / premium / rent. Idempotent on the
  * (requirement, listing) pair so the same match can't spawn duplicate deals.
  */
-export async function createDealFromMatch(formData: FormData): Promise<void> {
+export async function createDealFromMatch(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
   const requirementId = str(formData, "requirement_id");
   const listingId = str(formData, "listing_id");
 
@@ -82,16 +196,17 @@ export async function createDealFromMatch(formData: FormData): Promise<void> {
   if (!user) redirect("/login");
 
   const agencyId = await currentAgencyId(supabase);
-  if (!agencyId) redirect("/deals");
+  if (!agencyId) return { error: "No agency is linked to your account." };
 
   // Reuse an existing deal for this pair rather than duplicating it.
   const { data: existing } = await supabase
     .from("deals")
     .select("id")
+    .eq("agency_id", agencyId)
     .eq("requirement_id", requirementId)
     .eq("listing_id", listingId)
     .maybeSingle();
-  if (existing) redirect(`/deals/${existing.id}`);
+  if (existing) redirect(`/deals/${existing.id}?existing=1`);
 
   const [{ data: req }, { data: listing }] = await Promise.all([
     supabase
@@ -129,9 +244,11 @@ export async function createDealFromMatch(formData: FormData): Promise<void> {
     })
     .select("id")
     .single();
-  if (error) redirect("/deals");
+  if (error) return { error: `Could not create the deal: ${error.message}` };
 
+  await recordStageEvent(supabase, agencyId, row.id, null, "lead", user.id);
   await syncDealAgents(supabase, agencyId, row.id, lead, formData);
+  await notifyLeadAssignment(supabase, agencyId, row.id, title, lead, user.id);
 
   revalidatePath("/deals");
   redirect(`/deals/${row.id}`);
@@ -141,7 +258,10 @@ export async function createDealFromMatch(formData: FormData): Promise<void> {
  * Create a blank, named deal from the pipeline page's "New deal" popup. No
  * required links — the user names it and can wire up the listing/requirement later.
  */
-export async function createDeal(formData: FormData): Promise<void> {
+export async function createDeal(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -149,7 +269,7 @@ export async function createDeal(formData: FormData): Promise<void> {
   if (!user) redirect("/login");
 
   const agencyId = await currentAgencyId(supabase);
-  if (!agencyId) redirect("/deals");
+  if (!agencyId) return { error: "No agency is linked to your account." };
 
   const title = str(formData, "title") || "Untitled deal";
   const lead = str(formData, "lead_agent_id") || null;
@@ -165,9 +285,11 @@ export async function createDeal(formData: FormData): Promise<void> {
     })
     .select("id")
     .single();
-  if (error) redirect("/deals");
+  if (error) return { error: `Could not create the deal: ${error.message}` };
 
+  await recordStageEvent(supabase, agencyId, row.id, null, "lead", user.id);
   await syncDealAgents(supabase, agencyId, row.id, lead, formData);
+  await notifyLeadAssignment(supabase, agencyId, row.id, title, lead, user.id);
 
   revalidatePath("/deals");
   redirect(`/deals/${row.id}`);
@@ -180,20 +302,44 @@ export async function updateDealStage(formData: FormData): Promise<void> {
   if (!id) return;
 
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   const agencyId = await currentAgencyId(supabase);
   if (!agencyId) return;
-  const { data: row, error } = await supabase
+
+  const { data: before } = await supabase
+    .from("deals")
+    .select("stage, requirement_id, listing_id")
+    .eq("id", id)
+    .eq("agency_id", agencyId)
+    .maybeSingle();
+  if (!before) return;
+
+  const { error } = await supabase
     .from("deals")
     .update({ stage })
     .eq("id", id)
-    .eq("agency_id", agencyId)
-    .select("requirement_id")
-    .maybeSingle();
-  if (!error) {
-    await satisfyRequirementOnClose(supabase, row?.requirement_id ?? null, stage, agencyId);
-    revalidatePath("/deals");
-    revalidatePath(`/deals/${id}`);
-    if (stage === "completed") revalidatePath("/requirements");
+    .eq("agency_id", agencyId);
+  if (error) return;
+
+  if (before.stage !== stage) {
+    await recordStageEvent(supabase, agencyId, id, before.stage, stage, user?.id ?? null);
+    await satisfyRequirementOnClose(supabase, before.requirement_id, stage, agencyId);
+    await reactivateRequirementOnReopen(
+      supabase,
+      before.requirement_id,
+      before.stage,
+      stage,
+      agencyId,
+    );
+    await syncListingStatusForStage(supabase, agencyId, before.listing_id, stage);
+  }
+
+  revalidatePath("/deals");
+  revalidatePath(`/deals/${id}`);
+  if (stage === "completed" || before.stage === "completed") {
+    revalidatePath("/requirements");
   }
 }
 
@@ -238,10 +384,22 @@ export async function updateDeal(
   const stage = asStage(str(formData, "stage"));
 
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   const agencyId = await currentAgencyId(supabase);
   if (!agencyId) return { error: "No agency is linked to your account." };
   const lead = nullableStr(formData, "lead_agent_id");
-  const { data: row, error } = await supabase
+
+  const { data: before } = await supabase
+    .from("deals")
+    .select("stage, lead_agent_id, requirement_id, listing_id")
+    .eq("id", id)
+    .eq("agency_id", agencyId)
+    .maybeSingle();
+  if (!before) return { error: "Deal not found." };
+
+  const { error } = await supabase
     .from("deals")
     .update({
       title,
@@ -250,18 +408,37 @@ export async function updateDeal(
       hot_terms: nullableStr(formData, "hot_terms"),
       notes: nullableStr(formData, "notes"),
       lead_agent_id: lead,
+      expected_close: nullableStr(formData, "expected_close"),
     })
     .eq("id", id)
-    .eq("agency_id", agencyId)
-    .select("requirement_id")
-    .maybeSingle();
+    .eq("agency_id", agencyId);
   if (error) return { error: error.message };
 
   await syncDealAgents(supabase, agencyId, id, lead, formData);
-  await satisfyRequirementOnClose(supabase, row?.requirement_id ?? null, stage, agencyId);
+
+  if (before.stage !== stage) {
+    await recordStageEvent(supabase, agencyId, id, before.stage, stage, user?.id ?? null);
+    await satisfyRequirementOnClose(supabase, before.requirement_id, stage, agencyId);
+    await reactivateRequirementOnReopen(
+      supabase,
+      before.requirement_id,
+      before.stage,
+      stage,
+      agencyId,
+    );
+    await syncListingStatusForStage(supabase, agencyId, before.listing_id, stage);
+  }
+
+  // Tell the new lead they own this deal now (unless they assigned themselves).
+  if (lead && lead !== before.lead_agent_id) {
+    await notifyLeadAssignment(supabase, agencyId, id, title, lead, user?.id ?? null);
+  }
+
   revalidatePath("/deals");
   revalidatePath(`/deals/${id}`);
-  if (stage === "completed") revalidatePath("/requirements");
+  if (stage === "completed" || before.stage === "completed") {
+    revalidatePath("/requirements");
+  }
   return { message: "Saved." };
 }
 

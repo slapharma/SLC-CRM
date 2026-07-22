@@ -58,11 +58,14 @@ async function fetchStaticMap(
   }
 }
 
+type AreaRow = { name: string; size_sqft: number | null; size_sqm: number | null };
+
 function buildData(
   d: Record<string, unknown>,
   hero: Buffer | null,
   map: Buffer | null,
   agents: string[],
+  areas: AreaRow[],
 ): ParticularsData {
   const g = <T,>(k: string) => d[k] as T;
 
@@ -123,7 +126,18 @@ function buildData(
     epc: g<string | null>("epc_rating"),
     description: g<string | null>("description"),
     location: g<string | null>("location_description"),
-    floors: (Array.isArray(d.floors) ? d.floors : []) as FloorRow[],
+    // Accommodation table: scraped `floors` when present, otherwise the
+    // manually-maintained disposal_areas schedule (previously never reached
+    // the PDF, leaving manual listings without a floor table).
+    floors: (() => {
+      const scraped = (Array.isArray(d.floors) ? d.floors : []) as FloorRow[];
+      if (scraped.length > 0) return scraped;
+      return areas.map((a) => ({
+        name: a.name,
+        sqft: a.size_sqft,
+        sqm: a.size_sqm,
+      }));
+    })(),
     tenure: g<string | null>("tenure_raw"),
     askingRent,
     premium,
@@ -187,11 +201,25 @@ export async function renderParticularsPdf(
 
   registerBrandFonts();
   const images = (Array.isArray(row.images) ? row.images : []) as ImageItem[];
-  const [hero, map] = await Promise.all([
+  const [hero, map, { data: areaRows }] = await Promise.all([
     fetchHero(images),
     fetchStaticMap(row.lat, row.lng),
+    // Manually-maintained area schedule — the accommodation-table fallback
+    // when the row carries no scraped `floors`.
+    supabase
+      .from("disposal_areas")
+      .select("name, size_sqft, size_sqm")
+      .eq("disposal_id", disposalId)
+      .order("sort_order")
+      .order("created_at"),
   ]);
-  const data = buildData(row as Record<string, unknown>, hero, map, agentNames);
+  const data = buildData(
+    row as Record<string, unknown>,
+    hero,
+    map,
+    agentNames,
+    areaRows ?? [],
+  );
 
   // ParticularsDocument renders a <Document> at runtime; createElement loses
   // that in the type system, so assert the element shape renderToBuffer wants.

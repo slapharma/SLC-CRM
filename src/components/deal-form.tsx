@@ -30,6 +30,7 @@ type Deal = {
   hot_terms: string | null;
   notes: string | null;
   lead_agent_id: string | null;
+  expected_close: string | null;
 };
 
 export function DealForm({
@@ -77,6 +78,16 @@ export function DealForm({
             min={0}
             defaultValue={deal.value ?? ""}
             className="font-mono tabular-nums"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="expected_close">Expected close</Label>
+          <Input
+            id="expected_close"
+            name="expected_close"
+            type="date"
+            defaultValue={deal.expected_close ?? ""}
           />
         </div>
 

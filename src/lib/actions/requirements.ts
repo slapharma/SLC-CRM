@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { refreshMatchesForRequirement } from "@/lib/actions/matches";
 import { currentAgencyId } from "@/lib/supabase/agency";
 import { createClient } from "@/lib/supabase/server";
 import { Constants, type Database } from "@/lib/database.types";
@@ -81,25 +82,74 @@ const agents = (fd: FormData) => {
   return { lead, extra };
 };
 
-/** Replace a requirement's additional-agent rows. */
+/**
+ * Replace a requirement's additional-agent rows. Returns the agents that were
+ * NOT already on the brief (so the caller can notify them) plus any error —
+ * previously both were dropped on the floor, so a failed sync looked identical
+ * to a successful one.
+ */
 async function syncRequirementAgents(
   supabase: Supabase,
   requirementId: string,
   agencyId: string,
   extra: string[],
-) {
-  await supabase
+): Promise<{ added: string[]; error: string | null }> {
+  const { data: before, error: readError } = await supabase
+    .from("requirement_agents")
+    .select("user_id")
+    .eq("requirement_id", requirementId)
+    .eq("agency_id", agencyId);
+  if (readError) return { added: [], error: readError.message };
+  const had = new Set((before ?? []).map((r) => r.user_id));
+
+  const { error: deleteError } = await supabase
     .from("requirement_agents")
     .delete()
     .eq("requirement_id", requirementId)
     .eq("agency_id", agencyId);
+  if (deleteError) return { added: [], error: deleteError.message };
+
   if (extra.length > 0) {
-    await supabase.from("requirement_agents").insert(
+    const { error: insertError } = await supabase.from("requirement_agents").insert(
       extra.map((user_id) => ({
         agency_id: agencyId,
         requirement_id: requirementId,
         user_id,
       })),
+    );
+    if (insertError) return { added: [], error: insertError.message };
+  }
+  return { added: extra.filter((id) => !had.has(id)), error: null };
+}
+
+/**
+ * Tell agents they've been put on a brief (same pattern as deal reminders:
+ * in-app notification row per recipient, never to yourself).
+ */
+async function notifyRequirementAgents(
+  supabase: Supabase,
+  agencyId: string,
+  requirementId: string,
+  title: string,
+  recipients: string[],
+  actorId: string | null,
+  role: "lead agent" | "agent",
+) {
+  const users = [...new Set(recipients.filter((id) => id && id !== actorId))];
+  if (users.length === 0) return;
+  const { error } = await supabase.from("notifications").insert(
+    users.map((user_id) => ({
+      agency_id: agencyId,
+      user_id,
+      title: `You're now ${role === "lead agent" ? "the lead agent" : "an agent"} on “${title}”`,
+      body: "Open the requirement to see its criteria and current matches.",
+      link: `/requirements/${requirementId}`,
+    })),
+  );
+  if (error) {
+    console.error(
+      `requirement ${requirementId}: agent notification insert failed:`,
+      error.message,
     );
   }
 }
@@ -129,7 +179,41 @@ export async function createRequirement(
     .single();
   if (error) return { error: error.message };
 
-  await syncRequirementAgents(supabase, row.id, agencyId, agents(formData).extra);
+  const sync = await syncRequirementAgents(
+    supabase,
+    row.id,
+    agencyId,
+    agents(formData).extra,
+  );
+  if (sync.error) {
+    return {
+      error: `The requirement was saved, but its agent assignments could not be updated: ${sync.error}`,
+    };
+  }
+  await notifyRequirementAgents(
+    supabase,
+    agencyId,
+    row.id,
+    data.title,
+    sync.added,
+    user.id,
+    "agent",
+  );
+  if (data.lead_agent_id) {
+    await notifyRequirementAgents(
+      supabase,
+      agencyId,
+      row.id,
+      data.title,
+      [data.lead_agent_id],
+      user.id,
+      "lead agent",
+    );
+  }
+
+  // New brief → score it against live stock now, so its agents hear about
+  // matching listings without having to remember to open /matches.
+  await refreshMatchesForRequirement(row.id);
 
   revalidatePath("/requirements");
   redirect(`/requirements/${row.id}`);
@@ -140,6 +224,9 @@ export async function updateRequirement(
   formData: FormData,
 ): Promise<FormState> {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   const id = str(formData, "id");
   if (!id) return { error: "Missing requirement id." };
 
@@ -151,6 +238,14 @@ export async function updateRequirement(
   if (!data.contact_id)
     return { error: "A contact is required for every requirement." };
 
+  // Previous lead agent: a hand-off should ping the incoming agent.
+  const { data: before } = await supabase
+    .from("requirements")
+    .select("lead_agent_id")
+    .eq("id", id)
+    .eq("agency_id", agencyId)
+    .maybeSingle();
+
   const { error } = await supabase
     .from("requirements")
     .update(data)
@@ -158,23 +253,59 @@ export async function updateRequirement(
     .eq("agency_id", agencyId);
   if (error) return { error: error.message };
 
-  await syncRequirementAgents(supabase, id, agencyId, agents(formData).extra);
+  const sync = await syncRequirementAgents(supabase, id, agencyId, agents(formData).extra);
+  if (sync.error) {
+    return {
+      error: `The requirement was saved, but its agent assignments could not be updated: ${sync.error}`,
+    };
+  }
+  await notifyRequirementAgents(
+    supabase,
+    agencyId,
+    id,
+    data.title,
+    sync.added,
+    user?.id ?? null,
+    "agent",
+  );
+  if (data.lead_agent_id && data.lead_agent_id !== (before?.lead_agent_id ?? null)) {
+    await notifyRequirementAgents(
+      supabase,
+      agencyId,
+      id,
+      data.title,
+      [data.lead_agent_id],
+      user?.id ?? null,
+      "lead agent",
+    );
+  }
+
+  // Criteria may have moved — re-score against live stock.
+  await refreshMatchesForRequirement(id);
 
   revalidatePath("/requirements");
   revalidatePath(`/requirements/${id}`);
   redirect(`/requirements/${id}`);
 }
 
+/**
+ * Delete a requirement. A failed delete used to redirect to the list exactly
+ * like a successful one — the record simply reappeared. Now the failure is
+ * carried back to the detail page as `?error=…` and rendered there.
+ */
 export async function deleteRequirement(formData: FormData): Promise<void> {
   const supabase = await createClient();
   const agencyId = await currentAgencyId(supabase);
   const id = String(formData.get("id") ?? "");
   if (id && agencyId) {
-    await supabase
+    const { error } = await supabase
       .from("requirements")
       .delete()
       .eq("id", id)
       .eq("agency_id", agencyId);
+    if (error) {
+      redirect(`/requirements/${id}?error=${encodeURIComponent(error.message)}`);
+    }
     revalidatePath("/requirements");
   }
   redirect("/requirements");
