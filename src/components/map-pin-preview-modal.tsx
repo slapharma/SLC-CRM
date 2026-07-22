@@ -3,15 +3,16 @@
 import Link from "next/link";
 import { MapPin } from "lucide-react";
 
+import { ConcentrationMap } from "@/components/concentration-map-lazy";
 import { Modal } from "@/components/ui/modal";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { MAP_KIND_META } from "@/lib/map-kind-meta";
+import { cn } from "@/lib/utils";
 import type { MapPoint } from "@/components/concentration-map";
 
-/** Card shown when a map pin is clicked: image (listings), name, address + a View link. */
-export function PinDetailModal({
+/** Modal opened from a "View on map" link in a table row: a single-pin map + the record's details. */
+export function MapPinPreviewModal({
   point,
   onClose,
 }: {
@@ -19,18 +20,22 @@ export function PinDetailModal({
   onClose: () => void;
 }) {
   const meta = point ? MAP_KIND_META[point.kind] : null;
+
   return (
     <Modal open={Boolean(point)} onClose={onClose} title={point?.name ?? ""}>
       {point && meta ? (
         <div className="space-y-3">
-          {point.kind === "listing" && point.image ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={point.image}
-              alt={point.name}
-              className="h-40 w-full rounded-md border object-cover"
-            />
-          ) : null}
+          <ConcentrationMap
+            layers={{
+              listings: point.kind === "listing" ? [point] : [],
+              companies: point.kind === "company" ? [point] : [],
+              contacts: point.kind === "contact" ? [point] : [],
+            }}
+            defaultActive={point.kind}
+            compact
+            hideToggles
+            interactive={false}
+          />
 
           <div className="flex items-center gap-2">
             <Badge tone={meta.tone}>

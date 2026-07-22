@@ -4,12 +4,14 @@ import { Plus, Users } from "lucide-react";
 
 import { ConcentrationMap } from "@/components/concentration-map-lazy";
 import { EmptyState } from "@/components/empty-state";
+import { ExpandableInsights } from "@/components/expandable-insights";
 import { FilterBar, FilterSelect } from "@/components/filter-bar";
 import { FilterTiles } from "@/components/filter-tiles";
 import { Heatmap } from "@/components/heatmap";
 import { PageHeader } from "@/components/page-header";
 import { Pagination, resolvePage } from "@/components/pagination";
 import { SortHeader } from "@/components/sort-header";
+import { ViewOnMapButton } from "@/components/view-on-map-button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
@@ -173,6 +175,8 @@ export default async function ContactsPage({
     (comps ?? []).forEach((c) => names.set(c.id, c.name));
   }
 
+  const contactPoints = new Map(mapLayers.contacts.map((p) => [p.id, p]));
+
   return (
     <div className="mx-auto max-w-6xl">
       <PageHeader
@@ -208,7 +212,7 @@ export default async function ContactsPage({
       ) : null}
 
       {rows.length > 0 ? (
-        <div className="mb-5 grid gap-4 lg:grid-cols-2">
+        <ExpandableInsights>
           <Card className="hidden sm:block">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm">Portfolio Spread — town × role</CardTitle>
@@ -246,7 +250,7 @@ export default async function ContactsPage({
               <ConcentrationMap layers={mapLayers} defaultActive="contact" compact />
             </CardContent>
           </Card>
-        </div>
+        </ExpandableInsights>
       ) : null}
 
       {listRows.length === 0 ? (
@@ -275,11 +279,15 @@ export default async function ContactsPage({
               <TableHead className="hidden md:table-cell">Company</TableHead>
               <TableHead className="hidden md:table-cell">Email</TableHead>
               <TableHead className="hidden md:table-cell">Phone</TableHead>
+              <TableHead className="w-24 text-right">
+                <span className="sr-only">Map</span>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {pageRows.map((c) => {
               const r = contactRoleBadge(c.role, roleLabel(roles, c.role));
+              const point = contactPoints.get(c.id);
               return (
                 <TableRow key={c.id}>
                   <TableCell>
@@ -301,6 +309,9 @@ export default async function ContactsPage({
                   </TableCell>
                   <TableCell className="hidden text-muted-foreground md:table-cell">
                     {c.phone ?? "—"}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {point ? <ViewOnMapButton point={point} /> : null}
                   </TableCell>
                 </TableRow>
               );

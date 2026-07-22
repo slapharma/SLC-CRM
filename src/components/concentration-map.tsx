@@ -58,6 +58,7 @@ export function ConcentrationMap({
   defaultActive,
   compact = false,
   hideToggles = false,
+  interactive = true,
 }: {
   layers: MapLayers;
   // When set, only this layer starts visible (the page's own category); the
@@ -67,6 +68,9 @@ export function ConcentrationMap({
   compact?: boolean;
   // Hide the layer-toggle buttons entirely (e.g. a single-category dashboard map).
   hideToggles?: boolean;
+  // Disable pin clicks and the built-in detail modal (e.g. a single-pin preview
+  // that already shows its own details alongside the map).
+  interactive?: boolean;
 }) {
   const ref = React.useRef<HTMLDivElement>(null);
   const mapRef = React.useRef<any>(null);
@@ -119,7 +123,7 @@ export function ConcentrationMap({
               icon,
               title: p.name,
             });
-            marker.addListener("click", () => setSelected(p));
+            if (interactive) marker.addListener("click", () => setSelected(p));
             return marker;
           });
           markerObjs.current[key] = markers;
@@ -141,7 +145,7 @@ export function ConcentrationMap({
     };
     // active is intentionally excluded — visibility is applied in the effect below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [layers, total]);
+  }, [layers, total, interactive]);
 
   // Toggle marker visibility per layer without rebuilding the map.
   React.useEffect(() => {
@@ -209,12 +213,14 @@ export function ConcentrationMap({
         aria-label="Map of listings, companies and contacts across the UK"
         className={cn("w-full overflow-hidden rounded-md border", heightClass)}
       />
-      {compact ? null : (
+      {compact || !interactive ? null : (
         <p className="text-xs text-muted-foreground">
           Click a pin to open its card. Toggle a layer with the buttons above.
         </p>
       )}
-      <PinDetailModal point={selected} onClose={() => setSelected(null)} />
+      {interactive ? (
+        <PinDetailModal point={selected} onClose={() => setSelected(null)} />
+      ) : null}
     </div>
   );
 }

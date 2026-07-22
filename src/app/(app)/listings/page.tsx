@@ -4,6 +4,7 @@ import { Plus, Store } from "lucide-react";
 
 import { ConcentrationMap } from "@/components/concentration-map-lazy";
 import { EmptyState } from "@/components/empty-state";
+import { ExpandableInsights } from "@/components/expandable-insights";
 import { FilterBar, FilterSelect } from "@/components/filter-bar";
 import { FilterTiles } from "@/components/filter-tiles";
 import { Heatmap } from "@/components/heatmap";
@@ -231,6 +232,8 @@ export default async function ListingsPage({
     .map((id) => byId.get(id))
     .filter((r): r is NonNullable<typeof r> => r != null);
 
+  const listingPoints = new Map(mapLayers.listings.map((p) => [p.id, p]));
+
   return (
     <div className="mx-auto max-w-6xl">
       <PageHeader
@@ -296,7 +299,7 @@ export default async function ListingsPage({
       ) : null}
 
       {siloRows.length > 0 ? (
-        <div className="mb-5 grid gap-4 lg:grid-cols-2">
+        <ExpandableInsights>
           <Card className="hidden sm:block">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm">Portfolio Spread — town × status</CardTitle>
@@ -323,7 +326,7 @@ export default async function ListingsPage({
               <ConcentrationMap layers={mapLayers} defaultActive="listing" compact />
             </CardContent>
           </Card>
-        </div>
+        </ExpandableInsights>
       ) : null}
 
       {listRows.length === 0 ? (
@@ -354,6 +357,7 @@ export default async function ListingsPage({
               premium: d.premium,
               status: d.status,
               listing_type: d.listing_type,
+              mapPoint: listingPoints.get(d.id) ?? null,
             }),
           )}
           params={params}

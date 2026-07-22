@@ -7,6 +7,7 @@ import { Pencil } from "lucide-react";
 
 import { ListingStatusSelect } from "@/components/listing-status-select";
 import { SortHeader } from "@/components/sort-header";
+import { ViewOnMapButton } from "@/components/view-on-map-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
@@ -24,6 +25,7 @@ import {
   bulkUpdateDisposalStatus,
 } from "@/lib/actions/disposals";
 import type { AgentOption } from "@/lib/supabase/agency";
+import type { MapPoint } from "@/components/concentration-map";
 
 const STATUSES = ["Available", "Under Offer", "Let", "Sold", "Withdrawn"] as const;
 
@@ -38,6 +40,7 @@ export type ListingTableRow = {
   premium: number | null;
   status: string | null;
   listing_type: string | null;
+  mapPoint: MapPoint | null;
 };
 
 const fmtMoney = (v: number | null) =>
@@ -204,6 +207,9 @@ export function ListingsTable({
               className="hidden text-right md:table-cell"
             />
             <SortHeader column="status" label="Status" params={params} />
+            <TableHead className="w-24 text-right">
+              <span className="sr-only">Map</span>
+            </TableHead>
             <TableHead className="w-10">
               <span className="sr-only">Edit</span>
             </TableHead>
@@ -261,6 +267,9 @@ export function ListingsTable({
                     status={d.status}
                     aria-label={`Change status of ${d.title ?? "listing"}`}
                   />
+                </TableCell>
+                <TableCell className="text-right">
+                  {d.mapPoint ? <ViewOnMapButton point={d.mapPoint} /> : null}
                 </TableCell>
                 <TableCell className="text-right">
                   <Link

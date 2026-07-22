@@ -23,6 +23,7 @@ export function ConcentrationMap(props: {
   defaultActive?: MapKind;
   compact?: boolean;
   hideToggles?: boolean;
+  interactive?: boolean;
 }) {
   return props.compact ? <LazyCompact {...props} /> : <LazyFull {...props} />;
 }

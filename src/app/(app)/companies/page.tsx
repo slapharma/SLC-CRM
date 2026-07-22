@@ -4,12 +4,14 @@ import { Building2, Plus } from "lucide-react";
 
 import { ConcentrationMap } from "@/components/concentration-map-lazy";
 import { EmptyState } from "@/components/empty-state";
+import { ExpandableInsights } from "@/components/expandable-insights";
 import { FilterBar, FilterSelect } from "@/components/filter-bar";
 import { FilterTiles } from "@/components/filter-tiles";
 import { Heatmap } from "@/components/heatmap";
 import { PageHeader } from "@/components/page-header";
 import { Pagination, resolvePage } from "@/components/pagination";
 import { SortHeader } from "@/components/sort-header";
+import { ViewOnMapButton } from "@/components/view-on-map-button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
@@ -152,6 +154,8 @@ export default async function CompaniesPage({
     .map((id) => byId.get(id))
     .filter((c): c is NonNullable<typeof c> => c != null);
 
+  const companyPoints = new Map(mapLayers.companies.map((p) => [p.id, p]));
+
   return (
     <div className="mx-auto max-w-6xl">
       <PageHeader
@@ -192,7 +196,7 @@ export default async function CompaniesPage({
       ) : null}
 
       {rows.length > 0 && heatTags.length > 0 ? (
-        <div className="mb-5 grid gap-4 lg:grid-cols-2">
+        <ExpandableInsights>
           <Card className="hidden sm:block">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm">Portfolio Spread — sector × type</CardTitle>
@@ -226,7 +230,7 @@ export default async function CompaniesPage({
               <ConcentrationMap layers={mapLayers} defaultActive="company" compact />
             </CardContent>
           </Card>
-        </div>
+        </ExpandableInsights>
       ) : null}
 
       {listRows.length === 0 ? (
@@ -257,11 +261,15 @@ export default async function CompaniesPage({
               <SortHeader column="type" label="Type" params={params} />
               <TableHead className="hidden md:table-cell">Sectors</TableHead>
               <TableHead className="hidden md:table-cell">Website</TableHead>
+              <TableHead className="w-24 text-right">
+                <span className="sr-only">Map</span>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {pageRows.map((c) => {
               const t = companyTypeBadge(c.type, typeLabel(companyTypes, c.type));
+              const point = companyPoints.get(c.id);
               return (
                 <TableRow key={c.id}>
                   <TableCell>
@@ -280,6 +288,9 @@ export default async function CompaniesPage({
                   </TableCell>
                   <TableCell className="hidden text-muted-foreground md:table-cell">
                     {c.website ?? "—"}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {point ? <ViewOnMapButton point={point} /> : null}
                   </TableCell>
                 </TableRow>
               );
